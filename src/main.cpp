@@ -50,7 +50,7 @@ void setup() {
 
     float newQ;
     if (DEBUGGING_Q) {
-      newQ = getNewQ();
+      // newQ = getNewQ();
     }
 
     if (DEBUGGING_GENERAL) {

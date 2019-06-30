@@ -76,6 +76,8 @@ class Color_Static: public Color_
     //    unsigned char b();
     //    unsigned char w();
 
+    void setColor(colorObj c);
+
     // Set each color
     void rS(unsigned char rNew);
     void gS(unsigned char gNew);

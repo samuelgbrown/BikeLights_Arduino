@@ -24,7 +24,8 @@
 #define DEBUGGING_Q false // Experiment with different Q's
 #define DEBUGGING_TIC true // See when the Arduino sees a tic
 #define DEBUGGING_SPEED false // See what speed the arduino thinks the wheel is going
-#define DEBUGGING_ANY (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_TIC || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || LIBRARY_TEST)
+#define DEBUGGING_BLUETOOTH false // Debug the bluetooth connection
+#define DEBUGGING_ANY (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_TIC || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
 
 
 // These are the only two interrupt pins that can be used for an external interrupt request
@@ -32,18 +33,21 @@
 #define TICKPIN 2
 #define RTICKPIN 3
 #define POWERPIN 5
+#define BLUETOOTHPIN_TX 8
+#define BLUETOOTHPIN_RX 9
 #define NUMSWITCHES 3
 
 #define NUMLEDS 120
 #define NUMLIGHTSPERLED 4 // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
+#define MAX_BT_BUFFER_SIZE 64 // The number of bytes available to read from the Serial buffer
 
 #define MAXPULSELENGTH 50000
 #define MAXTIMEBEWTEENTICS 1500
 
 // For Kalman filtering
 #define N_STA 3 // Tracking posiiton, velocity, and acceleration
-#define N_OBS 2 // Measuring position and velocity (accerleration introduces too much error
+#define N_OBS 2 // Measuring position and velocity (acceleration introduces too much error)
 
 // For bit banging LED control signal
 #define T0H  300    // Width of a 0 bit in ns
@@ -63,6 +67,38 @@
 #define PIXEL_DDR   DDRD   // Port of the pin the pixels are connected to
 #define PIXEL_BIT   6      // Bit of the pin the pixels are connected to
 // DENOTE PIN 6 ON THE ARDUINO NANO
+
+// Define some values to make using the protocol buffer much less verbose
+#define Message_BT _bluetooth_BluetoothMessage
+#define BWA_BT bluetooth_BluetoothMessage_BikeWheelAnim
+#define ImageMeta_BT bluetooth_BluetoothMessage_BikeWheelAnim_ImageMeta
+#define MessageLength_BT _bluetooth_BluetoothLength
+#define Color_BT _bluetooth_BluetoothMessage_BikeWheelAnim_Color_
+#define ColorObj_BT _bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorObj
+#define Kalman_BT _bluetooth_BluetoothMessage_Kalman
+
+#define ColorType_BT _bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorType
+#define BlendType_BT _bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorObj_BlendType
+#define ImageType_BT _bluetooth_BluetoothMessage_BikeWheelAnim_ImageMeta_ImageType
+#define ImageMetaParam_BT _bluetooth_BluetoothMessage_BikeWheelAnim_ImageMeta_ImageMetaParameter
+
+#define MessageType_BWA bluetooth_BluetoothMessage_MessageType_BIKE_WHEEL_ANIM
+#define MessageType_Kalman bluetooth_BluetoothMessage_MessageType_KALMAN
+#define MessageType_Brightness bluetooth_BluetoothMessage_MessageType_BRIGHTNESS
+#define MessageType_Storage bluetooth_BluetoothMessage_MessageType_STORAGE
+#define MessageType_Battery bluetooth_BluetoothMessage_MessageType_BATTERY
+
+#define ColorType_STATIC_BT bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorType_STATIC
+#define ColorType_DTIME_BT bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorType_D_TIME
+#define ColorType_DVEL_BT bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorType_D_VEL
+
+#define BlendType_CONSTANT_BT bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorObj_BlendType_CONSTANT
+#define BlendType_LINEAR_BT bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorObj_BlendType_LINEAR
+
+#define ImageType_CONSTANT_BT bluetooth_BluetoothMessage_BikeWheelAnim_ImageMeta_ImageType_CONST_ROT
+#define ImageType_SPINNER_BT bluetooth_BluetoothMessage_BikeWheelAnim_ImageMeta_ImageType_SPINNER
+
+#define Storage_BT _bluetooth_BluetoothMessage_Storage
 
 // Define enums used for different animations
 enum MAIN_ANIM {
