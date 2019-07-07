@@ -650,6 +650,7 @@ void Color_d<T>::setupArrays(colorObj* cAIn, T* tAIn, BLEND_TYPE* bAIn, unsigned
   }
 
   // Allocate arrays for all data
+  // TODO: MEMORY
   if (DEBUGGING_PATTERN) {
     // Serial.flush();
     Serial.print(F("Making array colorObj of length "));

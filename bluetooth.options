@@ -1,0 +1,8 @@
+# bluetooth.options
+# bluetooth.BluetoothMessage.contents   no_unions:true
+bluetooth.BluetoothMessage.BikeWheelAnim.palette   type:FT_POINTER # max_count:10
+bluetooth.BluetoothMessage.BikeWheelAnim.image_main   type:FT_POINTER # max_count:120
+bluetooth.BluetoothMessage.BikeWheelAnim.image_idle   type:FT_POINTER # max_count:120
+bluetooth.BluetoothMessage.BikeWheelAnim.Color_.color_objs   type:FT_POINTER # max_count:10
+bluetooth.BluetoothMessage.Kalman.r   type:FT_POINTER # max_count:4
+bluetooth.BluetoothMessage.Kalman.p0   type:FT_POINTER # max_count:9

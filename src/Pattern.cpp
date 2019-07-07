@@ -4,16 +4,19 @@
 #include "Color.h"
 #include "Pattern.h"
 
-Pattern::Pattern() {
-  if (DEBUGGING_PATTERN) {
+Pattern::Pattern()
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Starting Pattern()..."));
   }
 
-  numColors = 0;
+  // numColors = 0;
   //  setImageZeros();
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.print(numColors);
     //    Serial.println(F(" colors currently in pattern..."));
@@ -23,27 +26,31 @@ Pattern::Pattern() {
   //  setupColors(1);
 };
 
-Pattern::Pattern(Color_** colorsIn, unsigned char numColorsIn) {
-  setupColors(colorsIn, numColorsIn);
+// Pattern::Pattern(Color_** colorsIn, unsigned char numColorsIn) {
+//   setupColors(colorsIn, numColorsIn);
 
-  if (DEBUGGING_PATTERN) {
-    // Serial.flush();
-    //    Serial.println(F("Setting up Pattern..."));
-  }
-};
+//   if (DEBUGGING_PATTERN) {
+//     // Serial.flush();
+//     //    Serial.println(F("Setting up Pattern..."));
+//   }
+// };
 
-Pattern::~Pattern() {
-  deleteColorArray(); // Delete the color array when the Pattern is deleted
+Pattern::~Pattern()
+{
+  // deleteColorArray(); // Delete the color array when the Pattern is deleted
 }
 
-void Pattern::setupColors(unsigned char numColorsIn) {
+void Pattern_Handler::setupPalette(unsigned char numColorsIn)
+{
   //  if (DEBUGGING_PATTERN) {
   //    Serial.println(F("Setting up colors..."));
   //    Serial.print(F("Current memory: "));
   //    Serial.println(freeRam());
   //    Serial.println();
   //  }
-  Color_** newColorArray = new Color_*[numColorsIn]; // Deleted at the end of this function
+
+  // TODO: MEMORY
+  Color_ **newColorArray = new Color_ *[numColorsIn]; // Deleted at the end of this function
   unsigned char brightness = 50;
 
   //  if (DEBUGGING_PATTERN) {
@@ -67,23 +74,25 @@ void Pattern::setupColors(unsigned char numColorsIn) {
   //    Serial.println(F(" colors exist now."));
   //  }
 
-  for (unsigned char i = 0; i < numOldColorsToPreserve; i++) {
-    if (DEBUGGING_PATTERN) {
+  for (unsigned char i = 0; i < numOldColorsToPreserve; i++)
+  {
+    if (DEBUGGING_PATTERN)
+    {
       // Serial.flush();
       Serial.print(F("Cloning color "));
       Serial.println(i);
       // delay(1000);
       Serial.print(F("R = "));
-      Serial.print(colors[i]->getColor().r());
+      Serial.print(palette[i]->getColor().r());
       Serial.print(F(", G = "));
-      Serial.print(colors[i]->getColor().g());
+      Serial.print(palette[i]->getColor().g());
       Serial.print(F(", B = "));
-      Serial.print(colors[i]->getColor().b());
+      Serial.print(palette[i]->getColor().b());
       Serial.print(F(", W = "));
-      Serial.println(colors[i]->getColor().w());
+      Serial.println(palette[i]->getColor().w());
       // delay(1000);
     }
-    newColorArray[i] = colors[i]->clone();
+    newColorArray[i] = palette[i]->clone();
   }
 
   //  if (DEBUGGING_PATTERN) {
@@ -98,7 +107,8 @@ void Pattern::setupColors(unsigned char numColorsIn) {
   //  }
 
   // Fill in the rest of the array with static default colors
-  for (unsigned char i = numOldColorsToPreserve; i < numColorsIn; i++) {
+  for (unsigned char i = numOldColorsToPreserve; i < numColorsIn; i++)
+  {
     //    if (DEBUGGING_PATTERN) {
     //    // Serial.flush();
     //    Serial.print(F("Adding color number "));
@@ -107,15 +117,24 @@ void Pattern::setupColors(unsigned char numColorsIn) {
     //    //      Serial.println(numOldColorsToPreserve);
     //    //      Serial.println(numColorsIn);
     //  }
-    if (i == 0) {
+    if (i == 0)
+    {
       newColorArray[i] = new Color_Static();
-    } else if ((i % 4) == 1) {
+    }
+    else if ((i % 4) == 1)
+    {
       newColorArray[i] = new Color_Static(0, 0, 0, brightness);
-    } else if ((i % 4) == 2) {
+    }
+    else if ((i % 4) == 2)
+    {
       newColorArray[i] = new Color_Static(brightness, 0, 0, 0);
-    } else if ((i % 4) == 3) {
+    }
+    else if ((i % 4) == 3)
+    {
       newColorArray[i] = new Color_Static(0, brightness, 0, 0);
-    } else if ((i % 4) == 0) {
+    }
+    else if ((i % 4) == 0)
+    {
       newColorArray[i] = new Color_Static(0, 0, brightness, 0);
     }
   }
@@ -128,14 +147,14 @@ void Pattern::setupColors(unsigned char numColorsIn) {
   //    Serial.println();
   //  }
 
-  setupColors(newColorArray, numColorsIn);
+  setupPalette(newColorArray, numColorsIn);
 
   // Delete newColorArray
   //  for (int i = 0;i<numColorsIn;i++) { // Do not delete the objects that these points point to, because they are in "colors"
   //    delete newColorArray[i];
   //  }
 
-  delete [] newColorArray;
+  delete[] newColorArray;
 
   //  if (DEBUGGING_PATTERN) {
   //    Serial.println(F("Deleted temporary color array"));
@@ -143,9 +162,9 @@ void Pattern::setupColors(unsigned char numColorsIn) {
   //  }
 };
 
-void Pattern::setupColors(Color_** newColorArray, unsigned char numColorsIn) {
+void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColorsIn)
+{
   deleteColorArray(); // Always delete the old array when a new one is being created
-
 
   //  if (DEBUGGING_PATTERN) {
   //    Serial.println(F("Checking input color array for first empty..."));
@@ -154,20 +173,22 @@ void Pattern::setupColors(Color_** newColorArray, unsigned char numColorsIn) {
   //    delay(500);
   //  }
 
-  if (!newColorArray[0]->isThisEmpty()) {
-    // If the first color is not empty, then add a new blank color in the beginning
-    numColorsIn++; // Increase the number of colors
-    Color_** newerColorArray = new Color_*[numColorsIn]; // Deleted at the end of this function
-    newerColorArray[0] = new Color_Static(); // Create a new blank object
-    for (unsigned char i = 1; i < numColorsIn; i--) {
-      newerColorArray[i] = newColorArray[i - 1];
-    }
+  // if (!newColorArray[0]->isThisEmpty())
+  // {
+  //   // If the first color is not empty, then add a new blank color in the beginning
+  //   numColorsIn++;                                        // Increase the number of colors
+  //   Color_ **newerColorArray = new Color_ *[numColorsIn]; // Deleted at the end of this function
+  //   newerColorArray[0] = new Color_Static();              // Create a new blank object
+  //   for (unsigned char i = 1; i < numColorsIn; i--)
+  //   {
+  //     newerColorArray[i] = newColorArray[i - 1];
+  //   }
 
-    // Oh god please let this actually be real code
-    delete [] newColorArray;
-    newColorArray = newerColorArray;
-    delete [] newerColorArray;
-  }
+  //   // Oh god please let this actually be real code
+  //   delete[] newColorArray;
+  //   newColorArray = newerColorArray;
+  //   delete[] newerColorArray;
+  // }
 
   //  if (DEBUGGING_PATTERN) {
   //    Serial.println(F("Copying input color array..."));
@@ -176,10 +197,10 @@ void Pattern::setupColors(Color_** newColorArray, unsigned char numColorsIn) {
   //    delay(500);
   //  }
 
-  colors = new Color_*[numColorsIn]; // Allocate space for the color array
+  palette = new Color_ *[numColorsIn];             // Allocate space for the color array
   preCalculatedColors = new colorObj[numColorsIn]; // Allocate space for the preCalculatedColors array
 
-  copyArray<Color_*>(newColorArray, colors, numColorsIn);
+  copyArray<Color_ *>(newColorArray, palette, numColorsIn);
   //  *colors = *newColorArray;
   numColors = numColorsIn;
 
@@ -204,23 +225,45 @@ void Pattern::setupColors(Color_** newColorArray, unsigned char numColorsIn) {
   //  }
 };
 
-void Pattern::deleteColorArray() {
-  for (unsigned char i = 0; i < numColors; i++) {
-    delete colors[i]; // Delete each individual color object
+void Pattern_Handler::setupPalette(Color_BT *colorMessagesIn, unsigned char numColorsIn)
+{
+  deleteColorArray(); // Always delete the old array when a new one is being created
+
+  palette = new Color_ *[numColorsIn];             // Allocate space for the color array
+  preCalculatedColors = new colorObj[numColorsIn]; // Allocate space for the preCalculatedColors array
+
+  for (unsigned char i = 0; i < numColorsIn; i++)
+  {
+    palette[i] = Bluetooth::Color_FromPB(colorMessagesIn[i], speedometer);
   }
-  delete [] colors; // Delete the array of points that colors points to
-  delete [] preCalculatedColors; // Delete the array of colorObj's
+  //  *colors = *newColorArray;
+  numColors = numColorsIn;
+}
+
+void Pattern_Handler::deleteColorArray()
+{
+  for (unsigned char i = 0; i < numColors; i++)
+  {
+    delete palette[i]; // Delete each individual color object
+  }
+  delete[] palette;             // Delete the array of points that colors points to
+  delete[] preCalculatedColors; // Delete the array of colorObj's
   numColors = 0;
 };
 
-unsigned char Pattern::getNumColors() {
+unsigned char Pattern_Handler::getNumColors()
+{
   return numColors;
 };
 
-colorObj Pattern::getPreCalculatedColorInPos(unsigned char colorNum) {
-  if (colorNum < numColors) {
+colorObj Pattern_Handler::getPreCalculatedColorInPos(unsigned char colorNum)
+{
+  if (colorNum < numColors)
+  {
     return preCalculatedColors[colorNum];
-  } else {
+  }
+  else
+  {
     return preCalculatedColors[numColors];
   }
 };
@@ -233,25 +276,32 @@ colorObj Pattern::getPreCalculatedColorInPos(unsigned char colorNum) {
 //  }
 //};
 
-unsigned char Pattern::getImageValInPos(unsigned char LEDNum) {
-  if (LEDNum < nLEDs) {
+unsigned char Pattern::getImageValInPos(unsigned char LEDNum)
+{
+  if (LEDNum < nLEDs)
+  {
     return image[LEDNum];
-  } else {
+  }
+  else
+  {
     return image[nLEDs];
   }
 };
 
-void Pattern::setColor(Color_* newColor, unsigned char colorNum) {
-  if (colorNum < numColors && colorNum != 0) {
-    if (DEBUGGING_PATTERN) {
+void Pattern_Handler::setColor(Color_ *newColor, unsigned char colorNum)
+{
+  if (colorNum < numColors && colorNum != 0)
+  {
+    if (DEBUGGING_PATTERN)
+    {
       // Serial.flush();
       Serial.print(F("newColor is of type "));
       Serial.println(newColor->getType());
     }
     // If colorNum is within the current size of colors (by being less than numColors), and not equal to 0 (which is reserved for a "blank" Static_Color)
-    delete colors[colorNum]; // Delete the current color object in the colors position
-    Color_* permenantColor = newColor->clone(); // Create a permenant copy of newColor (newColor will disappear after this function is completed)
-    colors[colorNum] = permenantColor; // Store the pointer to this color
+    delete palette[colorNum];                   // Delete the current color object in the colors position
+    Color_ *permenantColor = newColor->clone(); // Create a permenant copy of newColor (newColor will disappear after this function is completed)
+    palette[colorNum] = permenantColor;         // Store the pointer to this color
 
     //    colors[colorNum] = newColor->clone(); // Store the pointer of a clone of the new color to the colors array
 
@@ -297,9 +347,11 @@ void Pattern::setColor(Color_* newColor, unsigned char colorNum) {
 //  }
 //}
 
-void Pattern::setImage(unsigned char* imageIn) {
+void Pattern::setImage(unsigned char *imageIn)
+{
   // Set a new image array, and ensure that enough colors to use it
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Setting image..."));
     //    Serial.print(F("Current memory: "));
@@ -347,7 +399,8 @@ void Pattern::setImage(unsigned char* imageIn) {
   //    delay(100);
   //  }
   // Set the image to the new image
-  for (unsigned char i = 0; i < nLEDs; i++) {
+  for (unsigned char i = 0; i < nLEDs; i++)
+  {
     image[i] = imageIn[i];
   }
   //  copyArray<unsigned int>(imageIn, image, nLEDs);
@@ -369,61 +422,91 @@ void Pattern::setImage(unsigned char* imageIn) {
   // Create an array of
   unsigned char numColorsInArray = maxInArray<unsigned char>(image, nLEDs) + 1; // The number of colors is the maximum value plus one (i.e. if the maximum value is 2, then integers 0, 1, and 2 all correspond to different numbers, meaning there are 3 colors)
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.print(F("Making new colors array of size..."));
     //    Serial.println(numColorsInArray);
     //    Serial.println();
   }
-  setupColors(numColorsInArray);
+  parent_handler->setupPalette(numColorsInArray);
+  // setupColors(numColorsInArray);
 };
 
-void Pattern::setImageZeros() {
-  if (DEBUGGING_PATTERN) {
+void Pattern::setImage(uint32_t *imageIn)
+{
+  // Set a new image array, and ensure that enough colors to use it
+
+  // Set the image to the new image
+  for (unsigned char i = 0; i < nLEDs; i++)
+  {
+    image[i] = (char)imageIn[i];
+  }
+
+  // Create an array of
+  unsigned char numColorsInArray = maxInArray<unsigned char>(image, nLEDs) + 1; // The number of colors is the maximum value plus one (i.e. if the maximum value is 2, then integers 0, 1, and 2 all correspond to different numbers, meaning there are 3 colors)
+
+  parent_handler->setupPalette(numColorsInArray);
+  // setupColors(numColorsInArray);
+};
+
+void Pattern::setImageZeros()
+{
+  if (DEBUGGING_PATTERN)
+  {
     Serial.flush();
     Serial.println(F("Setting zero image..."));
   }
 
   unsigned char newImage[NUMLEDS];
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     Serial.println(F("Starting loop..."));
   }
-  for (unsigned char i = 0; i < nLEDs; i++) {
+  for (unsigned char i = 0; i < nLEDs; i++)
+  {
     //    for (int j = 0; j < nLightsPerLED; j++) {
     newImage[i] = 0; // Zero out the entire array
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     Serial.println(F("New image is: "));
-    for (unsigned char i = 0; i < nLEDs; i++) {
+    for (unsigned char i = 0; i < nLEDs; i++)
+    {
       Serial.print(newImage[i]);
       Serial.print(F(" "));
     }
     Serial.println();
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.println(F("Finished loop..."));
   }
 
   setImage(newImage);
 };
 
-void Pattern::setImageColorInd(unsigned char colorInd) {
-  if (DEBUGGING_PATTERN) {
+void Pattern::setImageColorInd(unsigned char colorInd)
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Setting zero image..."));
   }
 
-  colorInd = min(colorInd, numColors - 1);
+  colorInd = min(colorInd, parent_handler->getNumColors() - 1);
 
   unsigned char newImage[NUMLEDS];
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.println(F("Starting loop..."));
   }
-  for (unsigned char i = 0; i < nLEDs; i++) {
+  for (unsigned char i = 0; i < nLEDs; i++)
+  {
     //    for (int j = 0; j < nLightsPerLED; j++) {
     newImage[i] = colorInd; // Zero out the entire array
     //    if (DEBUGGING_PATTERN) {
@@ -432,14 +515,16 @@ void Pattern::setImageColorInd(unsigned char colorInd) {
     //    }
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.println(F("Finished loop..."));
   }
 
   setImage(newImage);
 };
 
-void Pattern::setImageNumSegs(unsigned char numSegs) {
+void Pattern::setImageNumSegs(unsigned char numSegs)
+{
   //  if (DEBUGGING_PATTERN) {
   //    // Serial.flush();
   //    Serial.print(F("Making image with "));
@@ -451,15 +536,18 @@ void Pattern::setImageNumSegs(unsigned char numSegs) {
   unsigned char distPerSeg = (unsigned char)roundf((float)nLEDs / (float)numSegs); // Get a *rounded* distance per segment to display (MAY NOT BE MATHEMATICALLY CORRECT, MAY NEED TO CALCULATE INSIDE OF LOOP)
 
   // Create the image
-  for (unsigned char i = 0; i < nLEDs; i++) {
+  for (unsigned char i = 0; i < nLEDs; i++)
+  {
     newImage[i] = 0; // Zero out the entire array
   }
 
-  for (unsigned char i = 0; i < nLEDs; i += distPerSeg) {
+  for (unsigned char i = 0; i < nLEDs; i += distPerSeg)
+  {
     newImage[i] = 1; // Place a 1 every distPerSed number of LEDs
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Setting segmented image..."));
     //    delay(500);
@@ -467,13 +555,16 @@ void Pattern::setImageNumSegs(unsigned char numSegs) {
   setImage(newImage);
 };
 
-void Pattern::preCalculateAllColor_() {
-  if (DEBUGGING_PATTERN) {
+void Pattern_Handler::preCalculateAllColor_()
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Pre-calculating all colorObj's..."));
   }
   // For each Color_, get its current colorObj
-  for (unsigned char colorInd = 0; colorInd < numColors; colorInd++) {
+  for (unsigned char colorInd = 0; colorInd < numColors; colorInd++)
+  {
     //    if (DEBUGGING_PATTERN) {
     //      // Serial.flush();
     //      Serial.print(F("Getting color "));
@@ -482,7 +573,7 @@ void Pattern::preCalculateAllColor_() {
     //      Serial.print(numColors);
     //      Serial.println(F(":"));
     //    }
-    preCalculatedColors[colorInd] = colors[colorInd]->getColor();
+    preCalculatedColors[colorInd] = palette[colorInd]->getColor();
     //    if (DEBUGGING_PATTERN) {
     //      delay(500);
     //    }
@@ -521,10 +612,12 @@ void Pattern::preCalculateAllColor_() {
 //  }
 //};
 
-Pattern_Main::Pattern_Main(Speedometer * speedometer): speedometer(speedometer) {};
+Pattern_Main::Pattern_Main(Speedometer *speedometer) : speedometer(speedometer){};
 
-Moving_Image::Moving_Image() {
-  if (DEBUGGING_PATTERN) {
+Moving_Image::Moving_Image()
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Creating Moving_Image..."));
     //    Serial.print(F("Current memory: "));
@@ -534,18 +627,19 @@ Moving_Image::Moving_Image() {
 
   // Initialize the colorMemory array with colorObj's whose color data will be rewritten each animMain()
   // Used with the memory-expensive color blur method
-//  for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++) {
-//    if (DEBUGGING_PATTERN) {
-//      // Serial.flush();
-//      //      Serial.print(F("Making color object "));
-//      //      Serial.print(colorInd);
-//      //      Serial.println(F("..."));
-//      //    delay(500);
-//    }
-//    colorMemory[colorInd] = colorObj();
-//  }
+  //  for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++) {
+  //    if (DEBUGGING_PATTERN) {
+  //      // Serial.flush();
+  //      //      Serial.print(F("Making color object "));
+  //      //      Serial.print(colorInd);
+  //      //      Serial.println(F("..."));
+  //      //    delay(500);
+  //    }
+  //    colorMemory[colorInd] = colorObj();
+  //  }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Finished making Moving_Image..."));
     //    Serial.print(F("Current memory: "));
@@ -554,32 +648,38 @@ Moving_Image::Moving_Image() {
   }
 }
 
-void Moving_Image::anim() {
+void Moving_Image::anim()
+{
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(F("Starting Moving Image upper level animation..."));
   //  }
-//  colorBlur(); // Calculate the blurring of the color memory (Occurs before animMain() if using the memory-heavy method)
-  animMain(); // Perform the custom animation defined by the derived classes
-//  colorBlur(); // Calculate the blurring of the color memory
-//  sendColors(); // Send the colors in colorMemory to the LEDs
+  //  colorBlur(); // Calculate the blurring of the color memory (Occurs before animMain() if using the memory-heavy method)
+  animMain();      // Perform the custom animation defined by the derived classes
+                   //  colorBlur(); // Calculate the blurring of the color memory
+                   //  sendColors(); // Send the colors in colorMemory to the LEDs
   advanceLEDPos(); // Advance the LED position
 
-  if (DEBUGGING_MOVINGIMAGE) {
+  if (DEBUGGING_MOVINGIMAGE)
+  {
     Serial.println();
   }
 };
 
-void Moving_Image::setImageBleed(unsigned char imageBleedIn) {
-  if (0 <= imageBleedIn && imageBleedIn < 255) {
+void Moving_Image::setImageBleed(unsigned char imageBleedIn)
+{
+  if (0 <= imageBleedIn && imageBleedIn < 255)
+  {
     imageBleed = imageBleedIn;
   }
 };
 
-void Moving_Image::setRotateSpeed(int rotateSpeedIn) {
+void Moving_Image::setRotateSpeed(int rotateSpeedIn)
+{
   rotateSpeed = rotateSpeedIn;
 };
 
-float Moving_Image::getLEDPos() {
+float Moving_Image::getLEDPos()
+{
   return currentLEDPos;
 };
 
@@ -602,12 +702,13 @@ float Moving_Image::getLEDPos() {
 //  }
 //};
 
-void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosition) {
+void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
+{
   unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + currentLEDPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(thisInd);
   //  }
-//  colorMemory[thisInd] = colorObjIn;
+  //  colorMemory[thisInd] = colorObjIn;
 };
 
 //void Moving_Image::sendColors() {
@@ -617,16 +718,19 @@ void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosi
 //  }
 //}
 
-void Moving_Image::advanceLEDPos() {
+void Moving_Image::advanceLEDPos()
+{
   unsigned long thisLEDAdvanceTime = micros();
   unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
 
   currentLEDPos = fmodf(currentLEDPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update currentLEDPos, and keep it between 0<=currentLEDPos<nLEDs
-  lastLEDAdvanceTime = thisLEDAdvanceTime; // Update lastLEDAdvanceTime
+  lastLEDAdvanceTime = thisLEDAdvanceTime;                                                      // Update lastLEDAdvanceTime
 };
 
-Still_Image_Main::Still_Image_Main(Speedometer * speedometer): Pattern_Main(speedometer) {
-  if (DEBUGGING_PATTERN) {
+Still_Image_Main::Still_Image_Main(Speedometer *speedometer) : Pattern_Main(speedometer)
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("Making still main pattern..."));
     //    delay(500);
@@ -636,12 +740,15 @@ Still_Image_Main::Still_Image_Main(Speedometer * speedometer): Pattern_Main(spee
   //  Serial.println(F("Pattern set."));
 }
 
-Still_Image_Main::Still_Image_Main(Speedometer * speedometer, unsigned char* imageIn): Pattern_Main(speedometer) {
+Still_Image_Main::Still_Image_Main(Speedometer *speedometer, unsigned char *imageIn) : Pattern_Main(speedometer)
+{
   setImage(imageIn);
 };
 
-void Still_Image_Main::anim() {
-  if (DEBUGGING_PATTERN) {
+void Still_Image_Main::anim()
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("Main Start..."));
     //    delay(500);
@@ -651,17 +758,20 @@ void Still_Image_Main::anim() {
   int xTrueRounded = (int)roundf(speedometer->getPos());
   //  Serial.print(F("xTrueRounded is: "));
   //  Serial.println(xTrueRounded);
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("Got position..."));
     //    delay(500);
   }
 
   // Pre-calculate all Color_'s
-  preCalculateAllColor_();
+  parent_handler->preCalculateAllColor_();
+  // preCalculateAllColor_();
 
   // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++) {
+  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  {
     //    if (DEBUGGING_PATTERN) {
     //      // Serial.flush();
     //      Serial.print(F("Loop "));
@@ -693,18 +803,21 @@ void Still_Image_Main::anim() {
     //      delay(500);
     //    }
     //    controller::sendPixel(image[0][imagePos], image[1][imagePos], image[2][imagePos], image[3][imagePos]);
-    controller::sendPixel(getPreCalculatedColorInPos(getImageValInPos(imagePos)));
+    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)));
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("Finished Main..."));
     delay(500);
   }
 };
 
-Still_Image_Idle::Still_Image_Idle(): Pattern_Idle() {
-  if (DEBUGGING_PATTERN) {
+Still_Image_Idle::Still_Image_Idle() : Pattern_Idle()
+{
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.println(F("Making Still_Image_Idle"));
     //    // Serial.flush();
     //    Serial.print(getNumColors());
@@ -715,7 +828,8 @@ Still_Image_Idle::Still_Image_Idle(): Pattern_Idle() {
   //  setImageZeros();
   setImageNumSegs(10);
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.println(F("Done with Still_Image_Idle..."));
     //    delay(200);
   }
@@ -724,15 +838,17 @@ Still_Image_Idle::Still_Image_Idle(): Pattern_Idle() {
   //  setupColors(2); // Need two colors for this animation
   //  setColor(Color_Static(0, 0, 0, 0).getColor_(), 0);
   //  setColor(Color_Static(150, 0, 0, 0).getColor_(), 1);
-
 };
 
-Still_Image_Idle::Still_Image_Idle(unsigned char* imageIn): Pattern_Idle() {
+Still_Image_Idle::Still_Image_Idle(unsigned char *imageIn) : Pattern_Idle()
+{
   setImage(imageIn);
 };
 
-void Still_Image_Idle::anim() {
-  if (DEBUGGING_PATTERN) {
+void Still_Image_Idle::anim()
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Idle animation starting..."));
   }
@@ -799,19 +915,23 @@ void Still_Image_Idle::anim() {
   //  }
 
   // Pre-calculate all Color_'s
-  preCalculateAllColor_();
+  parent_handler->preCalculateAllColor_();
+  // preCalculateAllColor_();
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.flush();
     //    Serial.println(F("Sending all LEDs..."));
     //    delay(1000);
   }
   // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++) {
-    controller::sendPixel(getPreCalculatedColorInPos(getImageValInPos(LEDNum)));
+  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  {
+    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)));
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.flush();
     //    Serial.println(F("Sent all LEDs..."));
     //    delay(1000);
@@ -821,11 +941,13 @@ void Still_Image_Idle::anim() {
 };
 
 // Moving Image Main functions
-Moving_Image_Main::Moving_Image_Main(Speedometer * speedometer, unsigned char* image): Still_Image_Main(speedometer, image) {};
-Moving_Image_Main::Moving_Image_Main(Speedometer * speedometer): Still_Image_Main(speedometer) {};
+Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer, unsigned char *image) : Still_Image_Main(speedometer, image){};
+Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer) : Still_Image_Main(speedometer){};
 
-void Moving_Image_Main::animMain() {
-  if (DEBUGGING_PATTERN) {
+void Moving_Image_Main::animMain()
+{
+  if (DEBUGGING_PATTERN)
+  {
     Serial.flush();
     Serial.println(F("Main animation starting..."));
   }
@@ -833,18 +955,22 @@ void Moving_Image_Main::animMain() {
   int xTrueRounded = (int)roundf(speedometer->getPos());
 
   // Pre-calculate all Color_'s
-  preCalculateAllColor_();
+  parent_handler->preCalculateAllColor_();
+  // preCalculateAllColor_();
 
   // Load the image into color memory, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++) {
+  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  {
     unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)nLEDs); // Adjust the position in the image
-    if (getImageValInPos(imagePos) != 0) {
+    if (getImageValInPos(imagePos) != 0)
+    {
       // If the image at this location is not 0 (referencing a blank Color_), then add a new color to the LED strip
-      addImagePosition(getPreCalculatedColorInPos(getImageValInPos(imagePos)), imagePos);
+      addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)), imagePos);
     }
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     Serial.flush();
     Serial.println(F("Wrote all LEDs to colorMemory..."));
     //    delay(1000);
@@ -854,33 +980,41 @@ void Moving_Image_Main::animMain() {
 };
 
 // Moving Image Idle functions
-Moving_Image_Idle::Moving_Image_Idle(unsigned char* image): Still_Image_Idle(image) {};
-Moving_Image_Idle::Moving_Image_Idle(): Still_Image_Idle() {
-  if (DEBUGGING_PATTERN) {
+Moving_Image_Idle::Moving_Image_Idle(unsigned char *image) : Still_Image_Idle(image){};
+Moving_Image_Idle::Moving_Image_Idle() : Still_Image_Idle()
+{
+  if (DEBUGGING_PATTERN)
+  {
     //    Serial.flush();
     //    Serial.println(F("Finished making Moving_Image_Idle"));
     //    delay(500);
   }
 };
 
-void Moving_Image_Idle::animMain() {
-  if (DEBUGGING_PATTERN) {
+void Moving_Image_Idle::animMain()
+{
+  if (DEBUGGING_PATTERN)
+  {
     Serial.flush();
     Serial.println(F("Idle animation starting..."));
   }
 
   // Pre-calculate all Color_'s
-  preCalculateAllColor_();
+  parent_handler->preCalculateAllColor_();
+  // preCalculateAllColor_();
 
   // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++) {
-    if (getImageValInPos(LEDNum) != 0) {
+  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  {
+    if (getImageValInPos(LEDNum) != 0)
+    {
       // If the image at this location is not 0 (referencing a blank Color_), then add a new color to the LED strip
-      addImagePosition(getPreCalculatedColorInPos(getImageValInPos(LEDNum)), LEDNum); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
+      addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)), LEDNum); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
     }
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     Serial.flush();
     Serial.println(F("Wrote all LEDs to colorMemory..."));
     //    delay(1000);
@@ -892,70 +1026,67 @@ void Moving_Image_Idle::animMain() {
 // Actually send a bit to the string. We must to drop to asm to enusre that the complier does
 // not reorder things and make it so the delay happens in the wrong place.
 
-void controller::sendBit( bool bitVal ) {
+void controller::sendBit(bool bitVal)
+{
   // Credit: wp.josh.com
 
-  if (  bitVal ) {        // 0 bit
+  if (bitVal)
+  { // 0 bit
 
-    asm volatile (
-      "sbi %[port], %[bit] \n\t"        // Set the output bit
-      ".rept %[onCycles] \n\t"                                // Execute NOPs to delay exactly the specified number of cycles
-      "nop \n\t"
-      ".endr \n\t"
-      "cbi %[port], %[bit] \n\t"                              // Clear the output bit
-      ".rept %[offCycles] \n\t"                               // Execute NOPs to delay exactly the specified number of cycles
-      "nop \n\t"
-      ".endr \n\t"
-      ::
-      [port]    "I" (_SFR_IO_ADDR(PIXEL_PORT)),
-      [bit]   "I" (PIXEL_BIT),
-      [onCycles]  "I" (NS_TO_CYCLES(T1H) - 2),    // 1-bit width less overhead  for the actual bit setting, note that this delay could be longer and everything would still work
-      [offCycles]   "I" (NS_TO_CYCLES(T1L) - 2)     // Minimum interbit delay. Note that we probably don't need this at all since the loop overhead will be enough, but here for correctness
+    asm volatile(
+        "sbi %[port], %[bit] \n\t" // Set the output bit
+        ".rept %[onCycles] \n\t"   // Execute NOPs to delay exactly the specified number of cycles
+        "nop \n\t"
+        ".endr \n\t"
+        "cbi %[port], %[bit] \n\t" // Clear the output bit
+        ".rept %[offCycles] \n\t"  // Execute NOPs to delay exactly the specified number of cycles
+        "nop \n\t"
+        ".endr \n\t" ::
+            [port] "I"(_SFR_IO_ADDR(PIXEL_PORT)),
+        [bit] "I"(PIXEL_BIT),
+        [onCycles] "I"(NS_TO_CYCLES(T1H) - 2), // 1-bit width less overhead  for the actual bit setting, note that this delay could be longer and everything would still work
+        [offCycles] "I"(NS_TO_CYCLES(T1L) - 2) // Minimum interbit delay. Note that we probably don't need this at all since the loop overhead will be enough, but here for correctness
 
     );
-
-  } else {          // 1 bit
+  }
+  else
+  { // 1 bit
 
     // **************************************************************************
     // This line is really the only tight goldilocks timing in the whole program!
     // **************************************************************************
 
-
-    asm volatile (
-      "sbi %[port], %[bit] \n\t"        // Set the output bit
-      ".rept %[onCycles] \n\t"        // Now timing actually matters. The 0-bit must be long enough to be detected but not too long or it will be a 1-bit
-      "nop \n\t"                                              // Execute NOPs to delay exactly the specified number of cycles
-      ".endr \n\t"
-      "cbi %[port], %[bit] \n\t"                              // Clear the output bit
-      ".rept %[offCycles] \n\t"                               // Execute NOPs to delay exactly the specified number of cycles
-      "nop \n\t"
-      ".endr \n\t"
-      ::
-      [port]    "I" (_SFR_IO_ADDR(PIXEL_PORT)),
-      [bit]   "I" (PIXEL_BIT),
-      [onCycles]  "I" (NS_TO_CYCLES(T0H) - 2),
-      [offCycles] "I" (NS_TO_CYCLES(T0L) - 2)
+    asm volatile(
+        "sbi %[port], %[bit] \n\t" // Set the output bit
+        ".rept %[onCycles] \n\t"   // Now timing actually matters. The 0-bit must be long enough to be detected but not too long or it will be a 1-bit
+        "nop \n\t"                 // Execute NOPs to delay exactly the specified number of cycles
+        ".endr \n\t"
+        "cbi %[port], %[bit] \n\t" // Clear the output bit
+        ".rept %[offCycles] \n\t"  // Execute NOPs to delay exactly the specified number of cycles
+        "nop \n\t"
+        ".endr \n\t" ::
+            [port] "I"(_SFR_IO_ADDR(PIXEL_PORT)),
+        [bit] "I"(PIXEL_BIT),
+        [onCycles] "I"(NS_TO_CYCLES(T0H) - 2),
+        [offCycles] "I"(NS_TO_CYCLES(T0L) - 2)
 
     );
-
   }
 
   // Note that the inter-bit gap can be as long as you want as long as it doesn't exceed the 5us reset timeout (which is A long time)
   // Here I have been generous and not tried to squeeze the gap tight but instead erred on the side of lots of extra time.
   // This has the nice side effect of avoid glitches on very long strings becuase
-
-
 };
 
-
-void controller::sendByte( unsigned char byte ) {
+void controller::sendByte(unsigned char byte)
+{
   // Credit: wp.josh.com
-  for ( unsigned char bit = 0 ; bit < 8 ; bit++ ) {
+  for (unsigned char bit = 0; bit < 8; bit++)
+  {
 
-    sendBit( bitRead( byte , 7 ) );                // Neopixel wants bit in highest-to-lowest order
+    sendBit(bitRead(byte, 7)); // Neopixel wants bit in highest-to-lowest order
     // so send highest bit (bit #7 in an 8-bit byte since they start at 0)
-    byte <<= 1;                                    // and then shift left so bit 6 moves into 7, 5 moves into 6, etc
-
+    byte <<= 1; // and then shift left so bit 6 moves into 7, 5 moves into 6, etc
   }
 };
 
@@ -967,22 +1098,24 @@ void controller::sendByte( unsigned char byte ) {
 
 */
 
-void controller::sendPixel(unsigned char r, unsigned char g , unsigned char b , unsigned char w)  {
+void controller::sendPixel(unsigned char r, unsigned char g, unsigned char b, unsigned char w)
+{
   // Credit: wp.josh.com
   //  if (DEBUGGING_PATTERN) {
   //    // Serial.flush();
   //    Serial.println(F("Sending pixel colors..."));
   //    // delay(1000);
   //  }
-  cli(); // THIS MAY BE A PROBLEM (if tics keep getting dropped, consider removing this, or finding another solutions)
-  sendByte(g);          // Neopixel wants colors in green then red then blue then white order
+  cli();       // THIS MAY BE A PROBLEM (if tics keep getting dropped, consider removing this, or finding another solutions)
+  sendByte(g); // Neopixel wants colors in green then red then blue then white order
   sendByte(r);
   sendByte(b);
   sendByte(w);
   sei();
 }
 
-void controller::sendPixel(colorObj colorObjIn) {
+void controller::sendPixel(colorObj colorObjIn)
+{
   sendPixel(colorObjIn.r(), colorObjIn.g(), colorObjIn.b(), colorObjIn.w());
 }
 
@@ -990,25 +1123,31 @@ void controller::sendPixel(colorObj colorObjIn) {
 //  sendPixel(colorIn->getColor());
 //}
 
-
 // Just wait long enough without sending any bits to cause the pixels to latch and display the last sent frame
 
-void controller::show_LEDs() {
+void controller::show_LEDs()
+{
   // Credit: wp.josh.com
-  _delay_us( (RES / 1000UL) + 1);       // Round up since the delay must be _at_least_ this long (too short might not work, too long not a problem)
+  _delay_us((RES / 1000UL) + 1); // Round up since the delay must be _at_least_ this long (too short might not work, too long not a problem)
 }
 
-void controller::ledsetup() {
+void controller::ledsetup()
+{
   // Credit: wp.josh.com
-  bitSet( PIXEL_DDR , PIXEL_BIT );
+  bitSet(PIXEL_DDR, PIXEL_BIT);
 }
 
-Pattern_Handler::Pattern_Handler() {
-  speedometer = NULL;
-}
+// Pattern_Handler::Pattern_Handler()
+// {
+//   setupPalette(1);
 
-Pattern_Handler::Pattern_Handler(Speedometer * speedometer): speedometer(speedometer) {
-  if (DEBUGGING_PATTERN) {
+//   speedometer = NULL;
+// }
+
+Pattern_Handler::Pattern_Handler(Speedometer *speedometer) : speedometer(speedometer)
+{
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("***"));
     Serial.println(F("Initializing Pattern Handler..."));
@@ -1020,8 +1159,12 @@ Pattern_Handler::Pattern_Handler(Speedometer * speedometer): speedometer(speedom
   // Perform 1-time led setup
   controller::ledsetup();
 
+  // Set up the palette
+  setupPalette(1);
+
   //   Set initial main and idle animations
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("Setting up initial main pattern..."));
     //    Serial.print(F("Current memory: "));
@@ -1030,7 +1173,8 @@ Pattern_Handler::Pattern_Handler(Speedometer * speedometer): speedometer(speedom
   }
   setMainPattern(M_STILL);
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     //    Serial.println(F("***"));
     //    Serial.println(F("Setting up initial idle pattern..."));
@@ -1039,12 +1183,12 @@ Pattern_Handler::Pattern_Handler(Speedometer * speedometer): speedometer(speedom
     //    Serial.println(freeRam());
     Serial.println();
     delay(1000);
-
   }
   //  setIdlePattern(I_MOVING);
   setIdlePattern(I_STILL);
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("***"));
     Serial.println(F("Finished Pattern Handler"));
@@ -1055,20 +1199,81 @@ Pattern_Handler::Pattern_Handler(Speedometer * speedometer): speedometer(speedom
   }
 };
 
-void Pattern_Handler::mainLoop() {
-  if (speedometer->isSlow() && mainPattern->allowIdle) {
+Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, unsigned char numColorsIn) : speedometer(speedometer)
+{
+  if (DEBUGGING_PATTERN)
+  {
+    // Serial.flush();
+    Serial.println(F("***"));
+    Serial.println(F("Initializing Pattern Handler..."));
+    Serial.println(F("***"));
+    Serial.print(F("Current memory: "));
+    Serial.println(freeRam());
+    Serial.println();
+  }
+  // Perform 1-time led setup
+  controller::ledsetup();
+
+  // Set up the palette
+  setupPalette(colorsIn, numColorsIn);
+
+  //   Set initial main and idle animations
+  if (DEBUGGING_PATTERN)
+  {
+    // Serial.flush();
+    //    Serial.println(F("Setting up initial main pattern..."));
+    //    Serial.print(F("Current memory: "));
+    //    Serial.println(freeRam());
+    Serial.println();
+  }
+  setMainPattern(M_STILL);
+
+  if (DEBUGGING_PATTERN)
+  {
+    // Serial.flush();
+    //    Serial.println(F("***"));
+    //    Serial.println(F("Setting up initial idle pattern..."));
+    //    Serial.println(F("***"));
+    //    Serial.print(F("Current memory: "));
+    //    Serial.println(freeRam());
+    Serial.println();
+    delay(1000);
+  }
+  //  setIdlePattern(I_MOVING);
+  setIdlePattern(I_STILL);
+
+  if (DEBUGGING_PATTERN)
+  {
+    // Serial.flush();
+    Serial.println(F("***"));
+    Serial.println(F("Finished Pattern Handler"));
+    Serial.println(F("***"));
+    Serial.print(F("Current memory: "));
+    Serial.println(freeRam());
+    Serial.println();
+  }
+};
+
+void Pattern_Handler::mainLoop()
+{
+  if (speedometer->isSlow() && mainPattern->allowIdle)
+  {
     // Wheel is moving slowly, do idle animation
 
-    if (DEBUGGING_PATTERN) {
+    if (DEBUGGING_PATTERN)
+    {
       // Serial.flush();
       Serial.println(F("Idle animation..."));
     }
 
     idlePattern->anim();
-  } else {
+  }
+  else
+  {
     // Wheel is moving at pace, do main animation
 
-    if (DEBUGGING_PATTERN) {
+    if (DEBUGGING_PATTERN)
+    {
       //      // Serial.flush();
       Serial.println(F("Main animation..."));
       //      Serial.print(F("allowIdle set to "));
@@ -1078,7 +1283,8 @@ void Pattern_Handler::mainLoop() {
     mainPattern->anim();
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("Finished Pattern Handler loop..."));
   }
@@ -1087,8 +1293,10 @@ void Pattern_Handler::mainLoop() {
   controller::show_LEDs();
 };
 
-void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum) {
-  if (DEBUGGING_PATTERN) {
+void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum)
+{
+  if (DEBUGGING_PATTERN)
+  {
     Serial.println(F("Deleting old Main Pattern..."));
     Serial.print(F("Current memory: "));
     Serial.println(freeRam());
@@ -1097,25 +1305,28 @@ void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum) {
 
   delete mainPattern; // Delete old main pattern if it exists
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     Serial.println(F("Creating Main Pattern..."));
     Serial.print(F("Current memory: "));
     Serial.println(freeRam());
     Serial.println(F(""));
   }
-  switch (newAnimationEnum) {
-    case M_STILL:
-      mainPattern = new Still_Image_Main(speedometer);
-      break;
-    case M_MOVING:
-      mainPattern = new Moving_Image_Main(speedometer);
-      break;
-    default:
-      mainPattern = new Still_Image_Main(speedometer);
-      break;
+  switch (newAnimationEnum)
+  {
+  case M_STILL:
+    mainPattern = new Still_Image_Main(speedometer);
+    break;
+  case M_MOVING:
+    mainPattern = new Moving_Image_Main(speedometer);
+    break;
+  default:
+    mainPattern = new Still_Image_Main(speedometer);
+    break;
   }
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     Serial.println(F("Set main pattern..."));
     Serial.print(F("Current memory: "));
     Serial.println(freeRam());
@@ -1123,13 +1334,18 @@ void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum) {
   }
 };
 
-Pattern_Handler::~Pattern_Handler() {
+Pattern_Handler::~Pattern_Handler()
+{
+  deleteColorArray(); // Delete the color array when the Pattern is deleted
+
   delete mainPattern;
   delete idlePattern;
 }
 
-void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum) {
-  if (DEBUGGING_PATTERN) {
+void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum)
+{
+  if (DEBUGGING_PATTERN)
+  {
     Serial.println(F("Deleting old Idle Pattern..."));
     Serial.print(F("Current memory: "));
     Serial.println(freeRam());
@@ -1143,10 +1359,10 @@ void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum) {
   //    Serial.println(F("Checked and potentially deleted idle pointer..."));
   //  }
 
+  Pattern_Idle *newPattern; // Create a pointer for a new pattern
 
-  Pattern_Idle* newPattern; // Create a pointer for a new pattern
-
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("Creating Idle Pattern..."));
     Serial.print(F("Current memory: "));
@@ -1154,21 +1370,23 @@ void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum) {
     Serial.println(F(""));
   }
 
-  switch (newAnimationEnum) {
-    case I_STILL:
-      newPattern = new Still_Image_Idle();
-      break;
-    case I_MOVING:
-      newPattern = new Moving_Image_Idle();
-      break;
-    default:
-      newPattern = new Still_Image_Idle();
-      break;
+  switch (newAnimationEnum)
+  {
+  case I_STILL:
+    newPattern = new Still_Image_Idle();
+    break;
+  case I_MOVING:
+    newPattern = new Moving_Image_Idle();
+    break;
+  default:
+    newPattern = new Still_Image_Idle();
+    break;
   }
 
   idlePattern = newPattern; // Assign the new pattern
 
-  if (DEBUGGING_PATTERN) {
+  if (DEBUGGING_PATTERN)
+  {
     // Serial.flush();
     Serial.println(F("Finished Idle Pattern"));
     Serial.print(F("Current memory: "));

@@ -20,29 +20,30 @@ class Bluetooth
 private:
     // TODO: Convert this to hardware serial!!!
     SoftwareSerial btSer = SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX); // Initialize the Serial connection to the bluetooth device (HC06)
-    Pattern_Handler * pattern_handler; // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
+    Pattern_Handler *pattern_handler;                                        // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
 public:
     Bluetooth();
     ~Bluetooth();
 
     void mainLoop(); // The main loop that is called repeatedly for the Bluetooth class
 
-    // Top level decode/encode methods
-    Pattern* PatternFromPB(BWA_BT *message); // Generate a Pattern from a protocol buffer stream
-    BWA_BT* PBFromPattern(Pattern *pattern); // Generate a protocol buffer stream from a Pattern
-
-    // Auxilliary methods
     // Decode methods (Generate local classes from a protocol buffer stream)
-    bool color_callback(pb_istream_t *stream, uint8_t *buf, size_t count); // Callback function for pb_istream_t used when decoding Color_'s from the PB
-    void processBWA(BWA_BT &message);
-    Color_* Color_FromPB(Color_BT *color_bt); // Generate a Color_ from the Color_BT Message
-    colorObj ColorObjFromPB(ColorObj_BT *colorObj_bt); // Generate a colorObj from the ColorObj_BT Message
-    Kalman* KalmanFromPB(Kalman_BT *kalman_bt); // Generate a Kalman object from a Kalman_BT Message
+    void processBWA(BWA_BT &message); // Take a BWA_BT Message, process it, and send it directly to the Pattern_Handler whose pointer is stored
+
+    static Color_ *Color_FromPB(Color_BT &color_bt, Speedometer *speedometer); // Generate a Color_ from the Color_BT Message (can't be static, because creating a Color_dVel requires a Speedometer)
+    static colorObj ColorObjFromPB(ColorObj_BT &colorObj_bt);                  // Generate a colorObj from the ColorObj_BT Message
+    Kalman *KalmanFromPB(Kalman_BT &kalman_bt);                                // Generate a Kalman object from a Kalman_BT Message
+    static BLEND_TYPE BlendTypeFromPB(BlendType_BT blendType_bt);              // Convert a BlendType_BT Message to a BLEND_TYPE variable
 
     // Encode methods (Generate a protocol buffer stream from local classes)
-    Color_BT* PBFromColor_(Color_ *color_); // Generate a Color_ from the Color_BT Message
-    ColorObj_BT* PBFromColorObj(colorObj c); // Generate a colorObj from the ColorObj_BT Message
-    Kalman_BT* PBFromKalman(Kalman *kalman); // Generate a Kalman object from a Kalman_BT Message
+    BWA_BT PBFromPattern();          // Generate a BWA_BT from the information held by pattern_handler
+    void memfree_BT(Message_BT * mIn); // Free any dynamically allocated memory used by a given Message_BT
+
+    static Color_BT PBFromColor_(Color_ *color_);              // Generate a Color_ from the Color_BT Message
+    static ColorObj_BT PBFromColorObj(colorObj &c);            // Generate a colorObj from the ColorObj_BT Message
+    Kalman_BT PBFromKalman(Kalman *kalman);                    // Generate a Kalman object from a Kalman_BT Message
+    static BlendType_BT PBFromBlendType(BLEND_TYPE blendType); // Convert a BLEND_TYPE Message to a BlendType_BT variable
+    static ColorType_BT PBFromColorType(COLOR_TYPE colorType); // Convert a COLOR_TYPE Message to a ColorType_BT variable
 };
 
 #endif

@@ -1,3 +1,6 @@
+// To generate the script from this proto file, open a PowerShell and navigate to project directory (the dir that this file is in).  Then run:
+// & 'C:\Users\Samuel Brown\Documents\Arduino\nanopb-0.3.9.3-windows-x86\generator-bin\protoc' --nanopb_out=. ./bluetooth.proto
+
 syntax = "proto3";
 
 package bluetooth;

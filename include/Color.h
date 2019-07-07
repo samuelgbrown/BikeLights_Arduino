@@ -51,6 +51,7 @@ class Color_
     boolean isThisEmpty() const; // Public interface to see if this object is empty
 
   protected:
+  // TODO: MEMORY: Get rid of the isEmpty?  Turns out I didn't use this feature, I don't think...
     boolean isEmpty = false; // Does this Color_ represent a pure black empty color object? (Can only be true by getting an unmodified Color_Static object instantiated by the blank constructor, Color_Static())
 };
 
@@ -184,6 +185,7 @@ class Color_dVel: public Color_d<float>
 {
   public:
     Color_dVel(Speedometer* speedometer); // Constructor
+    Color_dVel(Speedometer* speedometer, colorObj* cA, float* tA, BLEND_TYPE* bA, unsigned char numColors); // Constructor
     Color_dVel* clone() const;
 
     COLOR_TYPE getType() const {
