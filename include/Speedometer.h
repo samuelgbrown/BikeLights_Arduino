@@ -25,8 +25,10 @@ public:
   float checkNumLEDs()
   {
     return nLEDs;
-  };                     // REMOVE AFTER TESTING
-  void setQ(float newQ); // Set a new value for Q
+  };                        // REMOVE AFTER TESTING
+  void setQ(float newQ);    // Set a new value for Q
+  void setP0(float *newP0); // Set a new P0 matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_states)
+  void setR(float *newR);   // Set a new R matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_observed)
 
   // The current best guess at the LED position, velocity, and acceleration
   float xTrue;

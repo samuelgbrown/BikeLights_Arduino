@@ -110,7 +110,7 @@ class Color_d: public Color_
     //    unsigned char w();
 
     // Get values in each array (to view or modify)
-    unsigned char getNumColors() const;
+    unsigned char getNumColors() const; // Get the total number of colorObjs in this Color_
     colorObj& getThisColorObj(unsigned char numInArray) const; // Sorted according to increasing values of Trigger
     T getThisTrigger(unsigned char numInArray) const; // Sorted according to increasing values of Trigger
     BLEND_TYPE& getThisBlendType(unsigned char numInArray) const; // Sorted according to increasing values of Trigger
