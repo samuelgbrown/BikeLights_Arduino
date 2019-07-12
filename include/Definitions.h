@@ -225,6 +225,5 @@ unsigned char valFromSecondNibble(unsigned char fullByte);
 unsigned char valToFirstNibble(unsigned char valToSet, unsigned char fullByte);
 
 unsigned char valToSecondNibble(unsigned char valToSet, unsigned char fullByte);
-
 int freeRam();
 #endif
