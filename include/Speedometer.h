@@ -35,6 +35,7 @@ public:
   float velTrue;
   float accTrue;
 
+  void resetFilter();     // Reset the filter to its zero state, the next time two measurements come in quick succession, the filter will initialize with that position/velocity
   boolean isReset = true; // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
 
 private:
@@ -75,7 +76,6 @@ private:
   boolean justStarted = true;                                    // Has the filter just started (is the current position ambiguous)?
 
   // Control functions
-  void resetFilter();                                           // Reset the filter to its zero state, the next time two measurements come in quick succession, the filter will initialize with that position/velocity
   void initializeFilter(unsigned long dt, boolean isReference); // Initialize xPost with the position and velocity as most recently measured
 };
 
@@ -95,10 +95,11 @@ public:
   static void rTic(); // Interrupt function called when rticPin is set to HIGH
 
   // Get information from the underlying Kalman filter
-  float getPos();   // Position
-  float getVel();   // Velocity
-  float getAcc();   // Acceleration
-  boolean isSlow(); // Is the wheel moving too slow to get any reliable information?
+  float getPos();     // Position
+  float getVel();     // Velocity
+  float getAcc();     // Acceleration
+  boolean isSlow();   // Is the wheel moving too slow to get any reliable information?
+  void resetFilter(); // Expose the Kalman filter's resetFilter() function publically
 
 private:
   unsigned char numSwitches = NUMSWITCHES; // Number of reed switches that are on the bike wheel (including the reference switch)

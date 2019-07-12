@@ -106,7 +106,6 @@ void setup() {
         Serial.println();
         delay(100);
       }
-      pattern_handler->idlePattern->setColor(c, 1);
       delete c;
     }
 
@@ -246,3 +245,38 @@ int freeRam () {
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 };
 
+// Define nibble operations (to deal with the image field, which has two image locations stored in each byte)
+
+unsigned char valFromFirstNibble(unsigned char fullByte)
+{
+  // Get an int representation of the first nibble
+
+  // Mask out to get only the first nibble (lowest significance half), and return the resulting value as an unsigned char
+  return (unsigned char)(FIRST_NIBBLE_MASK & fullByte);
+}
+
+unsigned char valFromSecondNibble(unsigned char fullByte)
+{
+  // Get an int representation of the second nibble
+
+  // Bit-shift the second nibble (highest significance half) into the lowest significance half, leaving 0's in the high significance place
+  return (unsigned char)fullByte >> 4;
+}
+
+unsigned char valToFirstNibble(unsigned char valToSet, unsigned char fullByte)
+{
+  // Set a value to the first nibble in fullByte
+  // (Assuming that valToSet <= 16, without checks)
+
+  // Mask out to get only the second nibble, then set the first nibble to valToSet
+  return (unsigned char)( (SECOND_NIBBLE_MASK & fullByte) & valToSet);
+}
+
+unsigned char valToSecondNibble(unsigned char valToSet, unsigned char fullByte)
+{
+  // Set a value to the second nibble in fullByte
+  // (Assuming that valToSet <= 16, without checks)
+
+  // Mask out to get only the first nibble, then set the second nibble to valToSet (by bit-wise anding with a bit-shifted valToSet)
+  return (unsigned char) ((FIRST_NIBBLE_MASK & fullByte) & valToSet<<4);
+}

@@ -121,12 +121,21 @@ void Bluetooth::mainLoop()
                     needRestart = true; // We got a new BWA, so we should probably just start fresh
                     break;
                 case MessageType_Kalman:
+                    processKalman(message.contents.kalman); // Process the Kalman information from the message
 
                     needRestart = true; // We got some new Kalman parameters, so we should probably just start fresh
                     break;
                 case MessageType_Brightness:
-
+                {
+                    processBrightness(message.contents.brightness_scale); // Process the Brightness information from the message
                     break;
+                }
+                }
+
+                if (needRestart)
+                {
+                    // If we have changed something fundamental to the display, reset Kalman filter, and start over again
+                    speedometer->resetFilter();
                 }
 
                 // Now that we are done reading the data, release the information from the Message
@@ -223,6 +232,7 @@ Color_ *Bluetooth::Color_FromPB(Color_BT &color_bt, Speedometer *speedometer)
         switch (color_bt.type)
         {
         case ColorType_DTIME_BT:
+        {
             // Create the T array and fill it
             unsigned long *allLongT = new unsigned long[color_bt.color_objs_count];
             for (unsigned char i = 0; i < color_bt.color_objs_count; i++)
@@ -232,7 +242,9 @@ Color_ *Bluetooth::Color_FromPB(Color_BT &color_bt, Speedometer *speedometer)
 
             newColor = new Color_dTime(allC, allLongT, allB, (unsigned char)color_bt.color_objs_count);
             break;
+        }
         case ColorType_DVEL_BT:
+        {
             // Create the T array and fill it
             float *allFloatT = new float[color_bt.color_objs_count];
             for (unsigned char i = 0; i < color_bt.color_objs_count; i++)
@@ -242,9 +254,12 @@ Color_ *Bluetooth::Color_FromPB(Color_BT &color_bt, Speedometer *speedometer)
 
             newColor = new Color_dVel(speedometer, allC, allFloatT, allB, (unsigned char)color_bt.color_objs_count);
             break;
+        }
         default:
+        {
             // Uh oh...
             newColor = new Color_Static();
+        }
         }
     }
 
@@ -280,8 +295,8 @@ void Bluetooth::processKalman(Kalman_BT &message)
     // This message may not be "full" (i.e. the Android app may only be trying to send one or two parameters at a time).
     // So, we should check that each one is not the default value before anything.
 
-    // TODO: SAFETY: Should we check the number of observable/state parameters that is included in the message?
-    
+    // TODO: SAFETY: Should we check the number of observable/state parameters that is included in the message and/or the sizes of R/P0?
+
     // Check if there's a new Q
     if (message.q != 0)
     {
@@ -289,10 +304,76 @@ void Bluetooth::processKalman(Kalman_BT &message)
         speedometer->setQ(message.q);
     }
 
-    
+    // Check if there's a new R
+    if (message.r != NULL)
+    {
+        // A new value for R was just added!
+        speedometer->setR(message.r);
+    }
+
+    // Check if there's a new P0
+    if (message.p0 != NULL)
+    {
+        // A new value for PPrior was just added!
+        speedometer->setP0(message.p0);
+    }
+}
+
+void Bluetooth::processBrightness(float brightness_scale)
+{
+    // Send the new brightness value to the Pattern_Handler
+    pattern_handler->setBrightnessFactor(brightness_scale);
 }
 
 // Encoding methods
+BWA_BT Bluetooth::PBFromPattern()
+{
+    // Generate a BWA_BT object from the information stored in Pattern_Handler
+    BWA_BT messageOut = BWA_BT_default; // Create a new default BWA_BT object, as an initialization
+
+    // TODO: This is WAY too large to encode... Convert image_main and image_idle to byte sequences?
+
+    // First, encode the image(s)
+    messageOut.image_main = new uint32_t[NUMLEDS];
+    messageOut.image_main_count = NUMLEDS;
+    if (pattern_handler->idlePattern != NULL)
+    {
+        // If there is an idle image, add it to the message
+        messageOut.image_idle = new uint32_t[NUMLEDS];
+        messageOut.image_idle_count = NUMLEDS;
+    }
+    for (unsigned char i = 0; i < NUMLEDS; i++)
+    {
+        // Encode each value in both main (and, if needed, idle) pattern(s)
+        messageOut.image_main[i] = pattern_handler->mainPattern->getImageValInPos(i);
+        if (pattern_handler->idlePattern != NULL)
+        {
+            messageOut.image_idle[i] = pattern_handler->idlePattern->getImageValInPos(i);
+        }
+    }
+
+    // Next, encode the image meta data
+    messageOut.image_meta = pattern_handler->mainPattern->getImageType();
+    // messageOut.image_meta.type = PBFromImageType(pattern_handler);
+    // messageOut.image_meta.parameter_set = pattern_handler->mainPattern->getImageType();
+    // TODO: Get paramter from idle animation, too!!!  (first, implement it on the Android side)
+    // TODO: Also, must implement "stationary" (or whatever I'm going to call it, when the image doesn't move relative to the rest of the wheel) in both Android and Arduino
+
+    // Then, encode the palette
+    messageOut.palette = new Color_BT[pattern_handler->getNumColors()];
+    messageOut.palette_count = pattern_handler->getNumColors();
+
+    for (int i = 0; i < pattern_handler->getNumColors(); i++)
+    {
+        messageOut.palette[i] = PBFromColor_(pattern_handler->getColor(i));
+    }
+
+    // Finally, put in the number of LEDs on the wheel
+    messageOut.num_leds = NUMLEDS;
+
+    // Return the resulting object
+    return messageOut;
+}
 
 Color_BT Bluetooth::PBFromColor_(Color_ *color_)
 {
@@ -324,8 +405,9 @@ Color_BT Bluetooth::PBFromColor_(Color_ *color_)
         switch (color_->getType())
         {
         case COLOR_DTIME:
+        {
             color_bt.type = ColorType_DTIME_BT;
-            Color_dTime *thisColor_ = (Color_dTime *)color_; // Get a pointer to the Color_ that's of the correct derived class type
+            Color_dTime *thisColor_dt = (Color_dTime *)color_; // Get a pointer to the Color_ that's of the correct derived class type
 
             // Go through all of the colorObj's (and meta data), and add the information
             // TODO: Will need to convert T so that it can hold a float?  Or, just use long as for velocity, as well (no reason it couldn't work, right?)
@@ -336,20 +418,22 @@ Color_BT Bluetooth::PBFromColor_(Color_ *color_)
             //
             //
 
-            color_bt.color_objs = new ColorObj_BT[thisColor_->getNumColors()]; // Allocate space for the array of colorObjs that will be put into color_bt.color_objs
-            color_bt.color_objs_count = thisColor_->getNumColors();            // Store the number of colorObjs that will be added
-            for (unsigned char i = 0; i < thisColor_->getNumColors(); i++)
+            color_bt.color_objs = new ColorObj_BT[thisColor_dt->getNumColors()]; // Allocate space for the array of colorObjs that will be put into color_bt.color_objs
+            color_bt.color_objs_count = thisColor_dt->getNumColors();            // Store the number of colorObjs that will be added
+            for (unsigned char i = 0; i < thisColor_dt->getNumColors(); i++)
             {
-                const colorObj c = thisColor_->getThisColorObj(i);                            // Get the colorObj (and don't modify it, because it's a reference!)
-                color_bt.color_objs[i] = PBFromColorObj(c);                                   // Save the colorObj (Without metadata)
-                color_bt.color_objs[i].bt = PBFromBlendType(thisColor_->getThisBlendType(i)); // Add the Blend type to the ColorObj_BT
-                color_bt.color_objs[i].t = thisColor_->getThisTrigger(i);                     // Add the T value to the ColorObj_BT
+                const colorObj c = thisColor_dt->getThisColorObj(i);                            // Get the colorObj (and don't modify it, because it's a reference!)
+                color_bt.color_objs[i] = PBFromColorObj(c);                                     // Save the colorObj (Without metadata)
+                color_bt.color_objs[i].bt = PBFromBlendType(thisColor_dt->getThisBlendType(i)); // Add the Blend type to the ColorObj_BT
+                color_bt.color_objs[i].t = thisColor_dt->getThisTrigger(i);                     // Add the T value to the ColorObj_BT
             }
 
             break;
+        }
         case COLOR_DVEL:
+        {
             color_bt.type = ColorType_DVEL_BT;
-            Color_dVel *thisColor_ = (Color_dVel *)color_; // Get a pointer to the Color_ that's of the correct derived class type
+            Color_dVel *thisColor_dv = (Color_dVel *)color_; // Get a pointer to the Color_ that's of the correct derived class type
 
             // Go through all of the colorObj's (and meta data), and add the information
             // TODO: Will need to convert T so that it can hold a float?  Or, just use long as for velocity, as well (no reason it couldn't work, right?)
@@ -360,19 +444,18 @@ Color_BT Bluetooth::PBFromColor_(Color_ *color_)
             //
             //
 
-            color_bt.color_objs = new ColorObj_BT[thisColor_->getNumColors()];
-            color_bt.color_objs_count = thisColor_->getNumColors(); // Store the number of colorObjs that will be added
-            for (unsigned char i = 0; i < thisColor_->getNumColors(); i++)
+            color_bt.color_objs = new ColorObj_BT[thisColor_dv->getNumColors()];
+            color_bt.color_objs_count = thisColor_dv->getNumColors(); // Store the number of colorObjs that will be added
+            for (unsigned char i = 0; i < thisColor_dv->getNumColors(); i++)
             {
-                const colorObj c = thisColor_->getThisColorObj(i);                            // Get the colorObj (and don't modify it, because it's a reference!)
-                color_bt.color_objs[i] = PBFromColorObj(c);                                   // Save the colorObj (Without metadata)
-                color_bt.color_objs[i].bt = PBFromBlendType(thisColor_->getThisBlendType(i)); // Add the Blend type to the ColorObj_BT
-                color_bt.color_objs[i].t = thisColor_->getThisTrigger(i);                     // Add the T value to the ColorObj_BT
+                const colorObj c = thisColor_dv->getThisColorObj(i);                            // Get the colorObj (and don't modify it, because it's a reference!)
+                color_bt.color_objs[i] = PBFromColorObj(c);                                     // Save the colorObj (Without metadata)
+                color_bt.color_objs[i].bt = PBFromBlendType(thisColor_dv->getThisBlendType(i)); // Add the Blend type to the ColorObj_BT
+                color_bt.color_objs[i].t = thisColor_dv->getThisTrigger(i);                     // Add the T value to the ColorObj_BT
             }
 
             break;
-        default:
-            // Uh oh...
+        }
         }
     }
 
@@ -403,7 +486,7 @@ void Bluetooth::memfree_BT(Message_BT *mIn)
         for (unsigned char i = 0; i < thisM->palette_count; i++)
         {
             delete[] thisM->palette[i].color_objs;
-            thisM->palette[i] = NULL;
+            thisM->palette[i].color_objs = NULL;
         }
 
         break;
@@ -427,14 +510,28 @@ void Bluetooth::memfree_BT(Message_BT *mIn)
 ColorObj_BT Bluetooth::PBFromColorObj(const colorObj &c)
 {
     ColorObj_BT c_bt = ColorObj_BT_default;
-    c_bt.r = (uint32_t)c.r;
-    c_bt.b = (uint32_t)c.b;
-    c_bt.g = (uint32_t)c.g;
-    c_bt.w = (uint32_t)c.w;
+    c_bt.r = (uint32_t)c.r();
+    c_bt.b = (uint32_t)c.b();
+    c_bt.g = (uint32_t)c.g();
+    c_bt.w = (uint32_t)c.w();
 }
 
-Kalman_BT Bluetooth::PBFromKalman(Kalman *kalman)
+Kalman_BT Bluetooth::PBFromKalman()
 {
+    // TODO: Finish this!
+    return Kalman_BT_default;
+}
+
+ImageType_BT Bluetooth::PBFromImageType(Pattern_Handler *pattern_handler_in)
+{
+    if (pattern_handler_in->mainPattern->doesAllowIdle())
+    {
+        return ImageType_CONSTANT_BT;
+    }
+    else
+    {
+        return ImageType_SPINNER_BT;
+    }
 }
 
 BlendType_BT Bluetooth::PBFromBlendType(BLEND_TYPE blendType)

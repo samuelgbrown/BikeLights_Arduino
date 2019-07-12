@@ -201,6 +201,10 @@ boolean Speedometer::isSlow()
   return kalman.isReset;
 }
 
+void Speedometer::resetFilter() {
+  kalman.resetFilter();
+}
+
 //// Define static members
 //boolean Speedometer::newTic = false;
 //boolean Speedometer::newReference = false;
@@ -233,15 +237,15 @@ Kalman::Kalman()
     }
   }
 
-  for (unsigned char o = 0; o < N_OBS; o++)
-  {
-    // Go through all observation slots
-    for (unsigned char o2 = 0; o2 < N_OBS; o2++)
-    {
-      // Go through all observation slots (again)
-      R[o][o2] = 0; // Initialize to 0, then fill later
-    }
-  }
+  // for (unsigned char o = 0; o < N_OBS; o++)
+  // {
+  //   // Go through all observation slots
+  //   for (unsigned char o2 = 0; o2 < N_OBS; o2++)
+  //   {
+  //     // Go through all observation slots (again)
+  //     R[o][o2] = 0; // Initialize to 0, then fill later
+  //   }
+  // }
 
   // H
   H[0][0] = 1;
@@ -249,11 +253,14 @@ Kalman::Kalman()
   Transpose((float *)H, N_OBS, N_STA, (float *)Ht); // Transpose H to get Ht
 
   // R
-  R[0][0] = .00001; // .00001
-  R[1][1] = .01;    // .1
+  float r[N_OBS * N_OBS] = {.00001, 0, 0, .01};
+  setR(r);
+  // R[0][0] = .00001; // .00001
+  // R[1][1] = .01;    // .1
 
   // Q
-  Q = 1; // 10000;
+  setQ(1);
+  // Q = 1; // 10000;
 
   // F (partial, F is fully built when needed, as it depends on dt)
   F[0][0] = 1;
@@ -281,35 +288,42 @@ void Kalman::resetFilter()
     // Serial.flush();
     Serial.println(F("Resetting Filter..."));
   }
+
+  // Set PPrior
+  float p0[N_STA * N_STA] = {0, 0, 0, 0, 1, 0, 0, 0, 10}; // Set an array for the initial PPrior
+  setP0(p0);
+
+  // Set R
+
   for (unsigned char s = 0; s < N_STA; s++)
   {
     // Go through all state variable slots
     xPost[s] = 0; // xPost - System starts at 0
 
-    for (unsigned char s2 = 0; s2 < N_STA; s2++)
-    {
-      // Go through all state variable slots (again)
-      if (s == s2)
-      {
-        if (s == 0)
-        {
-          // TODO: REFACTOR THIS TO USE setP0, AND SET UP setP0 properly!
-          PPost[s][s2] = 0; // PPost - Completely certain about position
-        }
-        else if (s == 1)
-        {
-          PPost[s][s2] = 1; // PPost - Somewhat certain about velocity
-        }
-        else if (s == 2)
-        {
-          PPost[s][s2] = 10; // PPost - Somewhat uncertain about acceleration
-        }
-      }
-      else
-      {
-        PPost[s][s2] = 0; // PPost - Completely certain in initial parameters
-      }
-    }
+    // for (unsigned char s2 = 0; s2 < N_STA; s2++)
+    // {
+    //   // Go through all state variable slots (again)
+    //   if (s == s2)
+    //   {
+    //     if (s == 0)
+    //     {
+    //       // TODO: REFACTOR THIS TO USE setP0, AND SET UP setP0 properly!
+    //       PPost[s][s2] = 0; // PPost - Completely certain about position
+    //     }
+    //     else if (s == 1)
+    //     {
+    //       PPost[s][s2] = 1; // PPost - Somewhat certain about velocity
+    //     }
+    //     else if (s == 2)
+    //     {
+    //       PPost[s][s2] = 10; // PPost - Somewhat uncertain about acceleration
+    //     }
+    //   }
+    //   else
+    //   {
+    //     PPost[s][s2] = 0; // PPost - Completely certain in initial parameters
+    //   }
+    // }
   }
 
   if (DEBUGGING_KALMAN)
@@ -849,12 +863,28 @@ void Kalman::setQ(float newQ)
   Q = newQ;
 }
 
-void Kalman::setP0(float *newP0) {
-
+void Kalman::setP0(float *newP0)
+{
+  // Set a new value for PPrior
+  for (unsigned char col = 0; col < N_STA; col++)
+  {
+    for (unsigned char row = 0; row < N_STA; row++)
+    {
+      PPrior[row][col] = newP0[row + N_STA*col];
+    }
+  }
 }
 
-void Kalman::setR(float *newR) {
-
+void Kalman::setR(float *newR)
+{
+  // Set a new value for R
+  for (unsigned char col = 0; col < N_OBS; col++)
+  {
+    for (unsigned char row = 0; row < N_OBS; row++)
+    {
+      R[row][col] = newR[row + N_OBS*col];
+    }
+  }
 }
 
 void Kalman::ScalarAddF(float *A, float b, unsigned char numRows, unsigned char numCols, float *C)

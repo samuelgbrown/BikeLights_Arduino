@@ -325,6 +325,22 @@ void Pattern_Handler::setColor(Color_ *newColor, unsigned char colorNum)
   // If colorNum refers to a location outside of the size of colors, then do nothing.
 };
 
+Color_ *Pattern_Handler::getColor(unsigned char colorNum)
+{
+  // Ensure that the Color_ index to be returned is within bounds
+  if (colorNum < 0)
+  {
+    colorNum = 0;
+  }
+  else if (colorNum >= numColors)
+  {
+    colorNum = numColors;
+  }
+
+  // Return the specified Color_
+  return palette[colorNum];
+}
+
 //void Pattern::serialWriteAllColors() {
 //  if (DEBUGGING_ANY) {
 //    // Serial.flush();
@@ -346,6 +362,15 @@ void Pattern_Handler::setColor(Color_ *newColor, unsigned char colorNum)
 //    }
 //  }
 //}
+
+void Pattern_Handler::setBrightnessFactor(float newBrightnessFactor)
+{
+  if (newBrightnessFactor >= 0.0f && newBrightnessFactor <= 1.0f)
+  {
+    // If the new brightness factor is between 0 and 1 (inclusive), then save it to use during the display phase
+    brightnessFactor = newBrightnessFactor;
+  }
+}
 
 void Pattern::setImage(unsigned char *imageIn)
 {
@@ -573,7 +598,10 @@ void Pattern_Handler::preCalculateAllColor_()
     //      Serial.print(numColors);
     //      Serial.println(F(":"));
     //    }
+
+    // Precalculate the color, and apply the blanket brightness multiplier
     preCalculatedColors[colorInd] = palette[colorInd]->getColor();
+    preCalculatedColors[colorInd].multiplyBrightness(brightnessFactor);
     //    if (DEBUGGING_PATTERN) {
     //      delay(500);
     //    }
@@ -677,6 +705,11 @@ void Moving_Image::setRotateSpeed(int rotateSpeedIn)
 {
   rotateSpeed = rotateSpeedIn;
 };
+
+int Moving_Image::getRotateSpeed()
+{
+  return rotateSpeed;
+}
 
 float Moving_Image::getLEDPos()
 {
@@ -1254,9 +1287,14 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
   }
 };
 
+boolean Pattern_Main::doesAllowIdle()
+{
+  return allowIdle;
+}
+
 void Pattern_Handler::mainLoop()
 {
-  if (speedometer->isSlow() && mainPattern->allowIdle)
+  if (speedometer->isSlow() && mainPattern->doesAllowIdle())
   {
     // Wheel is moving slowly, do idle animation
 
@@ -1394,3 +1432,31 @@ void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum)
     Serial.println(F(""));
   }
 };
+
+// Encoding Image type functions
+ImageMeta_BT Pattern::getImageType()
+{
+  ImageMeta_BT im = ImageMeta_BT_default;
+  im.type = ImageType_CONSTANT_BT; // TODO: Perhaps the default should be stationary? (or whatever I end up calling not-moving-relative-to-the-wheel)
+  im.parameter_set = ImageMetaParam_BT_default;
+  im.parameter_set.p1 = 0;
+  return im;
+}
+
+ImageMeta_BT Moving_Image_Main::getImageType()
+{
+  ImageMeta_BT im = ImageMeta_BT_default;
+  im.type = ImageType_CONSTANT_BT;
+  im.parameter_set = ImageMetaParam_BT_default;
+  im.parameter_set.p1 = getRotateSpeed();
+  return im;
+}
+
+ImageMeta_BT Moving_Image_Idle::getImageType()
+{
+  ImageMeta_BT im = ImageMeta_BT_default;
+  im.type = ImageType_CONSTANT_BT;
+  im.parameter_set = ImageMetaParam_BT_default;
+  im.parameter_set.p1 = getRotateSpeed();
+  return im;
+}

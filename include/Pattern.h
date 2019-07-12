@@ -20,11 +20,9 @@
 #include "Arduino.h"
 #include "Definitions.h"
 #include "Speedometer.h"
-#include "Color.h"
 #include "Bluetooth.h"
+#include "Color.h"
 #include <math.h>
-
-class Color_;
 
 // Each Pattern holds on to an array of Color_'s (abstract color objects which may be static or dynamic without input needed from the Pattern), and an "image" array that maps each LED on the wheel to a Color_
 class Pattern
@@ -53,10 +51,13 @@ public:
 
   unsigned char getImageValInPos(unsigned char LEDNum); // Get the value of image at the specified location
 
+  // Function for encoding information to Android
+  virtual ImageMeta_BT getImageType(); // Get the type of image represented by this Pattern, and its related information (default is a constant with 0 rotational speed)
+
 protected:
   unsigned char nLEDs = NUMLEDS;                 // The total number of LEDs on the wheel
   unsigned char nLightsPerLED = NUMLIGHTSPERLED; // Total number of lights per LED (4 = RGBW, 3 = RGB)
-  Pattern_Handler *parent_handler; // A pointer to the parent pattern_handler, to ask for Color_
+  Pattern_Handler *parent_handler;               // A pointer to the parent pattern_handler, to ask for Color_
   // unsigned char numColors;                       // The number of palette is defaulted to 0 (Max of 255 Color_'s)
 
   // void preCalculateAllColor_();                                // Pre-calculate all colorObj's from each Color_ being used this loop
@@ -65,7 +66,14 @@ protected:
   //    void serialWriteAllColors(); // Write all palette to the output
 
 private:
-  unsigned char image[NUMLEDS];    // An array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired
+
+//
+// //
+// // // TODO: Change the behavior of image!!!  Make each HALF byte (every 4 bits) encode the index of a color!  Save a ton of memory!!!
+// //
+//
+
+  unsigned char image[NUM_BYTES_PER_IMAGE]; // An array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired
   // TODO: Reconfigure so that Pattern_Handler is in control of the palette
   // void deleteColorArray(); // Delete the array palette and its contents
 
@@ -78,11 +86,14 @@ class Pattern_Main : public Pattern
 {
 public:
   Pattern_Main(Speedometer *speedometer); // Constructor
-  boolean allowIdle = true;               // Does this class allow an idle animation (true for most, but some main animations will need to override the idle animation and play all the time)
+  boolean doesAllowIdle();                // Getter for allowIdle
 
+  // virtual MAIN_ANIM getMainPatternType() = 0; // TODO: FILL IN; Alternatively, make a virtual function in Pattern that either a) returns the Image_Meta parameter (hardcoded 0 in Pattern, unless overwritten in some child class), or b) returns a full fleged ImageMetaParam_BT object (hard coded "default" in Pattern, then fill in for child functions)
 protected:
   // Speedometer pointer (derived Pattern classes only get access to it during main animations)
   Speedometer *speedometer = NULL; // Speedometer (used to retrieve the pos/vel/acc of the wheel), DO NOT ATTEMPT TO DELETE
+
+  boolean allowIdle = true; // Does this class allow an idle animation (true for most, but some main animations will need to override the idle animation and play all the time)
 };
 
 // Abstract class to describe idle animations, or animations that have no speed dependence
@@ -90,6 +101,8 @@ class Pattern_Idle : public Pattern
 {
 public:
   Pattern_Idle() : Pattern(){}; // Constructor
+
+  // virtual IDLE_ANIM getMainPatternType() = 0; // TODO: FILL IN
 };
 
 // An abstract class to describe Patterns that use a moving image
@@ -101,8 +114,9 @@ public:
   virtual void animMain() = 0; // Each derived Pattern makes an animation that is run, similar to the anim() function of each other Pattern.  However, the currentLEDPos must be advanced each animation cycle, which will be done in the real Moving_Image::anim()
 
   void setImageBleed(unsigned char imageBleedIn); // Change imageBleed
-  void setRotateSpeed(int rotateSpeedIn);         // Change rotateSpeed
 
+  void setRotateSpeed(int rotateSpeedIn);                                  // Change rotateSpeed
+  int getRotateSpeed();                                                   // Get the rotation speed
   float getLEDPos();                                                       // Get the current value of the protected currentLEDPos variable
   void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the animMain() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by currentLEDPos and "blurring")
 
@@ -124,9 +138,9 @@ private:
 class Pattern_Handler
 {
 public:
-  Pattern_Handler(Speedometer *speedometer); // Constructor
-  Pattern_Handler(Speedometer *speedometer, Color_** colorsIn, unsigned char numColorsIn);                         // Constructor
-  ~Pattern_Handler();                        // Destructor
+  Pattern_Handler(Speedometer *speedometer);                                               // Constructor
+  Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, unsigned char numColorsIn); // Constructor
+  ~Pattern_Handler();                                                                      // Destructor
 
   void mainLoop();                             // Main function that executes every loop
   void setMainPattern(MAIN_ANIM newAnimation); // Set the main pattern
@@ -141,8 +155,12 @@ public:
 
   void setupPalette(unsigned char numColors);
   void setupPalette(Color_ **colorsIn, unsigned char numColorsIn);
-  void setupPalette(Color_BT * colorMessagesIn, unsigned char numColorsIn);
-  void setColor(Color_ *newColor, unsigned char colorNum); // Set a color in the specified location
+  void setupPalette(Color_BT *colorMessagesIn, unsigned char numColorsIn);
+
+  void setColor(Color_ *newColor, unsigned char colorNum); // Set a Color_ in the specified location
+  Color_ *getColor(unsigned char colorNum);                // Get a pointer to the Color_ at the specified location
+
+  void setBrightnessFactor(float newBrightnessFactor); // Set the brightnessFactor
 
   void preCalculateAllColor_();                                // Pre-calculate all colorObj's from each Color_ being used this loop
   colorObj getPreCalculatedColorInPos(unsigned char colorNum); // Get a specific colorObj according to its position in palette (If using this function, MUST have run preCalculateAllColor_() earlier in the loop)
@@ -152,10 +170,10 @@ private:
   Speedometer *speedometer = NULL; // Speedometer (used to retrieve the pos/vel/acc of the wheel), DO NOT ATTEMPT TO DELETE
 
   // Color_ functions and information
-  void deleteColorArray(); // Delete the array palette and its contents
-
-  Color_ **palette = NULL;               // Array of Color_ objects
+  void deleteColorArray();              // Delete the array palette and its contents
+  Color_ **palette = NULL;              // Array of Color_ objects
   colorObj *preCalculatedColors = NULL; // Array (of size numColors) of colorObj's that represents the colorObj for each Color_ represented in image that is being used this loop (each Color_ is calculated only once, so computation time will be saved on dynamic palette).
+  float brightnessFactor = 1.0f;        // A scale factor to adjust the brightness each time the colors are precalculated (can be used to homogenously dim the LEDs)
 };
 
 // A main animation that features an image that appears to not rotate relative to the ground
@@ -174,6 +192,8 @@ class Moving_Image_Main : public Still_Image_Main, public Moving_Image
 public:
   Moving_Image_Main(Speedometer *speedometer, unsigned char *image); // Constructor
   Moving_Image_Main(Speedometer *speedometer);                       // Constructor
+
+  ImageMeta_BT getImageType();
 
   void animMain();                       // Main animation function
   void anim() { Moving_Image::anim(); }; // Redefine anim() to be the Moving_Image anim()
@@ -204,6 +224,8 @@ public:
   Moving_Image_Idle(unsigned char *image); // Constructor
   Moving_Image_Idle();                     // Constructor
 
+  ImageMeta_BT getImageType();
+
   void animMain();                       // Idle animation function
   void anim() { Moving_Image::anim(); }; // Redefine anim() to be the Moving_Image anim()
 };
@@ -224,4 +246,6 @@ private:
   static void sendBit(bool bitVal);         // Send a bit to the LED string
   static void sendByte(unsigned char byte); // Send a byte to the LED string, represents brightness of a single-colored LED
 };
+
+// TODO: Add Spinner_Pattern (remember to include instance of getImageType(), so that info can be sent back to Android)
 #endif
