@@ -30,8 +30,10 @@ message BluetoothMessage {
     message BikeWheelAnim {
         uint32 num_leds = 1; // Number of LEDs on the wheel (shouldn't change, but just to keep everything in order)
         repeated Color_ palette = 2; // The Color_'s that we're working with to define our pattern
-        repeated uint32 image_main = 3; // The pattern of the main image (while the wheel is moving)
-        repeated uint32 image_idle = 4; // The pattern of the idle image (while the wheel is not moving, and using a Pattern that supports Idle)
+        // repeated uint32 image_main = 3; // The pattern of the main image (while the wheel is moving)
+        // repeated uint32 image_idle = 4; // The pattern of the idle image (while the wheel is not moving, and using a Pattern that supports Idle)
+        bytes image_main = 3; // The pattern of the main image (while the wheel is moving)  Each half byte encodes the color index used at an image position
+        bytes image_idle = 4; // The pattern of the idle image (while the wheel is not moving, and using a Pattern that supports Idle) Each half byte encodes the color index used at an image position
         ImageMeta image_meta = 5; // The meta information about the BWA
 
         message Color_ {

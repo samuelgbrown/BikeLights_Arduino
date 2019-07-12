@@ -106,7 +106,6 @@ void setup() {
         Serial.println();
         delay(100);
       }
-      pattern_handler->idlePattern->setColor(c, 1);
       delete c;
     }
 
