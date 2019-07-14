@@ -40,20 +40,29 @@ void Bluetooth::mainLoop()
         {
             // TODO: Do a RAM check?
 
-            // Process using the protocol buffer
-            uint8_t buffer[64]; // Buffer that will read from the Software Serial stream
+            // // Process using the protocol buffer
+            // uint8_t buffer[64]; // Buffer that will read from the Software Serial stream
 
-            // Read into a local buffer (horribly inefficient, wonder if there's a way to fix...)
-            for (int bufLoc = 0; bufLoc < count; bufLoc++)
-            {
-                buffer[bufLoc] = btSer.read();
-            }
+            // // Read into a local buffer (horribly inefficient, wonder if there's a way to fix...)
+            // for (int bufLoc = 0; bufLoc < count; bufLoc++)
+            // {
+            //     buffer[bufLoc] = btSer.read();
+            // }
 
             // Create a protocol buffer stream
             // pb_istream_t stream;
             // stream = pb_istream_from_buffer(buffer, count);
-            pb_istream_t serStream = {&bluetooth_decode_callback, &btSer, 64};
-            Message_BT message = bluetooth_BluetoothMessage_init_default; // Initialize the message
+
+            // Before any of this stuff, store the current amount of freeRam, in case the user asks for it (don't want to taint the answer will all of the memory we'll need to do the message processing)
+            int freeRamNow = freeRam();
+
+            Message_BT message;
+            {
+                // Read the message from a serial stream (do so inside of a block, so the large serStream object is dismissed immediately after)
+                pb_istream_t serStream = {&bluetooth_decode_callback, &btSer, 256}; // TODO: Memory: Is this enough?  Do I need more/less?
+                message = bluetooth_BluetoothMessage_init_default;                  // Initialize the message
+                bool status = pb_decode(&serStream, Message_BT_Fields, &message);
+            }
 
             // Do some tests
             // Test 1: Automatic decoding
@@ -67,8 +76,6 @@ void Bluetooth::mainLoop()
             // Try using https://github.com/nanopb/nanopb/blob/master/examples/using_union_messages/decode.c to figure out which content is there (try setting no_unions:true ?).  Perhaps try this first as a standard C++ program to see what happens if we just decode the thing without setting arg/funcs...may require writing encoding code first
             // message.contents.bike_wheel_anim.image_main.funcs = MAKE A FUNCTION THAT WILL READ FROM THE SERIAL INPUT AND PLACE THE VALUES DIRECTLY INTO THE ARG VARIABLE, WHICH IS A POINTER TO THE PATTERN_HANDLER, TO GET THE IMAGE_MAIN ARRAY (and possibly the image_idle?)
 
-            bool status = pb_decode(&serStream, Message_BT_Fields, &message);
-
             // TODO: Put this into a callback: depending on what we're expecting, we may need to decode differently (i.e. getting a BWA or a Kalman, or getting/not getting an image_idle)
             if (message.request)
             {
@@ -81,26 +88,32 @@ void Bluetooth::mainLoop()
                 // Make room for a new Message_BT, to send.
                 Message_BT message_out;
 
+                //  TODO: Populate message_out
                 switch (message.which_contents)
                 {
                 case BWA_BT_Tag:
-
+                    message_out.contents.bike_wheel_anim = PBFromPattern();
                     message_out.type = MessageType_BWA;
                     break;
                 case Kalman_BT_Tag:
-
+                    message_out.contents.kalman = PBFromKalman();
                     message_out.type = MessageType_Kalman;
                     break;
                 case Brightness_BT_Tag:
-
+                    message_out.contents.brightness_scale = pattern_handler->getBrightnessFactor();
                     message_out.type = MessageType_Brightness;
                     break;
                 case Storage_BT_Tag:
+                    message_out.contents.storage = Storage_BT_default;
+
+                    // Populate the storage_bt object
+                    message_out.contents.storage.total = TOTAL_MEMORY;
+                    message_out.contents.storage.remaining = freeRamNow;
 
                     message_out.type = MessageType_Storage;
                     break;
                 case Battery_BT_Tag:
-
+                    // TODO: Uhhhhh...
                     message_out.type = MessageType_Battery;
                     break;
                 }
@@ -108,6 +121,11 @@ void Bluetooth::mainLoop()
                 // Add in the required meta-data for the new message
                 message_out.which_contents = message_type_which;
                 message_out.request = false;
+
+                // TODO: Send the message
+
+                // TODO: Release the memory held by the message we just sent
+                pb_release(Message_BT_Fields, &message_out);
             }
             else
             {
@@ -139,14 +157,8 @@ void Bluetooth::mainLoop()
                 }
 
                 // Now that we are done reading the data, release the information from the Message
-                // TODO: MEMORY: Maybe I can do this myself?  Hell, maybe memfree_BT() already does it?
+                pb_release(Message_BT_Fields, &message);
             }
-
-            // Test 2: Manual decoding
-            // Define all of the decoding callbacks manually...why trust nanobp?
-            // Similar to https://github.com/nanopb/nanopb/blob/master/tests/callbacks/decode_callbacks.c
-            // Method 1: Define all of the callbacks such that they assign the incoming value to a class (maybe a new helper class?) pointed to by arg.  May not be possible, because fields in the Message are not known until we know which content is in there
-            // Method 2: Manually decode the entire message, byte by suffering byte...ugh.  Fuck being memory efficient.  Maybe find (or make?) function that will decode one field at a time...except oneof's and fields that contain other Messages?  Have I said "ugh" yet?
         }
     }
 }
@@ -190,7 +202,7 @@ void Bluetooth::processBWA(BWA_BT &message)
         break;
 
         // Set the image for the idle pattern (the main pattern's image will be set in just a moment, because Spinners don't have idle images)
-        pattern_handler->idlePattern->setImage(message.image_idle);
+        pattern_handler->idlePattern->setImage(message.image_idle->bytes);
         // bluetooth_BluetoothMessage m = bluetooth_BluetoothMessage_init_zero;
 
     case ImageType_SPINNER_BT:
@@ -199,7 +211,7 @@ void Bluetooth::processBWA(BWA_BT &message)
     }
 
     // Save the images for the main pattern
-    pattern_handler->mainPattern->setImage(message.image_main);
+    pattern_handler->mainPattern->setImage(message.image_main->bytes);
 
     // Set the palette for the Pattern_Handler
     pattern_handler->setupPalette(message.palette, (unsigned char)message.palette_count);
@@ -301,21 +313,21 @@ void Bluetooth::processKalman(Kalman_BT &message)
     if (message.q != 0)
     {
         // A new value for Q was just added!
-        speedometer->setQ(message.q);
+        speedometer->getKalman()->setQ(message.q);
     }
 
     // Check if there's a new R
     if (message.r != NULL)
     {
         // A new value for R was just added!
-        speedometer->setR(message.r);
+        speedometer->getKalman()->setR(message.r);
     }
 
     // Check if there's a new P0
     if (message.p0 != NULL)
     {
         // A new value for PPrior was just added!
-        speedometer->setP0(message.p0);
+        speedometer->getKalman()->setP0(message.p0);
     }
 }
 
@@ -331,26 +343,46 @@ BWA_BT Bluetooth::PBFromPattern()
     // Generate a BWA_BT object from the information stored in Pattern_Handler
     BWA_BT messageOut = BWA_BT_default; // Create a new default BWA_BT object, as an initialization
 
-    // TODO: This is WAY too large to encode... Convert image_main and image_idle to byte sequences?
-
+    // TODO: Need to free this array using pb_release (or free()).  Still need memfree_BT()...?
     // First, encode the image(s)
-    messageOut.image_main = new uint32_t[NUMLEDS];
-    messageOut.image_main_count = NUMLEDS;
+    messageOut.image_idle = new pb_bytes_array_t[NUM_BYTES_PER_IMAGE];
+
+    messageOut.image_main = (pb_bytes_array_t *)malloc(PB_BYTES_ARRAY_T_ALLOCSIZE(NUM_BYTES_PER_IMAGE));
+    messageOut.image_main->size = NUM_BYTES_PER_IMAGE;
     if (pattern_handler->idlePattern != NULL)
     {
-        // If there is an idle image, add it to the message
-        messageOut.image_idle = new uint32_t[NUMLEDS];
-        messageOut.image_idle_count = NUMLEDS;
+        messageOut.image_idle = (pb_bytes_array_t *)malloc(PB_BYTES_ARRAY_T_ALLOCSIZE(NUM_BYTES_PER_IMAGE));
+        messageOut.image_idle->size = NUM_BYTES_PER_IMAGE;
     }
-    for (unsigned char i = 0; i < NUMLEDS; i++)
+
+    for (unsigned char i = 0; i < NUM_BYTES_PER_IMAGE; i++)
     {
         // Encode each value in both main (and, if needed, idle) pattern(s)
-        messageOut.image_main[i] = pattern_handler->mainPattern->getImageValInPos(i);
+        messageOut.image_main->bytes[i] = pattern_handler->mainPattern->getImageRawByte(i);
         if (pattern_handler->idlePattern != NULL)
         {
-            messageOut.image_idle[i] = pattern_handler->idlePattern->getImageValInPos(i);
+            messageOut.image_main->bytes[i] = pattern_handler->mainPattern->getImageRawByte(i);
         }
     }
+
+    // Old
+    // messageOut.image_main = new uint32_t[NUMLEDS];
+    // messageOut.image_main_count = NUMLEDS;
+    // if (pattern_handler->idlePattern != NULL)
+    // {
+    //     // If there is an idle image, add it to the message
+    //     messageOut.image_idle = new uint32_t[NUMLEDS];
+    //     messageOut.image_idle_count = NUMLEDS;
+    // }
+    // for (unsigned char i = 0; i < NUMLEDS; i++)
+    // {
+    //     // Encode each value in both main (and, if needed, idle) pattern(s)
+    //     messageOut.image_main[i] = pattern_handler->mainPattern->getImageValInPos(i);
+    //     if (pattern_handler->idlePattern != NULL)
+    //     {
+    //         messageOut.image_idle[i] = pattern_handler->idlePattern->getImageValInPos(i);
+    //     }
+    // }
 
     // Next, encode the image meta data
     messageOut.image_meta = pattern_handler->mainPattern->getImageType();
@@ -464,6 +496,8 @@ Color_BT Bluetooth::PBFromColor_(Color_ *color_)
 
 void Bluetooth::memfree_BT(Message_BT *mIn)
 {
+    // May just need to use pb_release()...?
+
     // Call this function after encoding and writing any Message_BT that use dynamically allocated arrays!
     // Free any dynamically allocated arrays in the Message_BT object (really is only important for BWA_BT and Kalman_BT objects, but not reason not to make this function a quick one-stop-shop for memory freeing)
     // This is safe to do on a Message_BT that hasn't had any information allocated to it, because the default forms of all Messages initializes all pointers to NULL
@@ -476,7 +510,7 @@ void Bluetooth::memfree_BT(Message_BT *mIn)
         // Get a pointer to the BWA part of the Message
         BWA_BT *thisM = &mIn->contents.bike_wheel_anim;
 
-        // First, free each Image
+        // First, free each Image (if needed)
         delete[] thisM->image_main; // Delete the main image
         thisM->image_main = NULL;
         delete[] thisM->image_idle; // If this Image type supports an idle image, delete it (if it does not support image_idle, nothing will happen because image_idle is a NULL pointer)
@@ -500,7 +534,7 @@ void Bluetooth::memfree_BT(Message_BT *mIn)
         delete[] thisM->r;
         thisM->r = NULL;
         delete[] thisM->p0;
-        thisM->r = NULL;
+        thisM->p0 = NULL;
 
         break;
     }
@@ -518,8 +552,38 @@ ColorObj_BT Bluetooth::PBFromColorObj(const colorObj &c)
 
 Kalman_BT Bluetooth::PBFromKalman()
 {
-    // TODO: Finish this!
-    return Kalman_BT_default;
+    Kalman_BT kalman_bt = Kalman_BT_default;
+
+    // Fill in the scalar values
+    kalman_bt.n_obs = N_OBS;
+    kalman_bt.n_sta = N_STA;
+    kalman_bt.q = speedometer->getKalman()->getQ();
+
+    // Set the sizes of the matrix parameters
+    kalman_bt.p0_count = N_STA * N_STA;
+    kalman_bt.r_count = N_OBS * N_OBS;
+    kalman_bt.p0 = new float[N_STA * N_STA];
+    kalman_bt.r = new float[N_OBS * N_OBS];
+
+    // Allocate the parameter arrays
+    for (unsigned char col = 0; col < N_STA; col++)
+    {
+        for (unsigned char row = 0; row < N_STA; row++)
+        {
+            kalman_bt.p0[row + N_STA * col] = speedometer->getKalman()->getP0()[row][col]; // Oh god, I hope this crap doesn't bite me in the ass...
+        }
+    }
+
+    for (unsigned char col = 0; col < N_OBS; col++)
+    {
+        for (unsigned char row = 0; row < N_OBS; row++)
+        {
+            kalman_bt.r[row + N_STA * col] = speedometer->getKalman()->getR()[row][col]; // Oh god, I hope this crap doesn't bite me in the ass again...
+        }
+    }
+
+    // Return the newly constructed object
+    return kalman_bt;
 }
 
 ImageType_BT Bluetooth::PBFromImageType(Pattern_Handler *pattern_handler_in)

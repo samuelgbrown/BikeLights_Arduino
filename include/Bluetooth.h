@@ -34,7 +34,7 @@ public:
 
     // Encode methods (Generate a protocol buffer stream from local classes)
     BWA_BT PBFromPattern();                  // Generate a BWA_BT from the information held by pattern_handler
-    Kalman_BT PBFromKalman();                // Generate a Kalman object from a Kalman_BT Message
+    Kalman_BT PBFromKalman();                // Generate a Kalman_BT object from a Kalman_BT Message
     static void memfree_BT(Message_BT *mIn); // Free any dynamically allocated memory used by a given Message_BT
 
     static Color_BT PBFromColor_(Color_ *color_);                             // Generate a Color_ from the Color_BT Message

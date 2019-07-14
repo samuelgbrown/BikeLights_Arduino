@@ -63,7 +63,7 @@ void setup() {
     // Set up Speedometer
     speedometer = new Speedometer();
     if (DEBUGGING_Q) {
-      speedometer->setQ(newQ);
+      speedometer->getKalman()->setQ(newQ);
     }
 
     if (!UNITTEST_SPEEDOMETER) {

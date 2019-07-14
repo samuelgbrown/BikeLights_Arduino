@@ -43,21 +43,21 @@ public:
   // unsigned char getNumColors(); // Get the number of palette currently assigned to this pattern
 
   // Functions to manage the "image", or the LED map which shows which LEDs are showing which Color_
-  void setImage(unsigned char *image);           // Set an image to the pattern
-  void setImage(uint32_t *image);                // Set an image to the pattern
-  void setImageZeros();                          // Set the image as all "empty"
-  void setImageColorInd(unsigned char colorInd); // Set the image as all references to a single color
-  void setImageNumSegs(unsigned char numSegs);   // Set some number of equally spaced dots on the image
+  void setImage(unsigned char *image); // Set an image to the pattern
+  // void setImageValInPos(unsigned char LEDNum); // Set an image value in a specific LED location
+  // void setImage(uint32_t *image);      // Set an image to the pattern
+  // void setImageColorInd(unsigned char colorInd); // Set the image as all references to a single color
+  // void setImageNumSegs(unsigned char numSegs);   // Set some number of equally spaced dots on the image
 
   unsigned char getImageValInPos(unsigned char LEDNum); // Get the value of image at the specified location
+  unsigned char getImageRawByte(unsigned char byteNum); // Get the raw byte value in image at the specified location
+  const unsigned char *getImage();                      // Get a pointer to the image
 
   // Function for encoding information to Android
   virtual ImageMeta_BT getImageType(); // Get the type of image represented by this Pattern, and its related information (default is a constant with 0 rotational speed)
 
 protected:
-  unsigned char nLEDs = NUMLEDS;                 // The total number of LEDs on the wheel
-  unsigned char nLightsPerLED = NUMLIGHTSPERLED; // Total number of lights per LED (4 = RGBW, 3 = RGB)
-  Pattern_Handler *parent_handler;               // A pointer to the parent pattern_handler, to ask for Color_
+  Pattern_Handler *parent_handler; // A pointer to the parent pattern_handler, to ask for Color_
   // unsigned char numColors;                       // The number of palette is defaulted to 0 (Max of 255 Color_'s)
 
   // void preCalculateAllColor_();                                // Pre-calculate all colorObj's from each Color_ being used this loop
@@ -66,14 +66,13 @@ protected:
   //    void serialWriteAllColors(); // Write all palette to the output
 
 private:
+  //
+  // //
+  // // // TODO: Change the behavior of image!!!  Make each HALF byte (every 4 bits) encode the index of a color!  Save a ton of memory!!!
+  // //
+  //
 
-//
-// //
-// // // TODO: Change the behavior of image!!!  Make each HALF byte (every 4 bits) encode the index of a color!  Save a ton of memory!!!
-// //
-//
-
-  unsigned char image[NUM_BYTES_PER_IMAGE]; // An array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired
+  unsigned char image[NUM_BYTES_PER_IMAGE] = {0}; // An array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired
   // TODO: Reconfigure so that Pattern_Handler is in control of the palette
   // void deleteColorArray(); // Delete the array palette and its contents
 
@@ -116,7 +115,7 @@ public:
   void setImageBleed(unsigned char imageBleedIn); // Change imageBleed
 
   void setRotateSpeed(int rotateSpeedIn);                                  // Change rotateSpeed
-  int getRotateSpeed();                                                   // Get the rotation speed
+  int getRotateSpeed();                                                    // Get the rotation speed
   float getLEDPos();                                                       // Get the current value of the protected currentLEDPos variable
   void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the animMain() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by currentLEDPos and "blurring")
 
@@ -161,6 +160,7 @@ public:
   Color_ *getColor(unsigned char colorNum);                // Get a pointer to the Color_ at the specified location
 
   void setBrightnessFactor(float newBrightnessFactor); // Set the brightnessFactor
+  float getBrightnessFactor();                         // Get the brightness factor
 
   void preCalculateAllColor_();                                // Pre-calculate all colorObj's from each Color_ being used this loop
   colorObj getPreCalculatedColorInPos(unsigned char colorNum); // Get a specific colorObj according to its position in palette (If using this function, MUST have run preCalculateAllColor_() earlier in the loop)

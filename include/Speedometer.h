@@ -30,6 +30,10 @@ public:
   void setP0(float *newP0); // Set a new P0 matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_states)
   void setR(float *newR);   // Set a new R matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_observed)
 
+  float getQ();          // Get the value of Q
+  const float **getP0(); // Get a pointer to the p0 matrix
+  const float **getR();  // Get a pointer to the r matrix
+
   // The current best guess at the LED position, velocity, and acceleration
   float xTrue;
   float velTrue;
@@ -87,10 +91,6 @@ public:
 
   void mainLoop(); // Main function that the speedometer executes every loop
 
-  void setQ(float newQ);    // Set a new value for the Kalman filter's Q
-  void setP0(float *newP0); // Set a new P0 matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_states)
-  void setR(float *newR);   // Set a new R matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_observed)
-
   static void tic();  // Interrupt function called when ticPin is set to HIGH
   static void rTic(); // Interrupt function called when rticPin is set to HIGH
 
@@ -101,6 +101,8 @@ public:
   boolean isSlow();   // Is the wheel moving too slow to get any reliable information?
   void resetFilter(); // Expose the Kalman filter's resetFilter() function publically
 
+  Kalman *getKalman(); // Get a read-only pointer to the kalman object
+
 private:
   unsigned char numSwitches = NUMSWITCHES; // Number of reed switches that are on the bike wheel (including the reference switch)
   int ticPin = TICKPIN;                    // Pin that the reed switches sets HIGH, stored as a PHYSICAL PIN, not an interupt pin
@@ -110,7 +112,7 @@ private:
   static const unsigned int reedDetectionDiameter = REEDDETECTIONDIAMETER; // The "diameter" around the reed switch (in µm) that the switch can detect the magnet (IF MORE THAN 65mm, THEN CHANGE TO LONG)
 
   // The Kalman filter object held by the speedometer
-  Kalman kalman; // RETURN TO BEING PRIVATE AFTER TESTING
+  Kalman kalman;
 
   //    // Tic detection
   //    static boolean newTic; // Is there a new reed switch signal?

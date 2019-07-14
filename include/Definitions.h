@@ -39,13 +39,15 @@
 #define NUMSWITCHES 3
 
 #define NUMLEDS 120
-#define NUM_BYTES_PER_IMAGE NUMLEDS/2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)
-#define NUMLIGHTSPERLED 4 // Total number of lights per LED (4 = RGBW, 3 = RGB)
+#define NUM_BYTES_PER_IMAGE NUMLEDS / 2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)
+#define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
 #define MAX_BT_BUFFER_SIZE 64 // The number of bytes available to read from the Serial buffer
 
 #define MAXPULSELENGTH 50000
 #define MAXTIMEBEWTEENTICS 1500
+
+#define TOTAL_MEMORY 2048
 
 // For Kalman filtering
 #define N_STA 3 // Tracking posiiton, velocity, and acceleration
@@ -94,6 +96,7 @@ class Pattern_Handler;
 #define Color_BT_default bluetooth_BluetoothMessage_BikeWheelAnim_Color__init_default
 #define ColorObj_BT_default bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorObj_init_default
 #define Kalman_BT_default bluetooth_BluetoothMessage_Kalman_init_default
+#define Storage_BT_default bluetooth_BluetoothMessage_Storage_init_default
 
 #define MessageType_BT bluetooth_BluetoothMessage_MessageType
 #define ColorType_BT bluetooth_BluetoothMessage_BikeWheelAnim_Color__ColorType
@@ -153,6 +156,19 @@ enum COLOR_TYPE
   COLOR_DTIME,
   COLOR_DVEL
 };
+
+// Define nibble operations (to deal with the image field, which has two image locations stored in each byte)
+#define FIRST_NIBBLE_MASK 15   // Mask to get only the first nibble (lowest significance bits, 15 == 0b00001111)
+#define SECOND_NIBBLE_MASK 240 // Mask to get only the second nibble (highest significance bits, 240 == 0b11110000)
+
+unsigned char valFromFirstNibble(unsigned char fullByte);
+
+unsigned char valFromSecondNibble(unsigned char fullByte);
+
+unsigned char valToFirstNibble(unsigned char valToSet, unsigned char fullByte);
+
+unsigned char valToSecondNibble(unsigned char valToSet, unsigned char fullByte);
+int freeRam();
 
 // Common array functions
 //template <typename T>
@@ -214,16 +230,14 @@ T maxInArray(T *arrayIn, int arraySize)
   return maxVal;
 };
 
-// Define nibble operations (to deal with the image field, which has two image locations stored in each byte)
-#define FIRST_NIBBLE_MASK 15 // Mask to get only the first nibble (lowest significance bits, 15 == 0b00001111)
-#define SECOND_NIBBLE_MASK 240 // Mask to get only the second nibble (highest significance bits, 240 == 0b11110000)
-
-unsigned char valFromFirstNibble(unsigned char fullByte);
-
-unsigned char valFromSecondNibble(unsigned char fullByte);
-
-unsigned char valToFirstNibble(unsigned char valToSet, unsigned char fullByte);
-
-unsigned char valToSecondNibble(unsigned char valToSet, unsigned char fullByte);
-int freeRam();
+template <typename T>
+T maxInArrayPerNibble(T *arrayIn, int arraySize)
+{
+  T maxVal = 0;
+  for (unsigned char i = 0; i < arraySize; i++)
+  {
+    maxVal = max(maxVal, valFromFirstNibble(arrayIn[i]));
+    maxVal = max(maxVal, valFromSecondNibble(arrayIn[i]));
+  }
+}
 #endif

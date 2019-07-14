@@ -166,19 +166,9 @@ void Speedometer::mainLoop()
   }
 }
 
-void Speedometer::setQ(float newQ)
+Kalman *Speedometer::getKalman()
 {
-  kalman.setQ(newQ);
-}
-
-void Speedometer::setP0(float *newP0)
-{
-  kalman.setP0(newP0);
-}
-
-void Speedometer::setR(float *newR)
-{
-  kalman.setR(newR);
+  return &kalman;
 }
 
 float Speedometer::getPos()
@@ -201,7 +191,8 @@ boolean Speedometer::isSlow()
   return kalman.isReset;
 }
 
-void Speedometer::resetFilter() {
+void Speedometer::resetFilter()
+{
   kalman.resetFilter();
 }
 
@@ -870,7 +861,7 @@ void Kalman::setP0(float *newP0)
   {
     for (unsigned char row = 0; row < N_STA; row++)
     {
-      PPrior[row][col] = newP0[row + N_STA*col];
+      PPrior[row][col] = newP0[row + N_STA * col];
     }
   }
 }
@@ -882,7 +873,7 @@ void Kalman::setR(float *newR)
   {
     for (unsigned char row = 0; row < N_OBS; row++)
     {
-      R[row][col] = newR[row + N_OBS*col];
+      R[row][col] = newR[row + N_OBS * col];
     }
   }
 }

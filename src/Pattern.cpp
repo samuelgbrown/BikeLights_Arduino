@@ -278,15 +278,45 @@ colorObj Pattern_Handler::getPreCalculatedColorInPos(unsigned char colorNum)
 
 unsigned char Pattern::getImageValInPos(unsigned char LEDNum)
 {
-  if (LEDNum < nLEDs)
+  if (0 <= LEDNum && LEDNum < NUMLEDS)
   {
-    return image[LEDNum];
+    unsigned char imageInd = LEDNum >> 1; // Right bit-shift the incoming LED number to get the integer division by 2 of LEDNum (very fast, because I'm very cool)
+
+    switch (1 & LEDNum) // Figure out if LEDNum is even or odd, using exceedingly clever bit-wise arithmetic
+    {
+    case 0:
+      // The number is even, we'll want the first nibble (remember, image[] starts indexing at 0)
+      return valFromFirstNibble(image[imageInd]); // Get the value from the first nibble of the LEDNum/2 index of the image
+      break;
+    case 1:
+      // The number is odd, we'll want the second nibble
+      return valFromSecondNibble(image[imageInd]); // Get the value from the first nibble of the LEDNum/2 index of the image
+      break;
+    }
+    // return image[LEDNum]; // Old method (where size(image) == NUMLEDS)
   }
   else
   {
-    return image[nLEDs];
+    return valFromFirstNibble(image[0]);
   }
 };
+
+unsigned char Pattern::getImageRawByte(unsigned char byteNum)
+{
+  if (0 <= byteNum && byteNum < NUM_BYTES_PER_IMAGE)
+  {
+    return image[byteNum]; // Return the raw byte from image (raw because, if we wanted an actual meaningful number, we would have to split the byte in image into nibbles)
+  }
+  else
+  {
+    return image[0];
+  }
+}
+
+const unsigned char *Pattern::getImage()
+{
+  return image;
+}
 
 void Pattern_Handler::setColor(Color_ *newColor, unsigned char colorNum)
 {
@@ -372,6 +402,15 @@ void Pattern_Handler::setBrightnessFactor(float newBrightnessFactor)
   }
 }
 
+float Pattern_Handler::getBrightnessFactor()
+{
+  return brightnessFactor;
+}
+
+// void Pattern::setImageValInPos(unsigned char LEDNum) {
+//   // Set a value in the image array
+// }
+
 void Pattern::setImage(unsigned char *imageIn)
 {
   // Set a new image array, and ensure that enough colors to use it
@@ -383,14 +422,14 @@ void Pattern::setImage(unsigned char *imageIn)
     //    Serial.println(freeRam());
     //    Serial.println();
     //    Serial.println(F("Initial image:"));
-    //    for (int i = 0; i < nLEDs; i++) {
+    //    for (int i = 0; i < NUMLEDS; i++) {
     //      Serial.println(image[i]);
     //    }
     //    delay(50);
     //    // Serial.flush();
     //    Serial.println();
     //    Serial.println(F("Initial imageIn:"));
-    //    for (int i = 0; i < nLEDs; i++) {
+    //    for (int i = 0; i < NUMLEDS; i++) {
     //      Serial.println(imageIn[i]);
     //    }
     //    delay(50);
@@ -402,21 +441,21 @@ void Pattern::setImage(unsigned char *imageIn)
   //    // Serial.flush();
   //    Serial.print(F("Current memory: "));
   //    Serial.println(freeRam());
-  //    Serial.print(F("nLEDs: "));
-  //    Serial.println(nLEDs);
+  //    Serial.print(F("NUMLEDS: "));
+  //    Serial.println(NUMLEDS);
   //    Serial.print(F("NUMLEDS: "));
   //    Serial.println(NUMLEDS);
   //    Serial.println();
   //    // Serial.flush();
   //    Serial.println(F("Old Image:"));
-  //    for (unsigned char i = 0; i < nLEDs; i++) {
+  //    for (unsigned char i = 0; i < NUMLEDS; i++) {
   //      Serial.print(F(" "));
   //      Serial.print(image[i]);
   //    }
   //    delay(100);
   //    Serial.println();
   //    Serial.println(F("Image In:"));
-  //    for (unsigned char i = 0; i < nLEDs; i++) {
+  //    for (unsigned char i = 0; i < NUMLEDS; i++) {
   //      Serial.print(F(" "));
   //      Serial.print(imageIn[i]);
   //    }
@@ -424,11 +463,11 @@ void Pattern::setImage(unsigned char *imageIn)
   //    delay(100);
   //  }
   // Set the image to the new image
-  for (unsigned char i = 0; i < nLEDs; i++)
+  for (unsigned char i = 0; i < NUM_BYTES_PER_IMAGE; i++)
   {
     image[i] = imageIn[i];
   }
-  //  copyArray<unsigned int>(imageIn, image, nLEDs);
+  //  copyArray<unsigned int>(imageIn, image, NUMLEDS);
 
   //  if (DEBUGGING_PATTERN) {
   //    // Serial.flush();
@@ -436,7 +475,7 @@ void Pattern::setImage(unsigned char *imageIn)
   //    Serial.println();
   //    // Serial.flush();
   //    Serial.println(F("New Image:"));
-  //    for (unsigned char i = 0; i < nLEDs; i++) {
+  //    for (unsigned char i = 0; i < NUMLEDS; i++) {
   //      Serial.print(F(" "));
   //      Serial.print(image[i]);
   //    }
@@ -445,7 +484,7 @@ void Pattern::setImage(unsigned char *imageIn)
   //  }
 
   // Create an array of
-  unsigned char numColorsInArray = maxInArray<unsigned char>(image, nLEDs) + 1; // The number of colors is the maximum value plus one (i.e. if the maximum value is 2, then integers 0, 1, and 2 all correspond to different numbers, meaning there are 3 colors)
+  unsigned char numColorsInArray = maxInArrayPerNibble<unsigned char>(image, NUM_BYTES_PER_IMAGE) + 1; // The number of colors is the maximum value plus one (i.e. if the maximum value is 2, then integers 0, 1, and 2 all correspond to different numbers, meaning there are 3 colors)
 
   if (DEBUGGING_PATTERN)
   {
@@ -458,127 +497,117 @@ void Pattern::setImage(unsigned char *imageIn)
   // setupColors(numColorsInArray);
 };
 
-void Pattern::setImage(uint32_t *imageIn)
-{
-  // Set a new image array, and ensure that enough colors to use it
+// void Pattern::setImageZeros()
+// {
+//   // Using old image format (one char per LED, instead of one nible per LED)
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.flush();
+//     Serial.println(F("Setting zero image..."));
+//   }
 
-  // Set the image to the new image
-  for (unsigned char i = 0; i < nLEDs; i++)
-  {
-    image[i] = (char)imageIn[i];
-  }
+  // unsigned char newImage[NUMLEDS];
 
-  // Create an array of
-  unsigned char numColorsInArray = maxInArray<unsigned char>(image, nLEDs) + 1; // The number of colors is the maximum value plus one (i.e. if the maximum value is 2, then integers 0, 1, and 2 all correspond to different numbers, meaning there are 3 colors)
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.println(F("Starting loop..."));
+//   }
+//   for (unsigned char i = 0; i < NUMLEDS; i++)
+//   {
+//     //    for (int j = 0; j < nLightsPerLED; j++) {
+//     newImage[i] = 0; // Zero out the entire array
+//   }
 
-  parent_handler->setupPalette(numColorsInArray);
-  // setupColors(numColorsInArray);
-};
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.println(F("New image is: "));
+//     for (unsigned char i = 0; i < NUMLEDS; i++)
+//     {
+//       Serial.print(newImage[i]);
+//       Serial.print(F(" "));
+//     }
+//     Serial.println();
+//   }
 
-void Pattern::setImageZeros()
-{
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.flush();
-    Serial.println(F("Setting zero image..."));
-  }
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.println(F("Finished loop..."));
+//   }
 
-  unsigned char newImage[NUMLEDS];
+//   setImage(newImage);
+// };
 
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.println(F("Starting loop..."));
-  }
-  for (unsigned char i = 0; i < nLEDs; i++)
-  {
-    //    for (int j = 0; j < nLightsPerLED; j++) {
-    newImage[i] = 0; // Zero out the entire array
-  }
+// void Pattern::setImageColorInd(unsigned char colorInd)
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     // Serial.flush();
+//     //    Serial.println(F("Setting zero image..."));
+//   }
 
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.println(F("New image is: "));
-    for (unsigned char i = 0; i < nLEDs; i++)
-    {
-      Serial.print(newImage[i]);
-      Serial.print(F(" "));
-    }
-    Serial.println();
-  }
+//   colorInd = min(colorInd, parent_handler->getNumColors() - 1);
 
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.println(F("Finished loop..."));
-  }
+//   unsigned char newImage[NUMLEDS];
 
-  setImage(newImage);
-};
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.println(F("Starting loop..."));
+//   }
+//   for (unsigned char i = 0; i < NUMLEDS; i++)
+//   {
+//     //    for (int j = 0; j < nLightsPerLED; j++) {
+//     newImage[i] = colorInd; // Zero out the entire array
+//     //    if (DEBUGGING_PATTERN) {
+//     //      Serial.println(newImage[i]);
+//     //    }
+//     //    }
+//   }
 
-void Pattern::setImageColorInd(unsigned char colorInd)
-{
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    //    Serial.println(F("Setting zero image..."));
-  }
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.println(F("Finished loop..."));
+//   }
 
-  colorInd = min(colorInd, parent_handler->getNumColors() - 1);
+//   setImage(newImage);
+// };
 
-  unsigned char newImage[NUMLEDS];
+// void Pattern::setImageNumSegs(unsigned char numSegs)
+// {
+//   // Using old image format (one char per LED, instead of one nible per LED)
+//   //  if (DEBUGGING_PATTERN) {
+//   //    // Serial.flush();
+//   //    Serial.print(F("Making image with "));
+//   //    Serial.print(numSegs);
+//   //    Serial.println(F(" segments..."));
+//   //    //    delay(500);
+//   //  }
+//   unsigned char newImage[NUMLEDS];
+//   unsigned char distPerSeg = (unsigned char)roundf((float)NUMLEDS / (float)numSegs); // Get a *rounded* distance per segment to display (MAY NOT BE MATHEMATICALLY CORRECT, MAY NEED TO CALCULATE INSIDE OF LOOP)
 
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.println(F("Starting loop..."));
-  }
-  for (unsigned char i = 0; i < nLEDs; i++)
-  {
-    //    for (int j = 0; j < nLightsPerLED; j++) {
-    newImage[i] = colorInd; // Zero out the entire array
-    //    if (DEBUGGING_PATTERN) {
-    //      Serial.println(newImage[i]);
-    //    }
-    //    }
-  }
+//   // Create the image
+//   for (unsigned char i = 0; i < NUMLEDS; i++)
+//   {
+//     newImage[i] = 0; // Zero out the entire array
+//   }
 
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.println(F("Finished loop..."));
-  }
+//   for (unsigned char i = 0; i < NUMLEDS; i += distPerSeg)
+//   {
+//     newImage[i] = 1; // Place a 1 every distPerSed number of LEDs
+//   }
 
-  setImage(newImage);
-};
+//   for (unsigned char i = 0; i < nLEDs; i += distPerSeg)
+//   {
+//     newImage[i] = 1; // Place a 1 every distPerSed number of LEDs
+//   }
 
-void Pattern::setImageNumSegs(unsigned char numSegs)
-{
-  //  if (DEBUGGING_PATTERN) {
-  //    // Serial.flush();
-  //    Serial.print(F("Making image with "));
-  //    Serial.print(numSegs);
-  //    Serial.println(F(" segments..."));
-  //    //    delay(500);
-  //  }
-  unsigned char newImage[NUMLEDS];
-  unsigned char distPerSeg = (unsigned char)roundf((float)nLEDs / (float)numSegs); // Get a *rounded* distance per segment to display (MAY NOT BE MATHEMATICALLY CORRECT, MAY NEED TO CALCULATE INSIDE OF LOOP)
-
-  // Create the image
-  for (unsigned char i = 0; i < nLEDs; i++)
-  {
-    newImage[i] = 0; // Zero out the entire array
-  }
-
-  for (unsigned char i = 0; i < nLEDs; i += distPerSeg)
-  {
-    newImage[i] = 1; // Place a 1 every distPerSed number of LEDs
-  }
-
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    //    Serial.println(F("Setting segmented image..."));
-    //    delay(500);
-  }
-  setImage(newImage);
-};
+//   if (DEBUGGING_PATTERN)
+//   {
+//     // Serial.flush();
+//     //    Serial.println(F("Setting segmented image..."));
+//     //    delay(500);
+//   }
+//   setImage(newImage);
+// };
 
 void Pattern_Handler::preCalculateAllColor_()
 {
@@ -609,33 +638,33 @@ void Pattern_Handler::preCalculateAllColor_()
 }
 
 //void Pattern::setImageNumSegsR(int numSegs, unsigned char brightness) {
-//  int distPerSeg = (int)roundf((float)numSegs / (float)nLEDs); // Get a *rounded* distance per segment to display
+//  int distPerSeg = (int)roundf((float)numSegs / (float)NUMLEDS); // Get a *rounded* distance per segment to display
 //
-//  for (int i = 0; i < nLEDs; i += distPerSeg) {
+//  for (int i = 0; i < NUMLEDS; i += distPerSeg) {
 //    image[0][i] = brightness; //  out the entire array
 //  }
 //};
 //
 //void Pattern::setImageNumSegsG(int numSegs, unsigned char brightness) {
-//  int distPerSeg = (int)roundf((float)numSegs / (float)nLEDs); // Get a *rounded* distance per segment to display
+//  int distPerSeg = (int)roundf((float)numSegs / (float)NUMLEDS); // Get a *rounded* distance per segment to display
 //
-//  for (int i = 0; i < nLEDs; i += distPerSeg) {
+//  for (int i = 0; i < NUMLEDS; i += distPerSeg) {
 //    image[1][i] = brightness; //  out the entire array
 //  }
 //};
 //
 //void Pattern::setImageNumSegsB(int numSegs, unsigned char brightness) {
-//  int distPerSeg = (int)roundf((float)numSegs / (float)nLEDs); // Get a *rounded* distance per segment to display
+//  int distPerSeg = (int)roundf((float)numSegs / (float)NUMLEDS); // Get a *rounded* distance per segment to display
 //
-//  for (int i = 0; i < nLEDs; i += distPerSeg) {
+//  for (int i = 0; i < NUMLEDS; i += distPerSeg) {
 //    image[2][i] = brightness; //  out the entire array
 //  }
 //};
 //
 //void Pattern::setImageNumSegsW(int numSegs, unsigned char brightness) {
-//  int distPerSeg = (int)roundf((float)nLEDs / (float)numSegs); // Get a *rounded* distance per segment to display
+//  int distPerSeg = (int)roundf((float)NUMLEDS / (float)numSegs); // Get a *rounded* distance per segment to display
 //
-//  for (int i = 0; i < nLEDs; i += distPerSeg) {
+//  for (int i = 0; i < NUMLEDS; i += distPerSeg) {
 //    image[3][i] = brightness; //  out the entire array
 //  }
 //};
@@ -737,6 +766,7 @@ float Moving_Image::getLEDPos()
 
 void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
 {
+  // TODO: Check if we need to replace this NUMLEDs with NUM_BYTES_PER_IMAGE?
   unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + currentLEDPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(thisInd);
@@ -756,7 +786,7 @@ void Moving_Image::advanceLEDPos()
   unsigned long thisLEDAdvanceTime = micros();
   unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
 
-  currentLEDPos = fmodf(currentLEDPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update currentLEDPos, and keep it between 0<=currentLEDPos<nLEDs
+  currentLEDPos = fmodf(currentLEDPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update currentLEDPos, and keep it between 0<=currentLEDPos<NUMLEDS
   lastLEDAdvanceTime = thisLEDAdvanceTime;                                                      // Update lastLEDAdvanceTime
 };
 
@@ -769,7 +799,7 @@ Still_Image_Main::Still_Image_Main(Speedometer *speedometer) : Pattern_Main(spee
     //    delay(500);
   }
   //  setImageZeros();
-  setImageNumSegs(10);
+  // setImageNumSegs(10);
   //  Serial.println(F("Pattern set."));
 }
 
@@ -803,7 +833,7 @@ void Still_Image_Main::anim()
   // preCalculateAllColor_();
 
   // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
   {
     //    if (DEBUGGING_PATTERN) {
     //      // Serial.flush();
@@ -811,11 +841,11 @@ void Still_Image_Main::anim()
     //      Serial.print(LEDNum);
     //      Serial.print(F(", xTrueRounded is "));
     //      Serial.print(xTrueRounded);
-    //      Serial.print(F(", nLEDs is "));
-    //      Serial.println(nLEDs);
+    //      Serial.print(F(", NUMLEDS is "));
+    //      Serial.println(NUMLEDS);
     ////      delay(500);
     //    }
-    unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)nLEDs); // Adjust the position in the image
+    unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)NUMLEDS); // Adjust the position in the image
     //    if (DEBUGGING_PATTERN) {
     //      Serial.print(F("imagePos is "));
     //      Serial.println(imagePos);
@@ -859,7 +889,7 @@ Still_Image_Idle::Still_Image_Idle() : Pattern_Idle()
 
   // Set up black and red idle animation
   //  setImageZeros();
-  setImageNumSegs(10);
+  // setImageNumSegs(10);
 
   if (DEBUGGING_PATTERN)
   {
@@ -958,7 +988,7 @@ void Still_Image_Idle::anim()
     //    delay(1000);
   }
   // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
   {
     controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)));
   }
@@ -992,14 +1022,11 @@ void Moving_Image_Main::animMain()
   // preCalculateAllColor_();
 
   // Load the image into color memory, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
   {
-    unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)nLEDs); // Adjust the position in the image
-    if (getImageValInPos(imagePos) != 0)
-    {
-      // If the image at this location is not 0 (referencing a blank Color_), then add a new color to the LED strip
-      addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)), imagePos);
-    }
+    unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)NUMLEDS); // Adjust the position in the image
+    // Add a new color to the LED strip
+    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)), imagePos);
   }
 
   if (DEBUGGING_PATTERN)
@@ -1037,13 +1064,10 @@ void Moving_Image_Idle::animMain()
   // preCalculateAllColor_();
 
   // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < nLEDs; LEDNum++)
+  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
   {
-    if (getImageValInPos(LEDNum) != 0)
-    {
-      // If the image at this location is not 0 (referencing a blank Color_), then add a new color to the LED strip
-      addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)), LEDNum); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
-    }
+    // Add a new color to the LED strip
+    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)), LEDNum); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
   }
 
   if (DEBUGGING_PATTERN)
