@@ -14,23 +14,26 @@
 
 //Speedometer speedometer = Speedometer(tickISR, rTickISR);
 int outOfScopeRam = freeRam();
-Speedometer* speedometer = NULL;
-Pattern_Handler* pattern_handler = NULL; // Make a generic pattern object
-Still_Image_Idle* idlePat = NULL; // Used for debugging
+Speedometer *speedometer = NULL;
+Pattern_Handler *pattern_handler = NULL; // Make a generic pattern object
+Still_Image_Idle *idlePat = NULL;        // Used for debugging
 
-void setup() {
+void setup()
+{
   // Set up power
   pinMode(POWERPIN, OUTPUT);
   digitalWrite(POWERPIN, HIGH); // Enable the VRAE-10E1A0 connected to POWERPIN
 
   // Set up debugging
-  if (DEBUGGING_ANY) {
+  if (DEBUGGING_ANY)
+  {
     Serial.begin(9600);
     Serial.flush();
     delay(100);
   }
 
-  if (DEBUGGING_ANY) {
+  if (DEBUGGING_ANY)
+  {
     //    Serial.flush();
     Serial.println();
     Serial.println();
@@ -46,14 +49,17 @@ void setup() {
     //    Serial.println(random(1000));
   }
 
-  if (!LIBRARY_TEST) {
+  if (!LIBRARY_TEST)
+  {
 
     float newQ;
-    if (DEBUGGING_Q) {
+    if (DEBUGGING_Q)
+    {
       // newQ = getNewQ();
     }
 
-    if (DEBUGGING_GENERAL) {
+    if (DEBUGGING_GENERAL)
+    {
       //    Serial.flush();
       Serial.println();
       Serial.println(F("Making Speedometer..."));
@@ -62,12 +68,15 @@ void setup() {
 
     // Set up Speedometer
     speedometer = new Speedometer();
-    if (DEBUGGING_Q) {
+    if (DEBUGGING_Q)
+    {
       speedometer->getKalman()->setQ(newQ);
     }
 
-    if (!UNITTEST_SPEEDOMETER) {
-      if (DEBUGGING_GENERAL) {
+    if (!UNITTEST_SPEEDOMETER)
+    {
+      if (DEBUGGING_GENERAL)
+      {
         //    Serial.flush();
         Serial.println(F("Making Pattern Handler..."));
         Serial.print(F("Current memory: "));
@@ -79,7 +88,8 @@ void setup() {
       pattern_handler = new Pattern_Handler(speedometer); // Make a generic pattern object
       pattern_handler->setIdlePattern(I_MOVING);
 
-      if (DEBUGGING_GENERAL) {
+      if (DEBUGGING_GENERAL)
+      {
         //    Serial.flush();
         Serial.println(F("Made Pattern Handler..."));
         Serial.print(F("Current memory: "));
@@ -87,7 +97,8 @@ void setup() {
         Serial.println();
       }
 
-      if (DEBUGGING_GENERAL) {
+      if (DEBUGGING_GENERAL)
+      {
         //    Serial.flush();
         Serial.println(F("Making Dynamic color..."));
         Serial.print(F("Current memory: "));
@@ -96,9 +107,10 @@ void setup() {
         delay(100);
       }
       // Make a test Dynamic Color (GETTING RID OF THE NEXT THREE LINES SHOULD RETURN THE PROGRAM TO A STABLE STATE)
-      Color_dTime* c = new Color_dTime();
+      Color_dTime *c = new Color_dTime();
 
-      if (DEBUGGING_GENERAL) {
+      if (DEBUGGING_GENERAL)
+      {
         //    Serial.flush();
         Serial.println(F("Made color, assigning to pattern..."));
         Serial.print(F("Current memory: "));
@@ -112,13 +124,17 @@ void setup() {
     //
     //  speedometer = &speedometerNew;
     //  pattern = &patternNew;
-  } else {
+  }
+  else
+  {
     //
     //// Library test script
     //
 
-    for (int i = 0; i < 1000; i++) {
-      if (DEBUGGING_ANY) {
+    for (int i = 0; i < 1000; i++)
+    {
+      if (DEBUGGING_ANY)
+      {
         Serial.flush();
         Serial.print(F("Making idle pattern "));
         Serial.println(i);
@@ -130,7 +146,8 @@ void setup() {
       // Create a still idle image
       idlePat = new Still_Image_Idle();
 
-      if (DEBUGGING_ANY) {
+      if (DEBUGGING_ANY)
+      {
         Serial.flush();
         Serial.print(F("Made idle pattern "));
         Serial.println(i);
@@ -143,7 +160,8 @@ void setup() {
 
       delete idlePat;
 
-      if (DEBUGGING_ANY) {
+      if (DEBUGGING_ANY)
+      {
         Serial.flush();
         Serial.print(F("Deleted idle pattern "));
         Serial.println(i);
@@ -152,10 +170,10 @@ void setup() {
         Serial.println();
       }
     }
-
   }
 
-  if (DEBUGGING_ANY) {
+  if (DEBUGGING_ANY)
+  {
     //    Serial.flush();
     Serial.println(F("Set finished."));
     Serial.print(F("Current memory: "));
@@ -167,9 +185,12 @@ void setup() {
   }
 };
 
-void loop() {
-  if (!LIBRARY_TEST) {
-    if (DEBUGGING_GENERAL) {
+void loop()
+{
+  if (!LIBRARY_TEST)
+  {
+    if (DEBUGGING_GENERAL)
+    {
       Serial.println(F("Speedometer loop..."));
       //      Serial.print(F("nLEDs is "));
       //      Serial.println(speedometer->kalman.checkNumLEDs());
@@ -179,8 +200,10 @@ void loop() {
     // Execute the Speedometer's main loop (determine the current orientation of the wheel)
     speedometer->mainLoop();
 
-    if (!UNITTEST_SPEEDOMETER) {
-      if (DEBUGGING_GENERAL) {
+    if (!UNITTEST_SPEEDOMETER)
+    {
+      if (DEBUGGING_GENERAL)
+      {
         Serial.println(F("Pattern loop..."));
         Serial.print(F("Current memory: "));
         Serial.println(freeRam());
@@ -191,10 +214,13 @@ void loop() {
       pattern_handler->mainLoop();
     }
 
-    if (DEBUGGING_GENERAL) {
+    if (DEBUGGING_GENERAL)
+    {
       Serial.println();
     }
-  } else {
+  }
+  else
+  {
     //
     //// Library test loop
     //
@@ -204,22 +230,29 @@ void loop() {
   }
 };
 
-float getNewQ() {
+float getNewQ()
+{
   //  Serial.flush();
   Serial.println(F("What is Q?"));
   String inString = "";
   float finalVal = 0;
-  while (finalVal <= 0) {
+  while (finalVal <= 0)
+  {
     //    while (Serial.available() == 0) {}
-    while (Serial.available() > 0) {
+    while (Serial.available() > 0)
+    {
       int inChar = Serial.read();
-      if (inChar != '\n') {
+      if (inChar != '\n')
+      {
         inString += (char)inChar;
         //        Serial.println(inString);
-      } else {
+      }
+      else
+      {
         finalVal = inString.toFloat();
         inString = "";
-        if (finalVal <= 0) {
+        if (finalVal <= 0)
+        {
           //          Serial.flush();
           Serial.print(F("Please enter valid positive value for Q (Q = "));
           //          Serial.flush();
@@ -239,10 +272,11 @@ float getNewQ() {
   return finalVal;
 };
 
-int freeRam () {
+int freeRam()
+{
   extern int __heap_start, *__brkval;
   int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+  return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
 };
 
 // Define nibble operations (to deal with the image field, which has two image locations stored in each byte)
@@ -263,20 +297,20 @@ unsigned char valFromSecondNibble(unsigned char fullByte)
   return (unsigned char)fullByte >> 4;
 }
 
-unsigned char valToFirstNibble(unsigned char valToSet, unsigned char fullByte)
+void valToFirstNibble(unsigned char valToSet, unsigned char &fullByte)
 {
   // Set a value to the first nibble in fullByte
   // (Assuming that valToSet <= 16, without checks)
 
   // Mask out to get only the second nibble, then set the first nibble to valToSet
-  return (unsigned char)( (SECOND_NIBBLE_MASK & fullByte) & valToSet);
+  fullByte = (unsigned char)((SECOND_NIBBLE_MASK & fullByte) | valToSet);
 }
 
-unsigned char valToSecondNibble(unsigned char valToSet, unsigned char fullByte)
+void valToSecondNibble(unsigned char valToSet, unsigned char &fullByte)
 {
   // Set a value to the second nibble in fullByte
   // (Assuming that valToSet <= 16, without checks)
 
-  // Mask out to get only the first nibble, then set the second nibble to valToSet (by bit-wise anding with a bit-shifted valToSet)
-  return (unsigned char) ((FIRST_NIBBLE_MASK & fullByte) & valToSet<<4);
+  // Mask out to get only the first nibble, then set the second nibble to valToSet (by bit-wise or-ing with a bit-shifted valToSet)
+  fullByte = (unsigned char)((FIRST_NIBBLE_MASK & fullByte) | valToSet << 4);
 }

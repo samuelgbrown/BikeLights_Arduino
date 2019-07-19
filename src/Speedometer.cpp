@@ -284,8 +284,6 @@ void Kalman::resetFilter()
   float p0[N_STA * N_STA] = {0, 0, 0, 0, 1, 0, 0, 0, 10}; // Set an array for the initial PPrior
   setP0(p0);
 
-  // Set R
-
   for (unsigned char s = 0; s < N_STA; s++)
   {
     // Go through all state variable slots
@@ -298,7 +296,6 @@ void Kalman::resetFilter()
     //   {
     //     if (s == 0)
     //     {
-    //       // TODO: REFACTOR THIS TO USE setP0, AND SET UP setP0 properly!
     //       PPost[s][s2] = 0; // PPost - Completely certain about position
     //     }
     //     else if (s == 1)

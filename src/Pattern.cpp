@@ -766,7 +766,6 @@ float Moving_Image::getLEDPos()
 
 void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
 {
-  // TODO: Check if we need to replace this NUMLEDs with NUM_BYTES_PER_IMAGE?
   unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + currentLEDPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(thisInd);
