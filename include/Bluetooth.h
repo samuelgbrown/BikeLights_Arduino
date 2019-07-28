@@ -18,7 +18,7 @@
 class Bluetooth
 {
 public:
-    Bluetooth();
+    Bluetooth(Pattern_Handler *pattern_handler, Speedometer *speedometer);
     ~Bluetooth();
 
     void mainLoop(); // The main loop that is called repeatedly for the Bluetooth class
@@ -46,8 +46,8 @@ public:
 private:
     // TODO: Convert this to hardware serial!!!
     SoftwareSerial btSer = SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX); // Initialize the Serial connection to the bluetooth device (HC06)
-    Pattern_Handler *pattern_handler;                                        // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
-    Speedometer *speedometer;                                                // A pointer to the speedometer, so we can change it using information sent via Bluetooth
+    Pattern_Handler *pattern_handler = NULL;                                 // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
+    Speedometer *speedometer = NULL;                                         // A pointer to the speedometer, so we can change it using information sent via Bluetooth
 };
 
 #endif

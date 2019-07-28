@@ -1,6 +1,9 @@
 #include "Speedometer.h"
 #include "Pattern.h"
 #include "Definitions.h"
+#if !NO_BLUETOOTH
+#include "Bluetooth.h"
+#endif
 
 //void tickISR() {
 //  // Global scope wrapper function for the Speedometer's member function (Just a member function to keep everything nicely grouped)
@@ -16,7 +19,10 @@
 int outOfScopeRam = freeRam();
 Speedometer *speedometer = NULL;
 Pattern_Handler *pattern_handler = NULL; // Make a generic pattern object
-Still_Image_Idle *idlePat = NULL;        // Used for debugging
+#if !NO_BLUETOOTH
+Bluetooth *bluetooth = NULL;
+#endif
+Still_Image_Idle *idlePat = NULL; // Used for debugging
 
 void setup()
 {
@@ -52,11 +58,7 @@ void setup()
   if (!LIBRARY_TEST)
   {
 
-    float newQ;
-    if (DEBUGGING_Q)
-    {
-      // newQ = getNewQ();
-    }
+    // float newQ;
 
     if (DEBUGGING_GENERAL)
     {
@@ -68,10 +70,10 @@ void setup()
 
     // Set up Speedometer
     speedometer = new Speedometer();
-    if (DEBUGGING_Q)
-    {
-      speedometer->getKalman()->setQ(newQ);
-    }
+    // if (DEBUGGING_Q)
+    // {
+    //   speedometer->getKalman()->setQ(newQ);
+    // }
 
     if (!UNITTEST_SPEEDOMETER)
     {
@@ -86,7 +88,6 @@ void setup()
 
       // Set up a Pattern Handler
       pattern_handler = new Pattern_Handler(speedometer); // Make a generic pattern object
-      pattern_handler->setIdlePattern(I_MOVING);
 
       if (DEBUGGING_GENERAL)
       {
@@ -97,33 +98,29 @@ void setup()
         Serial.println();
       }
 
+#if !NO_BLUETOOTH
       if (DEBUGGING_GENERAL)
       {
         //    Serial.flush();
-        Serial.println(F("Making Dynamic color..."));
+        Serial.println(F("Making Bluetooth..."));
         Serial.print(F("Current memory: "));
         Serial.println(freeRam());
         Serial.println();
-        delay(100);
       }
-      // Make a test Dynamic Color (GETTING RID OF THE NEXT THREE LINES SHOULD RETURN THE PROGRAM TO A STABLE STATE)
-      Color_dTime *c = new Color_dTime();
+
+      // Set up a Bluetooth object
+      bluetooth = new Bluetooth(pattern_handler, speedometer);
 
       if (DEBUGGING_GENERAL)
       {
         //    Serial.flush();
-        Serial.println(F("Made color, assigning to pattern..."));
+        Serial.println(F("Made Bluetooth..."));
         Serial.print(F("Current memory: "));
         Serial.println(freeRam());
         Serial.println();
-        delay(100);
       }
-      delete c;
+#endif
     }
-
-    //
-    //  speedometer = &speedometerNew;
-    //  pattern = &patternNew;
   }
   else
   {
@@ -212,6 +209,19 @@ void loop()
       }
       // Execute the Pattern' main loop
       pattern_handler->mainLoop();
+
+#if !NO_BLUETOOTH
+      if (DEBUGGING_GENERAL)
+      {
+        Serial.println(F("Bluetooth Loop..."));
+        Serial.print(F("Current memory: "));
+        Serial.println(freeRam());
+        Serial.println();
+        //    delay(500);
+      }
+      // Execute the Bluetooth main loop
+      bluetooth->mainLoop();
+#endif
     }
 
     if (DEBUGGING_GENERAL)
@@ -230,47 +240,47 @@ void loop()
   }
 };
 
-float getNewQ()
-{
-  //  Serial.flush();
-  Serial.println(F("What is Q?"));
-  String inString = "";
-  float finalVal = 0;
-  while (finalVal <= 0)
-  {
-    //    while (Serial.available() == 0) {}
-    while (Serial.available() > 0)
-    {
-      int inChar = Serial.read();
-      if (inChar != '\n')
-      {
-        inString += (char)inChar;
-        //        Serial.println(inString);
-      }
-      else
-      {
-        finalVal = inString.toFloat();
-        inString = "";
-        if (finalVal <= 0)
-        {
-          //          Serial.flush();
-          Serial.print(F("Please enter valid positive value for Q (Q = "));
-          //          Serial.flush();
-          Serial.print(finalVal);
-          //          Serial.flush();
-          Serial.println(").");
-        }
-        break;
-      }
-    }
-  }
+// float getNewQ()
+// {
+//   //  Serial.flush();
+//   Serial.println(F("What is Q?"));
+//   String inString = "";
+//   float finalVal = 0;
+//   while (finalVal <= 0)
+//   {
+//     //    while (Serial.available() == 0) {}
+//     while (Serial.available() > 0)
+//     {
+//       int inChar = Serial.read();
+//       if (inChar != '\n')
+//       {
+//         inString += (char)inChar;
+//         //        Serial.println(inString);
+//       }
+//       else
+//       {
+//         finalVal = inString.toFloat();
+//         inString = "";
+//         if (finalVal <= 0)
+//         {
+//           //          Serial.flush();
+//           Serial.print(F("Please enter valid positive value for Q (Q = "));
+//           //          Serial.flush();
+//           Serial.print(finalVal);
+//           //          Serial.flush();
+//           Serial.println(").");
+//         }
+//         break;
+//       }
+//     }
+//   }
 
-  //  Serial.flush();
-  Serial.print(F("Q = "));
-  //  Serial.flush();
-  Serial.println(finalVal);
-  return finalVal;
-};
+//   //  Serial.flush();
+//   Serial.print(F("Q = "));
+//   //  Serial.flush();
+//   Serial.println(finalVal);
+//   return finalVal;
+// };
 
 int freeRam()
 {

@@ -12,9 +12,13 @@
 
 */
 
+// Code differences based on hardware
+#define SRAM_ATTACHED false // Is SRAM attached to this unit?  If so, then certain memory intensive computations, such as blurring, can be done
+
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
 #define LIBRARY_TEST false         // Should a single script be run instead of the normal function (to test singular parts of the library)?
+#define NO_BLUETOOTH true          // Try compiling without any Bluetooth code...just cuz
 
 // Debugging
 #define DEBUGGING_GENERAL true      // Breakdown every step that the software takes
@@ -129,19 +133,19 @@ class Pattern_Handler;
 // Define enums used for different animations
 enum MAIN_ANIM
 {
-  M_STATIONARY,
-  M_STILL,
-  M_MOVING,
-  M_SPINNER,
-  M_NOTHING
+  M_STATIONARY, // No rotation relative to the wheel
+  M_STILL,      // No rotation relative to the ground
+  M_MOVING,     // Constant rotation relative to the ground
+  M_SPINNER,    // "Spinner" behavior
+  M_NOTHING     // No animation (remove?)
 };
 
 enum IDLE_ANIM
 {
-  I_STATIONARY,
-  I_STILL,
-  I_MOVING,
-  I_NOTHING
+  I_STATIONARY, // No rotation relative to the wheel
+  I_STILL,      // No rotation relative to the ground
+  I_MOVING,     // Constant rotation relative to the ground
+  I_NOTHING     // No animation (remove?)
 };
 
 enum BLEND_TYPE
@@ -239,5 +243,7 @@ T maxInArrayPerNibble(T *arrayIn, int arraySize)
     maxVal = max(maxVal, valFromFirstNibble(arrayIn[i]));
     maxVal = max(maxVal, valFromSecondNibble(arrayIn[i]));
   }
+
+  return maxVal;
 }
 #endif

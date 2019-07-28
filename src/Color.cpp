@@ -46,6 +46,8 @@ colorObj &colorObj::operator=(const colorObj &cO)
   {
     c[i] = cO.c[i];
   }
+
+  return *this;
 };
 
 unsigned char colorObj::r() const
@@ -494,11 +496,11 @@ unsigned char Color_d<T>::blendChars(unsigned char c1, unsigned char c2, float r
   return (unsigned char)((float)c1 + ((float)c2 - (float)c1) * ratio);
 };
 
-template <class T>
-unsigned char Color_d<T>::getNumColors() const
-{
-  return numColors;
-};
+// template <class T>
+// unsigned char Color_d<T>::getNumColors() const
+// {
+//   return numColors;
+// };
 
 template <class T>
 colorObj &Color_d<T>::getThisColorObj(unsigned char numInArray) const
@@ -1089,6 +1091,10 @@ unsigned long Color_dTime::getCurVal() const
 };
 
 Color_dVel::Color_dVel(Speedometer *speedometer) : speedometer(speedometer){};
+
+Color_dVel::Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors) : speedometer(speedometer), Color_d<float>(cA, tA, bA, numColors)
+{
+}
 
 Color_dVel *Color_dVel::clone() const
 {

@@ -35,11 +35,6 @@ Pattern::Pattern()
 //   }
 // };
 
-Pattern::~Pattern()
-{
-  // deleteColorArray(); // Delete the color array when the Pattern is deleted
-}
-
 void Pattern_Handler::setupPalette(unsigned char numColorsIn)
 {
   //  if (DEBUGGING_PATTERN) {
@@ -234,7 +229,9 @@ void Pattern_Handler::setupPalette(Color_BT *colorMessagesIn, unsigned char numC
 
   for (unsigned char i = 0; i < numColorsIn; i++)
   {
+#if !NO_BLUETOOTH
     palette[i] = Bluetooth::Color_FromPB(colorMessagesIn[i], speedometer);
+#endif
   }
   //  *colors = *newColorArray;
   numColors = numColorsIn;
@@ -311,6 +308,8 @@ unsigned char Pattern::getImageRawByte(unsigned char byteNum)
   {
     return image[0];
   }
+
+  return 0;
 }
 
 const unsigned char *Pattern::getImage()
@@ -506,7 +505,7 @@ void Pattern::setImage(unsigned char *imageIn)
 //     Serial.println(F("Setting zero image..."));
 //   }
 
-  // unsigned char newImage[NUMLEDS];
+// unsigned char newImage[NUMLEDS];
 
 //   if (DEBUGGING_PATTERN)
 //   {
@@ -710,10 +709,13 @@ void Moving_Image::anim()
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(F("Starting Moving Image upper level animation..."));
   //  }
-  //  colorBlur(); // Calculate the blurring of the color memory (Occurs before animMain() if using the memory-heavy method)
-  animMain();      // Perform the custom animation defined by the derived classes
-                   //  colorBlur(); // Calculate the blurring of the color memory
-                   //  sendColors(); // Send the colors in colorMemory to the LEDs
+  animMain(); // Perform the custom animation defined by the derived classes
+
+#if SRAM_ATTACHED
+  colorBlur();  // Calculate the blurring of the color memory
+  sendColors(); // Send the colors in colorMemory to the LEDs
+#endif
+
   advanceLEDPos(); // Advance the LED position
 
   if (DEBUGGING_MOVINGIMAGE)
@@ -740,9 +742,9 @@ int Moving_Image::getRotateSpeed()
   return rotateSpeed;
 }
 
-float Moving_Image::getLEDPos()
+float Moving_Image::getImageMovementPos()
 {
-  return currentLEDPos;
+  return imageMovementPos;
 };
 
 //void Moving_Image::colorBlur() {
@@ -766,11 +768,14 @@ float Moving_Image::getLEDPos()
 
 void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
 {
-  unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + currentLEDPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
-  //  if (DEBUGGING_MOVINGIMAGE) {
-  //    Serial.println(thisInd);
-  //  }
-  //  colorMemory[thisInd] = colorObjIn;
+#if SRAM_ATTACHED
+  unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + imageMovementPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
+  if (DEBUGGING_MOVINGIMAGE)
+  {
+    Serial.println(thisInd);
+  }
+  colorMemory[thisInd] = colorObjIn;
+#endif
 };
 
 //void Moving_Image::sendColors() {
@@ -785,8 +790,8 @@ void Moving_Image::advanceLEDPos()
   unsigned long thisLEDAdvanceTime = micros();
   unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
 
-  currentLEDPos = fmodf(currentLEDPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update currentLEDPos, and keep it between 0<=currentLEDPos<NUMLEDS
-  lastLEDAdvanceTime = thisLEDAdvanceTime;                                                      // Update lastLEDAdvanceTime
+  imageMovementPos = fmodf(imageMovementPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update imageMovementPos, and keep it between 0<=imageMovementPos<NUMLEDS
+  lastLEDAdvanceTime = thisLEDAdvanceTime;                                                            // Update lastLEDAdvanceTime
 };
 
 Still_Image_Main::Still_Image_Main(Speedometer *speedometer) : Pattern_Main(speedometer)
@@ -1021,11 +1026,17 @@ void Moving_Image_Main::animMain()
   // preCalculateAllColor_();
 
   // Load the image into color memory, as is
-  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+  for (unsigned char thisWheelPos = 0; thisWheelPos < NUMLEDS; thisWheelPos++)
   {
-    unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)NUMLEDS); // Adjust the position in the image
-    // Add a new color to the LED strip
-    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)), imagePos);
+// Add a new color to the LED strip
+#if SRAM_ATTACHED
+    // Add the pixel color specified to RAM, to be sent after processing
+    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(((thisWheelPos + xTrueRounded) % (int)NUMLEDS))), imagePos);
+#else
+    // Send the pixels directly to the LED strip
+    unsigned char thisInd = (unsigned char)fmod(round(((thisWheelPos + xTrueRounded) % (int)NUMLEDS) - getImageMovementPos()), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
+    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisInd)));
+#endif
   }
 
   if (DEBUGGING_PATTERN)
@@ -1063,10 +1074,16 @@ void Moving_Image_Idle::animMain()
   // preCalculateAllColor_();
 
   // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+  for (unsigned char thisWheelPos = 0; thisWheelPos < NUMLEDS; thisWheelPos++)
   {
+#if SRAM_ATTACHED
+    // Add the pixel color specified to RAM, to be sent after processing
+    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisWheelPos)), thisWheelPos); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
+#else
     // Add a new color to the LED strip
-    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)), LEDNum); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
+    unsigned char thisInd = (unsigned char)fmod(round(((thisWheelPos) % (int)NUMLEDS) - getImageMovementPos()), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
+    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisInd)));
+#endif
   }
 
   if (DEBUGGING_PATTERN)

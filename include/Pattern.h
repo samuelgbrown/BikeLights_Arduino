@@ -20,9 +20,12 @@
 #include "Arduino.h"
 #include "Definitions.h"
 #include "Speedometer.h"
-#include "Bluetooth.h"
 #include "Color.h"
 #include <math.h>
+
+#if !NO_BLUETOOTH
+#include "Bluetooth.h"
+#endif
 
 // Each Pattern holds on to an array of Color_'s (abstract color objects which may be static or dynamic without input needed from the Pattern), and an "image" array that maps each LED on the wheel to a Color_
 class Pattern
@@ -31,7 +34,7 @@ public:
   Pattern();                                             // Constructor
   Pattern(Color_ **colorsIn, unsigned char numColorsIn); // Constructor
 
-  ~Pattern(); // Destructor
+  virtual ~Pattern() = default; // Destructor
 
   virtual void anim() = 0; // Animation function
 
@@ -105,28 +108,31 @@ public:
 };
 
 // An abstract class to describe Patterns that use a moving image
+// TODO: Improve the documentation and naming of the variables in here; blurring may become viable if I use SRAM, and I'm never going to get it to work if I have no idea what any of this stuff does.
 class Moving_Image
 {
 public:
   Moving_Image();              // Constructor
   void anim();                 // The animation function
-  virtual void animMain() = 0; // Each derived Pattern makes an animation that is run, similar to the anim() function of each other Pattern.  However, the currentLEDPos must be advanced each animation cycle, which will be done in the real Moving_Image::anim()
+  virtual void animMain() = 0; // Each derived Pattern makes an animation that is run, similar to the anim() function of each other Pattern.  However, the imageMovementPos must be advanced each animation cycle, which will be done in the real Moving_Image::anim()
 
   void setImageBleed(unsigned char imageBleedIn); // Change imageBleed
 
   void setRotateSpeed(int rotateSpeedIn);                                  // Change rotateSpeed
   int getRotateSpeed();                                                    // Get the rotation speed
-  float getLEDPos();                                                       // Get the current value of the protected currentLEDPos variable
-  void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the animMain() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by currentLEDPos and "blurring")
+  float getImageMovementPos();                                             // Get the current value of the protected imageMovementPos variable
+  void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the animMain() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by imageMovementPos and "blurring")
 
 protected:
-  //    colorObj colorMemory[NUMLEDS]; // An array of colorObj's that keeps track of the history of movements
+#if SRAM_ATTACHED
+  colorObj colorMemory[NUMLEDS]; // An array of colorObj's that keeps track of the history of movements
+#endif
 
 private:
   unsigned char imageBleed = 150;       // Amount of "bleed" from the moving image (0 <= bleedIn <= 255, higher values mean more after-image)
   int rotateSpeed = 10;                 // Speed of image rotation (in LEDs/second)
-  float currentLEDPos = 0;              // Current image reference position around the wheel
-  unsigned long lastLEDAdvanceTime = 0; // The time at which currentLEDPos was last updated
+  float imageMovementPos = 0;           // Current image reference position around the wheel
+  unsigned long lastLEDAdvanceTime = 0; // The time at which imageMovementPos was last updated
 
   //    void colorBlur(); // Calculate the blurring of the color memory
   void advanceLEDPos(); // Advance the current location of the image reference position around the wheel

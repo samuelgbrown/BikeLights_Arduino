@@ -875,6 +875,18 @@ void Kalman::setR(float *newR)
   }
 }
 
+float Kalman::getQ() {
+  return Q;
+}
+
+const float ** Kalman::getP0() {
+  return (float **) PPrior;
+}
+
+const float ** Kalman::getR() {
+  return (float **) R;
+}
+
 void Kalman::ScalarAddF(float *A, float b, unsigned char numRows, unsigned char numCols, float *C)
 {
   // CAN BE DONE IN PLACE

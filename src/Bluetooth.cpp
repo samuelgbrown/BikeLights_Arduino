@@ -1,6 +1,6 @@
 #include "Bluetooth.h"
 
-Bluetooth::Bluetooth()
+Bluetooth::Bluetooth(Pattern_Handler *pattern_handler, Speedometer *speedometer) : pattern_handler(pattern_handler), speedometer(speedometer)
 {
 }
 
@@ -12,9 +12,9 @@ bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
 {
     // A decode callback for a pb_istream_t built from a Serial stream
     SoftwareSerial *thisBTSer = (SoftwareSerial *)stream->state; // Get the Bluetooth stream
-    int bytesToRead = min(thisBTSer->available(), count);        // Get the minimum between the size of the buffer (buf) and the number of bytes in the Serial buffer (thisBTSer->available())
+    size_t bytesToRead = min((size_t) thisBTSer->available(), count);        // Get the minimum between the size of the buffer (buf) and the number of bytes in the Serial buffer (thisBTSer->available())
 
-    for (int byteNum = 0; byteNum < bytesToRead; byteNum++)
+    for (unsigned int byteNum = 0; byteNum < bytesToRead; byteNum++)
     {
         // For each byte in the input stream, add it to the buffer
         buf[byteNum] = thisBTSer->read();
@@ -281,7 +281,7 @@ Color_ *Bluetooth::Color_FromPB(Color_BT &color_bt, Speedometer *speedometer)
 colorObj Bluetooth::ColorObjFromPB(ColorObj_BT &colorObj_bt)
 {
     // Create a new colorObj object using the information stored in the ColorObj_BT Message
-    colorObj c = colorObj(colorObj_bt.r, colorObj_bt.g, colorObj_bt.b, colorObj_bt.w);
+    return colorObj(colorObj_bt.r, colorObj_bt.g, colorObj_bt.b, colorObj_bt.w);
 }
 
 BLEND_TYPE Bluetooth::BlendTypeFromPB(BlendType_BT blendType_bt)
@@ -548,6 +548,8 @@ ColorObj_BT Bluetooth::PBFromColorObj(const colorObj &c)
     c_bt.b = (uint32_t)c.b();
     c_bt.g = (uint32_t)c.g();
     c_bt.w = (uint32_t)c.w();
+
+    return c_bt;
 }
 
 Kalman_BT Bluetooth::PBFromKalman()
