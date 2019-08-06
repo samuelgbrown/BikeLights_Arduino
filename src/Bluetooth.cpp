@@ -40,7 +40,7 @@ void Bluetooth::mainLoop() {
                     boolean request = getBoolFromByte(buf[0], 7); // Determine if this is a request for information, or a message containing infromation
                     content = getNUIntFromByte(buf[0], 3, 4); // Get the type of content that is being requested or sent
                     totalNumMessages == getNUIntFromByte(buf[1], 4, 4); // Get the total number of messages
-                    curMessagePos++; // Finished the first byte
+                    curMessagePos+=2; // Finished the first two bytes
                     
                     if (request) {
                         // If this is a request, then we have already read all of the information that we need from this message.  Send a message back with the requested information
@@ -56,11 +56,41 @@ void Bluetooth::mainLoop() {
                     }
                 }
                 
-                // If this message contains content sent by the Android program, then read the message and update the 
-                // TODO: Go through the message and extract the information.
+                // If this message contains content sent by the Android program, then read the message and update the Arduino
+                // TODO: Currently being written as if it's all held within a single message.  Add multiple messaging handling later!!!
+                //          This may be done by declaring a struct outside of this loop, and populating it with information that depends on the type of content (may need to be polymorphic).  This information can keep track of where we are in the transfer, but try to limit the memory usage, if possible!
+                switch (content) {
+                    case 0:
+                    // Bike wheel animation
+                    // First, get the invariate information from the head of the message
+                    unsigned char incomingNumLEDs = buf[curMessagePos++]; // Get the number of LEDs that the Android thinks we have
+                    unsigned char totalNumColor_s = buf[curMessagePos++]; // Get the number of Color_'s that are in the palette
+
+                    break;
+                    case 1:
+                    // Kalman Info
+                    
+                    break;
+                    case 2:
+                    // Brightness scale
+
+                    break;
+                    case 3:
+                    // Storage
+
+                    break;
+                    case 4:
+                    // Battery
+
+                    break;
+                }
+
+                // TODO: Go through the message and extract the information (above).
 
                 // Once we have finished, note that we have finished analyzing this message
                 messageNum++;
+
+                // TODO: Send a message to the Android to let it know that we are ready for the next message
             }
         }
     }
