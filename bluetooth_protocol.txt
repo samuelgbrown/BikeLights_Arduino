@@ -22,7 +22,7 @@ C (3uint) - A numerical representation of the type of information contained in t
     3 - Storage information
     4 - Battery information
 X - Unused
-TT (4uint) - The number of 64-byte messages required to convey this information
+TT (4uint) - The number of 4-byte messages required to convey this information
 S (4uint) - The number of this message in the sequence up to T messages
 
 
@@ -92,6 +92,7 @@ C == 1 : Kalman
 - NO1 NO2 NO3 NO4 ST1 ST2 ST3 ST4 | b_Q1 b_Q2 b_Q3 b_Q4 | [NO*NO x b_R1 b_R2 b_R3 b_R4] | [ST*ST x b_P1 b_P2 b_P3 b_P4] -
 NO (4uint) - Number of observation variables (2 - position, velocity)
 ST (4uint) - Number of state variables (3 - position, velocity, acceleration)
+Q (4float) - Q, as a scalar
 R (4float[]) - NO x NO matrix, intepretted as columns first, then rows
 P (4float[]) - ST x ST matrix, intepretted as columns first, then rows
 

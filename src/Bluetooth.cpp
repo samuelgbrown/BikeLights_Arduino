@@ -8,6 +8,121 @@ Bluetooth::~Bluetooth()
 {
 }
 
+// TODO: START HERE:  Finish writing the decoding function
+void Bluetooth::mainLoop() {
+    // Check if there is anything on the serial line
+    int count = btSer.available();
+    if (count > 0)
+    {
+        if (count > MAX_BT_BUFFER_SIZE)
+        {
+            // SOMETHING HAS GONE HORRIBLY WRONG!!!
+        }
+        else
+        {
+            // Before any of this stuff, store the current amount of freeRam, in case the user asks for it (don't want to taint the answer will all of the memory we'll need to do the message processing)
+            int freeRamNow = freeRam();
+
+            // We have just recieved the first message in a new communication.  Initialize as such.
+            unsigned char messageNum = 0; // Initialize the message number counter
+            unsigned char totalNumMessages = 1; // Initialize the total number of messages (start it at one, so the first loop can run, then it will update once the first message is read)
+            unsigned char content; // The type of content that is being sent/requested by the Android application
+
+            while (messageNum < totalNumMessages) {
+                // Read the message from the Serial buffer
+                unsigned char * buf = new unsigned char [count]; // Create a buffer to read the message into
+                btSer.readBytes(buf, count); // Read the message into the buffer
+                unsigned char curMessagePos = 0; // The current position in the buffer
+
+                // Read any needed header information
+                if (messageNum == 0) {
+                    // Start by reading the first two bytes, which are always of the same format
+                    boolean request = getBoolFromByte(buf[0], 7); // Determine if this is a request for information, or a message containing infromation
+                    content = getNUIntFromByte(buf[0], 3, 4); // Get the type of content that is being requested or sent
+                    totalNumMessages == getNUIntFromByte(buf[1], 4, 4); // Get the total number of messages
+                    curMessagePos++; // Finished the first byte
+                    
+                    if (request) {
+                        // If this is a request, then we have already read all of the information that we need from this message.  Send a message back with the requested information
+                        // TODO: SET UP MESSAGE WRITING FUNCTIONS!
+                    }
+                }
+
+                // Check the message number of this message, according to its information
+                {
+                    unsigned char readMessageNum = getNUIntFromByte(buf[1], 4, 0); // Get the message number, according to the byte
+                    if (readMessageNum != messageNum) {
+                        // Something has gone horribly wrong...
+                    }
+                }
+                
+                // If this message contains content sent by the Android program, then read the message and update the 
+                // TODO: Go through the message and extract the information.
+
+                // Once we have finished, note that we have finished analyzing this message
+                messageNum++;
+            }
+        }
+    }
+}
+
+// Bit-wise reading functions
+bool getBoolFromByte(unsigned char byte, unsigned char bitPos) {
+    // Extract a single bit from a byte, and interpret it as a boolean.
+    // bitPos is the number of the bit (starting with the right-most bit as 0)
+    return (byte >> bitPos) & 1; // Shift the byte bitPos bits to the right, so the bit of interest is in the least-significant position.  Then, mask it with 1 (0b00000001)
+}
+
+unsigned char getNUIntFromByte(unsigned char byte, unsigned char intSize, unsigned char firstBitPos) {
+    // Get some n-sized unsigned integer from a byte.
+    // NOTE: intsize MUST be less than 8!!!  No checks will be performed!!!
+    // For example, an unsigned int is defined by the 3 bytes indicated by X in 0boooXXXoo, this function should be called as getNIntFromByte(0boooXXXoo, 3, 2)
+    unsigned char bitMask = (1 << intSize) - 1; // Bit-mask generation idea from John Gietzan, on Stack Exchange (https://stackoverflow.com/a/1392065)
+    return (byte >> firstBitPos) & bitMask;
+}
+
+signed char getNSIntFromByte(unsigned char byte, unsigned char intSize, unsigned char firstBitPos) {
+    // Get some n-sized signed integer from a byte.
+    // NOTE: intsize MUST be less than 8!!!  No checks will be performed!!!
+    // For example, an unsigned int is defined by the 3 bytes indicated by X in 0boooXXXoo, this function should be called as getUIntFromByte(0boooXXXoo, 3, 2)
+    unsigned char bitMask = (1 << intSize) - 1; // Bit-mask generation idea from John Gietzan, on Stack Exchange (https://stackoverflow.com/a/1392065)
+    return (byte >> firstBitPos) & bitMask;
+}
+
+// Byte-wise reading functions
+unsigned long getLongFromByteArray(unsigned char * byteArray, unsigned char firstBytePos) {
+    // TODO: CHECK THIS CODE!!!
+    // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to an unsigned long
+    
+    // Create an array to be reinterpretted
+    unsigned char longByteArray[4];
+    // Copy the 4 bytes from byteArray, starting at firstBytePos, to longByteArray    
+    for (int i = 0; i < 4; i++) {
+    // I do not fucking trust the memory copying functions, probably due to my own incompetence, but still I'll do it the stupid way and let the goddamn compiler deal with it.
+        longByteArray[i] = byteArray[i + firstBytePos];
+    }
+
+    // Convert the byteArray to an unsigned long pointer, then dereference the pointer to get an unsigned long
+    return *((unsigned long *) longByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
+}
+
+unsigned long getFloatFromByteArray(unsigned char * byteArray, unsigned char firstBytePos) {
+    // TODO: CHECK THIS CODE!!!
+    // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to a float
+    
+    // Create an array to be reinterpretted
+    unsigned char floatByteArray[4];
+    // Copy the 4 bytes from byteArray, starting at firstBytePos, to longByteArray    
+    for (int i = 0; i < 4; i++) {
+    // I do not fucking trust the memory copying functions, probably due to my own incompetence, but still I'll do it the stupid way and let the goddamn compiler deal with it.
+        floatByteArray[i] = byteArray[i + firstBytePos];
+    }
+
+    // Convert the byteArray to a float pointer, then dereference the pointer to get a float
+    return *((float *) floatByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
+}
+
+
 bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
 {
     // A decode callback for a pb_istream_t built from a Serial stream
@@ -26,7 +141,7 @@ bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
     return bytesToRead == count; // If we read the correct number of bytes, return a positive
 }
 
-void Bluetooth::mainLoop()
+void oldMainLoop()
 {
     // Check if there is anything on the serial line
     int count = btSer.available();
