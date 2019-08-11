@@ -1,5 +1,6 @@
 #include "Bluetooth.h"
 
+
 Bluetooth::Bluetooth(Pattern_Handler *pattern_handler, Speedometer *speedometer) : pattern_handler(pattern_handler), speedometer(speedometer)
 {
 }
@@ -23,53 +24,179 @@ void Bluetooth::mainLoop() {
             // Before any of this stuff, store the current amount of freeRam, in case the user asks for it (don't want to taint the answer will all of the memory we'll need to do the message processing)
             int freeRamNow = freeRam();
 
-            // We have just recieved the first message in a new communication.  Initialize as such.
-            unsigned char messageNum = 0; // Initialize the message number counter
-            unsigned char totalNumMessages = 1; // Initialize the total number of messages (start it at one, so the first loop can run, then it will update once the first message is read)
-            unsigned char content; // The type of content that is being sent/requested by the Android application
+            // TODO: START HERE: Rewrite this section, using the btSerialWrapper object held by Bluetooth
 
-            while (messageNum < totalNumMessages) {
-                // Read the message from the Serial buffer
-                unsigned char * buf = new unsigned char [count]; // Create a buffer to read the message into
-                btSer.readBytes(buf, count); // Read the message into the buffer
-                unsigned char curMessagePos = 0; // The current position in the buffer
+            // Read the meta-data from the information that is now in the Bluetooth buffer, to initialize btSer member variables.
+            bool readSuccess = btSer.prepMessage();
 
-                // Read any needed header information
-                if (messageNum == 0) {
-                    // Start by reading the first two bytes, which are always of the same format
-                    boolean request = getBoolFromByte(buf[0], 7); // Determine if this is a request for information, or a message containing infromation
-                    content = getNUIntFromByte(buf[0], 3, 4); // Get the type of content that is being requested or sent
-                    totalNumMessages == getNUIntFromByte(buf[1], 4, 4); // Get the total number of messages
-                    curMessagePos+=2; // Finished the first two bytes
-                    
-                    if (request) {
-                        // If this is a request, then we have already read all of the information that we need from this message.  Send a message back with the requested information
-                        // TODO: SET UP MESSAGE WRITING FUNCTIONS!
-                    }
-                }
-
-                // Check the message number of this message, according to its information
-                {
-                    unsigned char readMessageNum = getNUIntFromByte(buf[1], 4, 0); // Get the message number, according to the byte
-                    if (readMessageNum != messageNum) {
-                        // Something has gone horribly wrong...
-                    }
-                }
-                
+            // while (messageNum < totalNumMessages) {
+                if (btSer.isRequest()) {
                 // If this message contains content sent by the Android program, then read the message and update the Arduino
-                // TODO: Currently being written as if it's all held within a single message.  Add multiple messaging handling later!!!
-                //          This may be done by declaring a struct outside of this loop, and populating it with information that depends on the type of content (may need to be polymorphic).  This information can keep track of where we are in the transfer, but try to limit the memory usage, if possible!
-                switch (content) {
+                switch (btSer.getContent()) {
                     case 0:
                     // Bike wheel animation
                     // First, get the invariate information from the head of the message
-                    unsigned char incomingNumLEDs = buf[curMessagePos++]; // Get the number of LEDs that the Android thinks we have
-                    unsigned char totalNumColor_s = buf[curMessagePos++]; // Get the number of Color_'s that are in the palette
+
+                    unsigned char incomingNumLEDs;
+                    unsigned char totalNumColor_s;
+                     
+                    btSer.nextMessageByte(incomingNumLEDs); // Get the number of LEDs that the Android thinks we have
+                    btSer.nextMessageByte(totalNumColor_s); // Get the number of Color_'s that are in the palette
+
+                    // TODO: Start process of saving the information from the message to an actual object (set the size of the palette)
+
+                    // Start saving the palette information
+                    for (unsigned char thisColor_Num = 0;thisColor_Num < totalNumColor_s;thisColor_Num++) {
+                        // First, get this Color_ type
+                        unsigned char thisColor_Type;
+                        btSer.nextMessageByte(thisColor_Type); // Get the color type from the message
+                        thisColor_Type = getNUIntFromByte(thisColor_Type, 4, 7); // Save the first nibble to the color type
+
+                        if (thisColor_Type == 0) {
+                            // Static Color_
+                            unsigned char incomingColors [NUMLIGHTSPERLED];
+                            btSer.nextMessageBytes(incomingColors, NUMLIGHTSPERLED);
+                            // TODO: Create a new Static Color_ object from this array and save it to the palette
+
+                        } else {
+                            // This is a dynamic Color_, so the loading process will be quite similar
+                            unsigned char numColorObj_metas;
+                            btSer.nextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
+                            
+                            // TODO: Set up the number of colorObj's in this Color_ (using setupArrays(unsigned char numColors) ), to be modified later
+                            for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++) {
+                                // For every colorObjNum, get all of the information (LED brightnesses, T, and blend types)
+                                colorObj thisColorObj;
+                                unsigned char thisBlendTypeByte;
+
+                                {
+                                    // Get the colorObj for this index in the Color_d
+                                    unsigned char thisColorObjArray [NUMLIGHTSPERLED];
+                                    btSer.nextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
+                                    thisColorObj = colorObj(thisColorObjArray);
+
+                                }
+                                btSer.nextMessageByte(thisBlendTypeByte);
+
+                                // TODO: Set up the colorObj and blend value for this colorObj in the Color_d
+
+                                unsigned char thisTValArray[4];
+                                btSer.nextMessageBytes(thisTValArray, 4);
+
+                                if (thisColor_Type == 1) {
+                                    // Time-based Color_
+                                    unsigned long thisTVal = getLongFromByteArray(thisTValArray, 0);
+                                    // TODO: Assign the colorObj, BLEND_TYPE, and t value for this Color_dTime
+
+                                } else if (thisColor_Type == 2) {
+                                    // Velocity-based Color_
+                                    float thisTVal = getFloatFromByteArray(thisTValArray, 0);
+                                    // TODO: Assign the colorObj, BLEND_TYPE, and t value for this Color_dVel
+
+                                }
+                            }
+
+                            // TODO: Try to make sure that the creation of the dynamic Color_ has little memory overhead
+                            switch (thisColor_Type) {
+                                case 1:
+                                // Time-based Color_
+
+                                break;
+                                case 2:
+                                // Velocity-based Color_
+
+                                break;
+                            }
+                        }
+                    }
+
+                    // Next, start saving the Pattern information
+                    // First, get the palette-specific meta-data
+                    bool supportsIdle;
+                    unsigned char mainImageType;
+                    signed char mainImageParam; // The parameter for the image type (signed to allow for negative rotation rates, etc.)
+
+                    {
+                        // Get the supports idle bool, as well as the image type
+                        unsigned char supportsIdleImageTypeByte;
+                        btSer.nextMessageByte(supportsIdleImageTypeByte);
+                        supportsIdle = getBoolFromByte(supportsIdleImageTypeByte, 4);
+                        mainImageType = getNUIntFromByte(supportsIdleImageTypeByte, 4, 0);
+                    }
+
+                    {
+                        // Get the parameter for this image type
+                        unsigned char imageParamByte;
+                        btSer.nextMessageByte(imageParamByte);
+                        mainImageParam = getNSIntFromByte(imageParamByte, 8, 0);
+                    }
+
+                    // TODO: Set the main image type on the Pattern, and apply the parameter(s), as needed
+
+                    // Read in the main Image
+                    for (unsigned char curImageByte = 0; curImageByte < NUM_BYTES_PER_IMAGE; curImageByte++) {
+                        // Go through each expected byte in the image, and extract it to the color
+                        
+                        // Read the next byte from the message
+                        unsigned char thisImageByte;
+                        btSer.nextMessageByte(thisImageByte);
+                        
+                        // TODO: Set the newly read byte into the Pattern
+                    }
+
+                    // If this pattern supports an idle image, read the data from the message about the idle image
+                    if (supportsIdle) {
+                        // First, get the image type for the idle image
+                        unsigned char idleImageType;
+                        signed char idleImageParam;
+
+                        // Get the idle image type
+                        btSer.nextMessageByte(idleImageType);
+
+                        {
+                            // Get the idle image parameter
+                            unsigned char idleImageParamByte;
+                            btSer.nextMessageByte(idleImageParamByte);
+                            idleImageParam = getNSIntFromByte(idleImageParamByte, 8, 0);
+                        }
+
+                        // TODO: Set the idle image type in the Pattern, and apply the parameter(s) as needed
+                        
+                        // Read in the idle Image
+                        for (unsigned char curImageByte = 0; curImageByte < NUM_BYTES_PER_IMAGE; curImageByte++) {
+                            // Go through each expected byte in the image, and extract it to the color
+                        
+                            // Read the next byte from the message
+                            unsigned char thisImageByte;
+                            btSer.nextMessageByte(thisImageByte);
+                        
+                            // TODO: Set the newly read byte into the Pattern
+
+                        }
+
+                    }
+
+                    break;
+                    case 1:
+                    // TODO: Kalman Info
+                    
+                    break;
+                    case 2:
+                    // TODO: Brightness scale
+
+                    break;
+                }
+
+            } else {
+                // This message is a request for information from the Arduino
+                switch (btSer.getContent()) {
+                    case 0:
+                    // Bike wheel animation
 
                     break;
                     case 1:
                     // Kalman Info
-                    
+
                     break;
                     case 2:
                     // Brightness scale
@@ -83,15 +210,10 @@ void Bluetooth::mainLoop() {
                     // Battery
 
                     break;
+                    // TODO: Complete all request cases!!!
                 }
-
-                // TODO: Go through the message and extract the information (above).
-
-                // Once we have finished, note that we have finished analyzing this message
-                messageNum++;
-
-                // TODO: Send a message to the Android to let it know that we are ready for the next message
             }
+            // }
         }
     }
 }
@@ -152,6 +274,120 @@ unsigned long getFloatFromByteArray(unsigned char * byteArray, unsigned char fir
     return *((float *) floatByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
 }
 
+btSerialWrapper::btSerialWrapper(SoftwareSerial stream): stream(stream) {}
+
+bool btSerialWrapper::prepMessage() {
+    // This function reads the meta-data from the next message, if it exists, and returns if the meta-data was successfully read
+
+    if (nextByteNum == 0) {
+        // We have not yet read the meta-data.  Extract this first
+
+            // Read the first two bytes into a temporary buffer
+            unsigned char tmpStreamBuf[2];
+            stream.readBytes(tmpStreamBuf, 2);
+
+            // Read the data from this temporary buffer
+            request = getBoolFromByte(tmpStreamBuf[0], 7); // Determine if this is a request for information, or a message containing infromation
+            content = getNUIntFromByte(tmpStreamBuf[0], 3, 4); // Get the type of content that is being requested or sent
+            totalMessages = getNUIntFromByte(tmpStreamBuf[1], 4, 4); // Get the total number of messages
+            unsigned char readMessageNum = getNUIntFromByte(tmpStreamBuf[1], 4, 0); // Get the message number, according to the message
+            
+            // Check the message number
+            if (readMessageNum != curMessageNum) {
+                // Something has gone horribly wrong...
+            }
+
+            // Set the byte number so that we are after the meta data
+            nextByteNum = 2;
+    } else {
+        return 0;  // If nextByteNum is not 0, then we are not EXPECTING to be at the beginning of a new message, so skip this function and return an error
+    }
+}
+
+boolean btSerialWrapper::nextMessageByte(unsigned char & byteDestination) {
+    // Check if there is any available data
+    if (available() > 0) {
+        // We have data avilable
+        // Check if we've already read the meta-data from this message
+        if (nextByteNum == 0) {
+            prepMessage(); // If this message has not been read yet, get the meta-data from this one
+        }
+
+        // Now that we definitely have read the meta-data, read the next byte from the stream into byteDestination
+        unsigned char tmpStreamBuf[1]; // A small temporary buffer to read bytes into before being moved into byteDestination
+        stream.readBytes(tmpStreamBuf, 1); // (Always reading a single byte at a time.  Perhaps this is inefficient...)
+        byteDestination = tmpStreamBuf[0]; // Get the first (only) byte from thisStreamBuf, and put it into the output bytesDestination
+
+        // Iterate the byte number (is this actually used...?  Perhaps for debugging...)
+        nextByteNum++;
+
+        // Finally, return success
+        return true;
+
+    } else {
+        // If no data is available
+
+        // Check if we're expecting more content for this communication
+        if (curMessageNum < totalMessages) {
+            // We are expecting more content from this communication, ask for the next bit from Android
+            // TODO: Send a message to Android requesting the next message in this communication
+
+            // TODO: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
+
+            // Reset the byte number and iterate the curMessageNum, so we know to extract the metadata next round
+            nextByteNum = 0;
+            curMessageNum++;
+
+            // Finally, call this function once more since we just got a new message
+            return nextMessageByte(byteDestination);
+
+        } else {
+            // We are not expecting any more information from this communication
+
+            // Reset the communication, and return nothing
+            resetCommunicationData(); // Should have been reset by this point already, but may as well just confirm
+
+            byteDestination = 0;
+            return false; // Error, because there was nothing to read
+        }
+    }
+}
+
+boolean btSerialWrapper::nextMessageBytes(unsigned char * byteDestination, unsigned char numBytes) {
+    
+}
+
+unsigned char btSerialWrapper::getTotalMessages() {
+    return totalMessages;
+}
+
+unsigned char btSerialWrapper::getContent() {
+    return content;
+}
+
+bool btSerialWrapper::isRequest() {
+    return isRequest;
+}
+
+unsigned char btSerialWrapper::getCurMessageNum() {
+    return curMessageNum;
+}
+
+unsigned char btSerialWrapper::getnextByteNum() {
+    return nextByteNum;
+}
+
+int btSerialWrapper::available() {
+    return stream.available();
+}
+
+void btSerialWrapper::resetCommunicationData() {
+    totalMessages = 0;
+    content= 0;
+    request = false;
+    curMessageNum = 0;
+    nextByteNum = 0;
+}
 
 bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
 {

@@ -546,7 +546,21 @@ void Color_d<T>::setThisTrigger(T tNew, unsigned char numInArray)
     tA[numInArray] = tNew;
   }
 
-  sortAllArrays();
+  sortAllArrays(); // We must resort the arrays, in case the new T value changes the order
+}
+
+template <class T>
+void Color_d<T>::setThisColorObj(colorObj colorObjNew, unsigned char numInArray) {
+  if (numInArray < numColors) {
+    cA[numInArray] = colorObjNew;
+  }
+}
+
+template <class T>
+void Color_d<T>::setThisBlendType(BLEND_TYPE blendTypeNew, unsigned char numInArray) {
+  if (numInArray < numColors) {
+    bA[numInArray] = blendTypeNew;
+  }
 }
 
 template <class T>
@@ -715,6 +729,8 @@ template <class T>
 void Color_d<T>::setupArrays(colorObj *cAIn, T *tAIn, BLEND_TYPE *bAIn, unsigned char numColorsIn)
 {
   deleteAllArrays(); // Always delete the old array when a new one is being created
+
+  // TODO: Change this so that arrays don't get copied, but instead the pointer just gets passed?
 
   if (DEBUGGING_PATTERN)
   {

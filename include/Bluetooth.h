@@ -45,9 +45,45 @@ public:
 
 private:
     // TODO: Convert this to hardware serial!!!
-    SoftwareSerial btSer = SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX); // Initialize the Serial connection to the bluetooth device (HC06)
+    btSerialWrapper btSer = btSerialWrapper(SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX)); // Initialize the Serial connection to the bluetooth device (HC06)
     Pattern_Handler *pattern_handler = NULL;                                 // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
     Speedometer *speedometer = NULL;                                         // A pointer to the speedometer, so we can change it using information sent via Bluetooth
 };
+
+// Class that will wrap the Serial connection for ease of use
+    class btSerialWrapper {
+        public:
+        // Construct a stream wrapper object
+        btSerialWrapper(SoftwareSerial stream);
+
+        // Get the next byte(s) in the stream, if available
+        bool prepMessage(); // Returns true on success
+        bool nextMessageByte(unsigned char & byteDestination); // Returns true on success 
+        bool nextMessageBytes(unsigned char * byteDestinationArray, unsigned char numBytes);
+
+        // Getters for information about the content of the message
+        unsigned char getTotalMessages();
+        unsigned char getContent();
+        bool isRequest();
+
+        // Getters for information about the communication
+        unsigned char getCurMessageNum();
+        unsigned char getCurByteNum();
+        int available();
+
+        private:
+        // Meta data from the message
+        unsigned char totalMessages = 0;
+        unsigned char content = 0;
+        bool request = false;
+
+        // Information for keeping of where we are in the entire communication
+        unsigned char curMessageNum = 0; // The message that is being read now
+        unsigned char nextByteNum = 0; // The byte that will be read next
+        SoftwareSerial stream;
+
+        // Private functions for controlling stream
+        void resetCommunicationData();
+    };
 
 #endif

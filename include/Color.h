@@ -126,6 +126,8 @@ public:
 
   // Set values in tA
   void setThisTrigger(T tNew, unsigned char numInArray);
+  void setThisColorObj(colorObj colorObjNew, unsigned char numInArray);
+  void setThisBlendType(BLEND_TYPE blendTypeNew, unsigned char numInArray);
 
   // Set up the arrays in this object
   void setupArrays(unsigned char numColors);
