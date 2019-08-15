@@ -65,6 +65,7 @@ public:
   Color_Static();                                                                   // Constructor
   Color_Static(colorObj c);                                                         // Constructor
   Color_Static(unsigned char r, unsigned char g, unsigned char b, unsigned char w); // Constructor
+  Color_Static(unsigned char * cA);                                                 // Constructor
 
   Color_Static(const Color_Static &c); // Copy Constructor
 

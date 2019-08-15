@@ -159,7 +159,7 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
 
 void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColorsIn)
 {
-  deleteColorArray(); // Always delete the old array when a new one is being created
+  deleteColorArray(); // Always delete the old arrays when new ones are being created
 
   //  if (DEBUGGING_PATTERN) {
   //    Serial.println(F("Checking input color array for first empty..."));
@@ -195,8 +195,8 @@ void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColo
   palette = new Color_ *[numColorsIn];             // Allocate space for the color array
   preCalculatedColors = new colorObj[numColorsIn]; // Allocate space for the preCalculatedColors array
 
-  copyArray<Color_ *>(newColorArray, palette, numColorsIn);
-  //  *colors = *newColorArray;
+  copyArray<Color_ *>(newColorArray, palette, numColorsIn); // Copy over the pointers to the incoming Color_* array
+  //  *colors = *newColorArray; // TODO: Should we use this method, of just transfering the array?  Go through all code and see if this would be ok.
   numColors = numColorsIn;
 
   //  if (DEBUGGING_PATTERN) {
@@ -220,6 +220,7 @@ void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColo
   //  }
 };
 
+#if USE_NANOPB
 void Pattern_Handler::setupPalette(Color_BT *colorMessagesIn, unsigned char numColorsIn)
 {
   deleteColorArray(); // Always delete the old array when a new one is being created
@@ -236,6 +237,7 @@ void Pattern_Handler::setupPalette(Color_BT *colorMessagesIn, unsigned char numC
   //  *colors = *newColorArray;
   numColors = numColorsIn;
 }
+#endif
 
 void Pattern_Handler::deleteColorArray()
 {
@@ -1244,7 +1246,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer) : speedometer(speedom
     //    Serial.println(freeRam());
     Serial.println();
   }
-  setMainPattern(M_STILL);
+  setMainPattern(M_GREL_STILL);
 
   if (DEBUGGING_PATTERN)
   {
@@ -1299,7 +1301,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
     //    Serial.println(freeRam());
     Serial.println();
   }
-  setMainPattern(M_STILL);
+  setMainPattern(M_GREL_STILL);
 
   if (DEBUGGING_PATTERN)
   {
@@ -1392,10 +1394,10 @@ void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum)
   }
   switch (newAnimationEnum)
   {
-  case M_STILL:
+  case M_GREL_STILL:
     mainPattern = new Still_Image_Main(speedometer);
     break;
-  case M_MOVING:
+  case M_GREL_MOVING:
     mainPattern = new Moving_Image_Main(speedometer);
     break;
   default:

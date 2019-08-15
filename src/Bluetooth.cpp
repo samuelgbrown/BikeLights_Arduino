@@ -24,10 +24,8 @@ void Bluetooth::mainLoop() {
             // Before any of this stuff, store the current amount of freeRam, in case the user asks for it (don't want to taint the answer will all of the memory we'll need to do the message processing)
             int freeRamNow = freeRam();
 
-            // TODO: START HERE: Rewrite this section, using the btSerialWrapper object held by Bluetooth
-
             // Read the meta-data from the information that is now in the Bluetooth buffer, to initialize btSer member variables.
-            bool readSuccess = btSer.prepMessage();
+            bool readSuccess = btSer.initReceiveMessage();
 
             // while (messageNum < totalNumMessages) {
                 if (btSer.isRequest()) {
@@ -35,7 +33,7 @@ void Bluetooth::mainLoop() {
                 switch (btSer.getContent()) {
                     case 0:
                     // Bike wheel animation
-                    // First, get the invariate information from the head of the message
+                    // First, get the invariate information from the head of the BWA message, the meta-data of the palette and image
 
                     unsigned char incomingNumLEDs;
                     unsigned char totalNumColor_s;
@@ -44,71 +42,122 @@ void Bluetooth::mainLoop() {
                     btSer.nextMessageByte(totalNumColor_s); // Get the number of Color_'s that are in the palette
 
                     // TODO: Start process of saving the information from the message to an actual object (set the size of the palette)
+                    // pattern_handler->setupPalette(totalNumColor_s); // TODO: DO NOT USE THIS FUNCTION (feed an entire array of Color_'s into the function)
+                    Color_ ** newColor_Array = new Color_ * [totalNumColor_s]; // Create an array of pointers to Color_ objects that will be creaforted soon.  This array will be *copied*.
 
                     // Start saving the palette information
                     for (unsigned char thisColor_Num = 0;thisColor_Num < totalNumColor_s;thisColor_Num++) {
                         // First, get this Color_ type
                         unsigned char thisColor_Type;
                         btSer.nextMessageByte(thisColor_Type); // Get the color type from the message
-                        thisColor_Type = getNUIntFromByte(thisColor_Type, 4, 7); // Save the first nibble to the color type
+                        thisColor_Type = getNUIntFromByte(thisColor_Type, 4, 4); // Save the first nibble to get the color type
 
-                        if (thisColor_Type == 0) {
-                            // Static Color_
+                        // Depending on the type of Color_ we are expecting for this position in the palette, intepret the data differently
+                        switch (thisColor_Type) {
+                            case 0:
+                            // Static Color
+
+                            // Get the RBGW values from the message
                             unsigned char incomingColors [NUMLIGHTSPERLED];
                             btSer.nextMessageBytes(incomingColors, NUMLIGHTSPERLED);
-                            // TODO: Create a new Static Color_ object from this array and save it to the palette
 
-                        } else {
+                            // Create a new Static Color_ object from this array
+                            newColor_Array[thisColor_Num] = new Color_Static(incomingColors);
+                            break;
+
+                            case 1:
+                            // Time-based Color_
                             // This is a dynamic Color_, so the loading process will be quite similar
                             unsigned char numColorObj_metas;
                             btSer.nextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
                             
-                            // TODO: Set up the number of colorObj's in this Color_ (using setupArrays(unsigned char numColors) ), to be modified later
+                            // Set up the arrays that will be used to initialize the Color_d
+                            colorObj * newColorObjs = new colorObj[numColorObj_metas];
+                            BLEND_TYPE * newBs = new BLEND_TYPE[numColorObj_metas];
+                            unsigned long * newTs = new unsigned long[numColorObj_metas];
+
                             for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++) {
                                 // For every colorObjNum, get all of the information (LED brightnesses, T, and blend types)
-                                colorObj thisColorObj;
-                                unsigned char thisBlendTypeByte;
 
                                 {
                                     // Get the colorObj for this index in the Color_d
                                     unsigned char thisColorObjArray [NUMLIGHTSPERLED];
                                     btSer.nextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
-                                    thisColorObj = colorObj(thisColorObjArray);
+                                    newColorObjs[colorObjNum] = colorObj(thisColorObjArray);
 
                                 }
-                                btSer.nextMessageByte(thisBlendTypeByte);
 
-                                // TODO: Set up the colorObj and blend value for this colorObj in the Color_d
+                                {
+                                    // Get the Blend type for this colorObj
+                                    unsigned char thisBlendTypeByte;
+                                    btSer.nextMessageByte(thisBlendTypeByte);
+                                    newBs[colorObjNum] = getBlendTypeFromByte(thisBlendTypeByte);
+                                }
 
-                                unsigned char thisTValArray[4];
-                                btSer.nextMessageBytes(thisTValArray, 4);
-
-                                if (thisColor_Type == 1) {
-                                    // Time-based Color_
-                                    unsigned long thisTVal = getLongFromByteArray(thisTValArray, 0);
-                                    // TODO: Assign the colorObj, BLEND_TYPE, and t value for this Color_dTime
-
-                                } else if (thisColor_Type == 2) {
-                                    // Velocity-based Color_
-                                    float thisTVal = getFloatFromByteArray(thisTValArray, 0);
-                                    // TODO: Assign the colorObj, BLEND_TYPE, and t value for this Color_dVel
-
+                                {
+                                    // Get the T for this colorObj
+                                    unsigned char thisTValArray[4];
+                                    btSer.nextMessageBytes(thisTValArray, 4);
+                                    newTs[colorObjNum] = getLongFromByteArray(thisTValArray, 0);
                                 }
                             }
 
-                            // TODO: Try to make sure that the creation of the dynamic Color_ has little memory overhead
-                            switch (thisColor_Type) {
-                                case 1:
-                                // Time-based Color_
+                            // Create the Color_dTime object
+                            newColor_Array[thisColor_Num] = new Color_dTime(newColorObjs, newTs, newBs, numColorObj_metas);
+                            break;
 
-                                break;
-                                case 2:
-                                // Velocity-based Color_
+                            case 2:
+                            // Velocity-based Color_
+                            // This is a dynamic Color_, so the loading process will be quite similar
+                            unsigned char numColorObj_metas;
+                            btSer.nextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
+                            
+                            // Set up the arrays that will be used to initialize the Color_d
+                            colorObj * newColorObjs = new colorObj[numColorObj_metas];
+                            BLEND_TYPE * newBs = new BLEND_TYPE[numColorObj_metas];
+                            float * newTs = new float[numColorObj_metas];
 
-                                break;
+                            for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++) {
+                                // For every colorObjNum, get all of the information (LED brightnesses, T, and blend types)
+                                colorObj thisColorObj;
+                                BLEND_TYPE thisBlendType;
+                                float thisTVal;
+
+                                {
+                                    // Get the colorObj for this index in the Color_d
+                                    unsigned char thisColorObjArray [NUMLIGHTSPERLED];
+                                    btSer.nextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
+                                    newColorObjs[colorObjNum] = colorObj(thisColorObjArray);
+
+                                }
+
+                                {
+                                    // Get the Blend type for this colorObj
+                                    unsigned char thisBlendTypeByte;
+                                    btSer.nextMessageByte(thisBlendTypeByte);
+                                    newBs[colorObjNum] = getBlendTypeFromByte(thisBlendTypeByte);
+                                }
+
+                                {
+                                    // Get the T for this colorObj
+                                    unsigned char thisTValArray[4];
+                                    btSer.nextMessageBytes(thisTValArray, 4);
+                                    newTs[colorObjNum] = getFloatFromByteArray(thisTValArray, 0);
+                                }
+                                // TODO: Assign the colorObj, BLEND_TYPE, and t value for this Color_dVel
+
                             }
+
+                            // Create the Color_dVel object
+                            newColor_Array[thisColor_Num] = new Color_dVel(speedometer, newColorObjs, newTs, newBs, numColorObj_metas);
+                            break;
                         }
                     }
+
+                    // Now that we have a complete array of Color_'s, assign it to the Pattern_Handler
+                    pattern_handler->setupPalette(newColor_Array, totalNumColor_s);
+
+                    // TODO: Start saving the image(s)
 
                     // Next, start saving the Pattern information
                     // First, get the palette-specific meta-data
@@ -120,6 +169,7 @@ void Bluetooth::mainLoop() {
                         // Get the supports idle bool, as well as the image type
                         unsigned char supportsIdleImageTypeByte;
                         btSer.nextMessageByte(supportsIdleImageTypeByte);
+
                         supportsIdle = getBoolFromByte(supportsIdleImageTypeByte, 4);
                         mainImageType = getNUIntFromByte(supportsIdleImageTypeByte, 4, 0);
                     }
@@ -132,6 +182,30 @@ void Bluetooth::mainLoop() {
                     }
 
                     // TODO: Set the main image type on the Pattern, and apply the parameter(s), as needed
+                    // TODO: START HERE: Implement a still/moving paradigm for both wheel-relative and ground-relative rotation
+
+                    Pattern_Main * mainPattern; // TODO: Should this be copied, or just handed off to the Pattern_Handler?  Probably just handed off...
+                    switch (mainImageType) {
+                        case 0:
+                        // Wheel-relative motion
+                        if (mainImageParam == 0) {
+                            pattern_handler->setMainPattern(M_WREL_STILL);
+                        } else {
+                            // If there is some movement relative to the wheel, use a slightly different Pattern type
+                            // TODO: Refactor this function, to accept a new Pattern that we will create in this function
+                            pattern_handler->setMainPattern(M_WREL_MOVING);
+                            // pattern_handler->mainPattern
+                        }
+                        break;
+                        case 1:
+                        // Ground-relative motion
+
+                        break;
+                        case 2:
+                        // Spinner wheel
+
+                        break;
+                    }
 
                     // Read in the main Image
                     for (unsigned char curImageByte = 0; curImageByte < NUM_BYTES_PER_IMAGE; curImageByte++) {
@@ -179,10 +253,67 @@ void Bluetooth::mainLoop() {
                     break;
                     case 1:
                     // TODO: Kalman Info
+                    unsigned char numObs; // Number of observed parameters
+                    unsigned char numState; // Number of state parameters
+                    float Q;
+                    float * R;
+                    float * P0; // TODO: Ensure that the array that is created to put into this pointer is deleted
+
+                    {
+                        // First, get the number of observed and state parameters
+                        unsigned char obsStateByte;
+                        btSer.nextMessageByte(obsStateByte);
+                        numObs = getNUIntFromByte(obsStateByte, 4, 4);
+                        numState = getNUIntFromByte(obsStateByte, 4, 0);
+                        
+                        // TODO: Error check if the observation and state variable numbers are the same between Arduino and Android?
+                    }
+
+                    {
+                        // Next, read in 4 bytes that will be saved as Q
+                        unsigned char qByteArray [4];
+                        btSer.nextMessageBytes(qByteArray, 4);
+                        Q = getFloatFromByteArray(qByteArray, 0);
+                    }
+
+                    {
+                        // Finally, read in the series of floats that will become the R and P0 matrices
+                        unsigned char thisByteArray [4];
+                        
+                        R = new float[numObs * numObs];
+                        for (int row = 0; row < numObs; row++) {
+                            for (int col = 0; col < numObs; col++) {
+                                btSer.nextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
+                                R[(row*numObs) + col] = getFloatFromByteArray(thisByteArray, 0);
+                            }
+                        }
+
+                        P0 = new float[numState * numState];
+                        for (int row = 0; row < numState; row++) {
+                            for (int col = 0; col < numState; col++) {
+                                btSer.nextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
+                                P0[(row*numState) + col] = getFloatFromByteArray(thisByteArray, 0);
+                                // TODO: May take less memory to read the floats directly into the Kalman object? (i.e. speedometer->kalman.setP0Elem(row, col, thisNewFloat) )
+                            }
+                        }
+                    }
+
+                    // TODO: Save the matrices to the Kalman Object
+
                     
                     break;
                     case 2:
                     // TODO: Brightness scale
+                    float brightnessFactor;
+
+                    {
+                        // Read in the brightness factor from the Message
+                        unsigned char brightnessFactorByteArray[4];
+                        btSer.nextMessageBytes(brightnessFactorByteArray, 4);
+                        brightnessFactor = getFloatFromByteArray(brightnessFactorByteArray, 0);
+                    }
+
+                    // TODO: Set the new brightness factor in the Pattern_Handler
 
                     break;
                 }
@@ -192,6 +323,7 @@ void Bluetooth::mainLoop() {
                 switch (btSer.getContent()) {
                     case 0:
                     // Bike wheel animation
+                    // TODO: Construct a byte array using the current values in the Pattern
 
                     break;
                     case 1:
@@ -274,9 +406,20 @@ unsigned long getFloatFromByteArray(unsigned char * byteArray, unsigned char fir
     return *((float *) floatByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
 }
 
+BLEND_TYPE getBlendTypeFromByte(unsigned char byte) {
+    switch (byte) {
+        case 0:
+            return B_LINEAR;
+        break;
+        case 1:
+            return B_CONSTANT;
+        break:
+    }
+}
+
 btSerialWrapper::btSerialWrapper(SoftwareSerial stream): stream(stream) {}
 
-bool btSerialWrapper::prepMessage() {
+bool btSerialWrapper::initReceiveMessage() {
     // This function reads the meta-data from the next message, if it exists, and returns if the meta-data was successfully read
 
     if (nextByteNum == 0) {
@@ -310,7 +453,7 @@ boolean btSerialWrapper::nextMessageByte(unsigned char & byteDestination) {
         // We have data avilable
         // Check if we've already read the meta-data from this message
         if (nextByteNum == 0) {
-            prepMessage(); // If this message has not been read yet, get the meta-data from this one
+            initReceiveMessage(); // If this message has not been read yet, get the meta-data from this one
         }
 
         // Now that we definitely have read the meta-data, read the next byte from the stream into byteDestination
@@ -568,13 +711,13 @@ void Bluetooth::processBWA(BWA_BT &message)
         if (message.image_meta.parameter_set.p1 == 0)
         {
             // Convert the Pattern to a Still Image
-            pattern_handler->setMainPattern(M_STILL);
+            pattern_handler->setMainPattern(M_GREL_STILL);
             pattern_handler->setIdlePattern(I_STILL); // TODO: May need to be revised, once I update Android to have still/moving for idle/main individually
         }
         else
         {
             int rotationSpeed = message.image_meta.parameter_set.p1;
-            pattern_handler->setMainPattern(M_MOVING);
+            pattern_handler->setMainPattern(M_GREL_MOVING);
             pattern_handler->setIdlePattern(I_STILL); // TODO: May need to be revised, once I update Android to have still/moving for idle/main individually
 
             // Now set the speed

@@ -14,6 +14,8 @@
 
 // Code differences based on hardware
 #define SRAM_ATTACHED false // Is SRAM attached to this unit?  If so, then certain memory intensive computations, such as blurring, can be done
+// TODO: Search through all code, and add "#if USE_NANOPB...#endif" around any mentions of the nanoPB classes
+#define USE_NANOPB false // Should we use the nanoPB library (currently unusable due to severe FRAM limitations, ~10KB over the 32KB limit)
 
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
@@ -133,9 +135,10 @@ class Pattern_Handler;
 // Define enums used for different animations
 enum MAIN_ANIM
 {
-  M_STATIONARY, // No rotation relative to the wheel
-  M_STILL,      // No rotation relative to the ground
-  M_MOVING,     // Constant rotation relative to the ground
+  M_WREL_STILL, // No rotation relative to the wheel
+  M_WREL_MOVING, // Constant relative to the wheel
+  M_GREL_STILL,      // No rotation relative to the ground
+  M_GREL_MOVING,     // Constant rotation relative to the ground
   M_SPINNER,    // "Spinner" behavior
   M_NOTHING     // No animation (remove?)
 };

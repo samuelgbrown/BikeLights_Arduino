@@ -160,8 +160,11 @@ public:
 
   void setupPalette(unsigned char numColors);
   void setupPalette(Color_ **colorsIn, unsigned char numColorsIn);
+  
+  #if USE_NANOPB
   void setupPalette(Color_BT *colorMessagesIn, unsigned char numColorsIn);
-
+  #endif
+  
   void setColor(Color_ *newColor, unsigned char colorNum); // Set a Color_ in the specified location
   Color_ *getColor(unsigned char colorNum);                // Get a pointer to the Color_ at the specified location
 

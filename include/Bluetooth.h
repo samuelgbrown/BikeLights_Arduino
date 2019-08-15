@@ -57,7 +57,7 @@ private:
         btSerialWrapper(SoftwareSerial stream);
 
         // Get the next byte(s) in the stream, if available
-        bool prepMessage(); // Returns true on success
+        bool initReceiveMessage(); // Returns true on success
         bool nextMessageByte(unsigned char & byteDestination); // Returns true on success 
         bool nextMessageBytes(unsigned char * byteDestinationArray, unsigned char numBytes);
 

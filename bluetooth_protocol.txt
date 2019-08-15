@@ -56,7 +56,7 @@ CT (4uint) - Color_ type
     Each colorObj_meta will be represented by the following bytes:
     - b_R | b_G | b_B | b_W | b_B | b_T1 b_T2 b_T3 b_T4 - 
     R, B, G, W (8uint) - The brightness of the indicated LED for this color
-    B (8int) - The blend-type that this colorObj_meta uses
+    B (8uint) - The blend-type that this colorObj_meta uses
         0 - Constant
         1 - Linear
     T (4ulong/4float) - The T value of this colorObj_meta, represented as 4-bytes to be interpretted according to the type of Color_ that holds this colorObj

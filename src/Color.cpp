@@ -120,6 +120,9 @@ Color_Static::Color_Static(unsigned char r, unsigned char g, unsigned char b, un
 
 Color_Static::Color_Static(colorObj c) : c(c){};
 
+Color_Static::Color_Static(unsigned char * cA): c(cA) {};
+
+
 Color_Static::Color_Static()
 {
   isEmpty = true;
@@ -728,6 +731,9 @@ void Color_d<T>::setupArrays(unsigned char numColorsIn)
 template <class T>
 void Color_d<T>::setupArrays(colorObj *cAIn, T *tAIn, BLEND_TYPE *bAIn, unsigned char numColorsIn)
 {
+  // This function will take ownership of any input arrays; THEY SHOULD NOT BE DELETED BY THE CALLING FUNCTION.  
+  // TODO: Check all uses of this function
+
   deleteAllArrays(); // Always delete the old array when a new one is being created
 
   // TODO: Change this so that arrays don't get copied, but instead the pointer just gets passed?
