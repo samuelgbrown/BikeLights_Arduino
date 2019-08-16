@@ -706,12 +706,12 @@ Moving_Image::Moving_Image()
   }
 }
 
-void Moving_Image::anim()
+void Moving_Image::anim(int xTrueRounded)
 {
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(F("Starting Moving Image upper level animation..."));
   //  }
-  anim_preImagePosUpdate(); // Perform the custom animation defined by the derived classes
+  anim_preImagePosUpdate(xTrueRounded); // Perform the custom animation defined by the derived classes
 
 #if SRAM_ATTACHED
   colorBlur();  // Calculate the blurring of the color memory
@@ -726,6 +726,7 @@ void Moving_Image::anim()
   }
 };
 
+#if SRAM_ATTACHED
 void Moving_Image::setImageBleed(unsigned char imageBleedIn)
 {
   if (0 <= imageBleedIn && imageBleedIn < 255)
@@ -733,6 +734,7 @@ void Moving_Image::setImageBleed(unsigned char imageBleedIn)
     imageBleed = imageBleedIn;
   }
 };
+#endif
 
 void Moving_Image::setRotateSpeed(int rotateSpeedIn)
 {
@@ -1013,7 +1015,7 @@ void Still_Image_Idle::anim()
 Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer, unsigned char *image) : Still_Image_Main(speedometer, image){};
 Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer) : Still_Image_Main(speedometer){};
 
-void Moving_Image_Main::anim_preImagePosUpdate()
+void Moving_Image_Main::anim_preImagePosUpdate(int xTrueRounded)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1021,7 +1023,7 @@ void Moving_Image_Main::anim_preImagePosUpdate()
     Serial.println(F("Main animation starting..."));
   }
 
-  int xTrueRounded = (int)roundf(speedometer->getPos());
+  // int xTrueRounded = (int)roundf(speedometer->getPos());
 
   // Pre-calculate all Color_'s
   parent_handler->preCalculateAllColor_();
@@ -1360,7 +1362,7 @@ void Pattern_Handler::mainLoop()
       //      Serial.println(mainPattern->allowIdle);
       delay(500);
     }
-    mainPattern->anim();
+    mainPattern->anim((int)roundf(speedometer->getPos()));
   }
 
   if (DEBUGGING_PATTERN)
