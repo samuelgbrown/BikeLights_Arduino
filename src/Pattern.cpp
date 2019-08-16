@@ -683,7 +683,7 @@ Moving_Image::Moving_Image()
     //    delay(500);
   }
 
-  // Initialize the colorMemory array with colorObj's whose color data will be rewritten each animMain()
+  // Initialize the colorMemory array with colorObj's whose color data will be rewritten each anim_preImagePosUpdate()
   // Used with the memory-expensive color blur method
   //  for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++) {
   //    if (DEBUGGING_PATTERN) {
@@ -711,7 +711,7 @@ void Moving_Image::anim()
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(F("Starting Moving Image upper level animation..."));
   //  }
-  animMain(); // Perform the custom animation defined by the derived classes
+  anim_preImagePosUpdate(); // Perform the custom animation defined by the derived classes
 
 #if SRAM_ATTACHED
   colorBlur();  // Calculate the blurring of the color memory
@@ -1013,7 +1013,7 @@ void Still_Image_Idle::anim()
 Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer, unsigned char *image) : Still_Image_Main(speedometer, image){};
 Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer) : Still_Image_Main(speedometer){};
 
-void Moving_Image_Main::animMain()
+void Moving_Image_Main::anim_preImagePosUpdate()
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1063,7 +1063,7 @@ Moving_Image_Idle::Moving_Image_Idle() : Still_Image_Idle()
   }
 };
 
-void Moving_Image_Idle::animMain()
+void Moving_Image_Idle::anim_preImagePosUpdate()
 {
   if (DEBUGGING_PATTERN)
   {

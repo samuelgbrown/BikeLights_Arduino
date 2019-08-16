@@ -36,7 +36,8 @@ public:
 
   virtual ~Pattern() = default; // Destructor
 
-  virtual void anim() = 0; // Animation function
+  virtual void anim(int xTrueRounded) = 0; // Animation function
+  void anim() {anim(0);}; // Define a parameter-less call to anim to be the same as claiming that the x position is always 0
 
   // // Functions to manage the "palette" array of Color_**'s, or the Color_'s that this pattern may show
   // void setupPalette(unsigned char numColors);
@@ -85,48 +86,35 @@ private:
 
 // TODO: START HERE: Pattern redesign:
 // 1. Patterns will not hold onto a Speedometer pointer, only Pattern_Handler will.  It will pass the "xTrueRounded" int to each Pattern through its anim() function (soon to be anim(int xTrueRounded))
-// 2. Idle and Main patterns will be identical, due to 1. An anim() will still exist, which will simply call anim(0).
+// 2. Idle and Main patterns will be identical, due to 1. An anim() will still exist, which will simply call anim(0).  anim() will be used by Pattern_Handler to force a Pattern to be an "idle" Pattern (not dependant on wheel speed).
 // 3. The Pattern_Handler will hold onto the allowIdle bool, updated each time the main pattern is reassigned (idle pattern will be deleted when main pattern does not support idle)
-
-// Abstract class to describe main animations, or animations that have a speed dependence
-class Pattern_Main : public Pattern
-{
-public:
-  Pattern_Main(Speedometer *speedometer); // Constructor
-  bool doesAllowIdle();                // Getter for allowIdle
-
-  // virtual MAIN_ANIM getMainPatternType() = 0; // TODO: FILL IN; Alternatively, make a virtual function in Pattern that either a) returns the Image_Meta parameter (hardcoded 0 in Pattern, unless overwritten in some child class), or b) returns a full fleged ImageMetaParam_BT object (hard coded "default" in Pattern, then fill in for child functions)
-protected:
-  // Speedometer pointer (derived Pattern classes only get access to it during main animations)
-  Speedometer *speedometer = NULL; // Speedometer (used to retrieve the pos/vel/acc of the wheel), DO NOT ATTEMPT TO DELETE
-
-  bool allowIdle = true; // Does this class allow an idle animation (true for most, but some main animations will need to override the idle animation and play all the time)
-};
-
-// Abstract class to describe idle animations, or animations that have no speed dependence
-class Pattern_Idle : public Pattern
-{
-public:
-  Pattern_Idle() : Pattern(){}; // Constructor
-
-  // virtual IDLE_ANIM getMainPatternType() = 0; // TODO: FILL IN
-};
+// 4. Derived classes have getLEDOffset(int xTrueRounded), which defines this image's behavior
+// Need basic function sendLEDsWithOffset(int offset) that applies image to the LED strip, but offsets the image by some number which is dependant on the class.  Number will be offset = xTrueRounded + this_pattern_offset, where this_pattern_offset is defined by the class (Moving, Spinner, Still, wRel, gRel, ...)
+// gRel will use xTrueRounded, wRel will not.  Moving and Spinner both have internal calculations to perform.
+// Moving_Helper and Spinner_Helper (or any other similar class) will derive the Image_Helper class, which simply has a pure virtual function getHelperOffset(int xTrueRounded).  Define anim(xTrueRounded) as: sendLEDsWithOffset(getLEDOffset(xTrueRounded)) , and give Pattern a new virtual function int getLEDOffset(int xTrueRounded).  Example implementations:
+// wRel_Still: return 0;
+// gRel_Still: return xTrueRounded;
+// wRel_Moving (derives Moving_Helper): return getHelpderOffset(xTrueRounded);
+// gRel_Moving (derives Moving_Helper): return xTrueRounded + getHelpderOffset(xTrueRounded);
+// Spinner (derives Spinner_Helper): return getHelpderOffset(xTrueRounded);
 
 // An abstract class to describe Patterns that use a moving image
 // TODO: Improve the documentation and naming of the variables in here; blurring may become viable if I use SRAM, and I'm never going to get it to work if I have no idea what any of this stuff does.
 class Moving_Image
 {
 public:
-  Moving_Image();              // Constructor
-  void anim();                 // The animation function
-  virtual void animMain() = 0; // Each derived Pattern makes an animation that is run, similar to the anim() function of each other Pattern.  However, the imageMovementPos must be advanced each animation cycle, which will be done in the real Moving_Image::anim()
-
-  void setImageBleed(unsigned char imageBleedIn); // Change imageBleed
+  Moving_Image();                                            // Constructor
+  void anim(int xTrueRounded);                               // The internal animation function; calls anim_preImagePosUpdate(), which is defined by derived class
+  virtual void anim_preImagePosUpdate(int xTrueRounded) = 0; // Each derived Pattern makes an animation that is run, similar to the anim() function of each other Pattern.  However, the imageMovementPos must be advanced each animation cycle, which will be done in the real Moving_Image::anim()
 
   void setRotateSpeed(int rotateSpeedIn);                                  // Change rotateSpeed
   int getRotateSpeed();                                                    // Get the rotation speed
   float getImageMovementPos();                                             // Get the current value of the protected imageMovementPos variable
-  void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the animMain() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by imageMovementPos and "blurring")
+  void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the anim_preImagePosUpdate() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by imageMovementPos and "blurring")
+
+#if SRAM_ATTACHED
+  void setImageBleed(unsigned char imageBleedIn); // Change imageBleed
+#endif
 
 protected:
 #if SRAM_ATTACHED
@@ -134,14 +122,19 @@ protected:
 #endif
 
 private:
-  unsigned char imageBleed = 150;       // Amount of "bleed" from the moving image (0 <= bleedIn <= 255, higher values mean more after-image)
   int rotateSpeed = 10;                 // Speed of image rotation (in LEDs/second)
   float imageMovementPos = 0;           // Current image reference position around the wheel
   unsigned long lastLEDAdvanceTime = 0; // The time at which imageMovementPos was last updated
 
-  //    void colorBlur(); // Calculate the blurring of the color memory
   void advanceLEDPos(); // Advance the current location of the image reference position around the wheel
-  //    void sendColors(); // Send the palette in colorMemory to the LEDs
+
+#if SRAM_ATTACHED
+  unsigned char imageBleed = 150; // Amount of "bleed" from the moving image (0 <= bleedIn <= 255, higher values mean more after-image)
+
+  void colorBlur();  // Calculate the blurring of the color memory
+  void sendColors(); // Send the palette in colorMemory to the LEDs
+
+#endif
 };
 
 // Object that holds onto and manages each pattern currently instantiated (one main, and one idle)
@@ -156,8 +149,8 @@ public:
   void setMainPattern(MAIN_ANIM newAnimation); // Set the main pattern
   void setIdlePattern(IDLE_ANIM newAnimation); // Set the idle pattern
 
-  Pattern_Main *mainPattern = NULL; // The main pattern
-  Pattern_Idle *idlePattern = NULL; // The idle pattern
+  Pattern *mainPattern = NULL; // The main pattern
+  Pattern *idlePattern = NULL; // The idle pattern
 
   // Functions to manage the "palette" array of Color_**'s, or the Color_'s that this pattern may show
   unsigned char numColors;      // The number of palette is defaulted to 0 (Max of 255 Color_'s)
@@ -165,11 +158,11 @@ public:
 
   void setupPalette(unsigned char numColors);
   void setupPalette(Color_ **colorsIn, unsigned char numColorsIn);
-  
-  #if USE_NANOPB
+
+#if USE_NANOPB
   void setupPalette(Color_BT *colorMessagesIn, unsigned char numColorsIn);
-  #endif
-  
+#endif
+
   void setColor(Color_ *newColor, unsigned char colorNum); // Set a Color_ in the specified location
   Color_ *getColor(unsigned char colorNum);                // Get a pointer to the Color_ at the specified location
 
@@ -209,8 +202,8 @@ public:
 
   ImageMeta_BT getImageType();
 
-  void animMain();                       // Main animation function
-  void anim() { Moving_Image::anim(); }; // Redefine anim() to be the Moving_Image anim()
+  void anim_preImagePosUpdate(int xTrueRounded); // Main animation function
+  void anim() { Moving_Image::anim(); };         // Redefine anim() to be the Moving_Image anim()
 };
 
 // An idle animation that features an image that does not rotate relative to the wheel
@@ -240,8 +233,8 @@ public:
 
   ImageMeta_BT getImageType();
 
-  void animMain();                       // Idle animation function
-  void anim() { Moving_Image::anim(); }; // Redefine anim() to be the Moving_Image anim()
+  void anim_preImagePosUpdate(int xTrueRounded); // Idle animation function
+  void anim() { Moving_Image::anim(); };         // Redefine anim() to be the Moving_Image anim()
 };
 
 // A class in charge of communicating with the LED strip
