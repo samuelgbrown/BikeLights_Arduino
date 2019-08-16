@@ -9,7 +9,6 @@ Bluetooth::~Bluetooth()
 {
 }
 
-// TODO: START HERE:  Finish writing the decoding function
 void Bluetooth::mainLoop() {
     // Check if there is anything on the serial line
     int count = btSer.available();
@@ -593,8 +592,7 @@ void oldMainLoop()
             // Let nanopb do the decoding for us...what could possibly go wrong?
             // Similar to http://zakovinko.com/57-how-to-speak-from-arduino-to-python-and-back.html
             // See if we can transfer the information from the Message to the respective Bike_Lights objects without using up too much extra memory
-
-            // TODO: START HERE:
+            
             // First, try setting no_unions:true!!!
             // Next, try setting type:FT_POINTER in .options and #define PB_ENABLE_MALLOC=1 in pb.h, see how that changes things, should now be able to use dynamic arrays?
             // Try using https://github.com/nanopb/nanopb/blob/master/examples/using_union_messages/decode.c to figure out which content is there (try setting no_unions:true ?).  Perhaps try this first as a standard C++ program to see what happens if we just decode the thing without setting arg/funcs...may require writing encoding code first

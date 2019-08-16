@@ -83,19 +83,24 @@ private:
   // colorObj * preCalculatedColors = NULL; // Array (of size numColors) of colorObj's that represents the colorObj for each Color_ represented in image that is being used this loop (each Color_ is calculated only once, so computation time will be saved on dynamic palette).
 };
 
+// TODO: START HERE: Pattern redesign:
+// 1. Patterns will not hold onto a Speedometer pointer, only Pattern_Handler will.  It will pass the "xTrueRounded" int to each Pattern through its anim() function (soon to be anim(int xTrueRounded))
+// 2. Idle and Main patterns will be identical, due to 1. An anim() will still exist, which will simply call anim(0).
+// 3. The Pattern_Handler will hold onto the allowIdle bool, updated each time the main pattern is reassigned (idle pattern will be deleted when main pattern does not support idle)
+
 // Abstract class to describe main animations, or animations that have a speed dependence
 class Pattern_Main : public Pattern
 {
 public:
   Pattern_Main(Speedometer *speedometer); // Constructor
-  boolean doesAllowIdle();                // Getter for allowIdle
+  bool doesAllowIdle();                // Getter for allowIdle
 
   // virtual MAIN_ANIM getMainPatternType() = 0; // TODO: FILL IN; Alternatively, make a virtual function in Pattern that either a) returns the Image_Meta parameter (hardcoded 0 in Pattern, unless overwritten in some child class), or b) returns a full fleged ImageMetaParam_BT object (hard coded "default" in Pattern, then fill in for child functions)
 protected:
   // Speedometer pointer (derived Pattern classes only get access to it during main animations)
   Speedometer *speedometer = NULL; // Speedometer (used to retrieve the pos/vel/acc of the wheel), DO NOT ATTEMPT TO DELETE
 
-  boolean allowIdle = true; // Does this class allow an idle animation (true for most, but some main animations will need to override the idle animation and play all the time)
+  bool allowIdle = true; // Does this class allow an idle animation (true for most, but some main animations will need to override the idle animation and play all the time)
 };
 
 // Abstract class to describe idle animations, or animations that have no speed dependence
@@ -195,7 +200,7 @@ public:
   void anim(); // Main animation function
 };
 
-// A main animation that features an image that appears to rotate independently relative to the ground
+// A main animation that features an image that appears to rotates at a set speed relative to the ground
 class Moving_Image_Main : public Still_Image_Main, public Moving_Image
 {
 public:
