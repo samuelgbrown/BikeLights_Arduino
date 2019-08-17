@@ -20,7 +20,7 @@
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
 #define LIBRARY_TEST false         // Should a single script be run instead of the normal function (to test singular parts of the library)?
-#define NO_BLUETOOTH true          // Try compiling without any Bluetooth code...just cuz
+#define NO_BLUETOOTH false          // Try compiling without any Bluetooth code...just cuz
 
 // Debugging
 #define DEBUGGING_GENERAL true      // Breakdown every step that the software takes

@@ -66,8 +66,8 @@ The Image information will be encoded in the following way:
 - X X X SI ITM1 ITM2 ITM3 ITM4 | b_IPM | (N/2) x b_IM | [b_ITI | b_IPI | (N/2) x b_II] -
 SI (bool) - Does the image support an idle image? 1 if yes, 0 if no
 ITM (4uint) - The Image Type for the main image.
-    0 - Wheel_rel (rotation is relative to the wheel)
-    1 - Ground_rel (rotation is relative to the ground)
+    0 - Wheel_rel_rot (constant rotation, relative to the wheel)
+    1 - Ground_rel_rot (constant rotation, relative to the ground)
     2 - Spinner (rotation behaves like a spinner hub-cap)
 IPM (8sint) - The parameter set for the main Image, dependant on IT
     0 - The rotation rate
@@ -77,11 +77,9 @@ IM (byte) - The image values for the main image.  Each half byte (nibble) repres
 
 IF SI == 1, the bytes in the bracket will be used.  Otherwise, they are excluded.
 ITI (4uint) - The Image Type for the idle image
-    0 - Wheel_rel (rotation is relative to the wheel)
-    1 - Ground_rel (rotation is relative to the ground)
+    0 - Wheel_rel_rot (constant rotation, relative to the wheel)
 IPM (8sint) - The parameter set for the main Image, dependant on IT
     0 - The rotation rate
-    1 - The rotation rate
 II (byte) - The image values for the idle image.  Each half byte (nibble) represents the index in the palette that this LED is colored.  There are N/2 bytes in this portion
 
 # # # # # # # # # # # # # # # # # # # # # # # # #

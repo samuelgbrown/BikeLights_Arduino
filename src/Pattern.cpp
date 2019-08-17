@@ -4,7 +4,7 @@
 #include "Color.h"
 #include "Pattern.h"
 
-Pattern::Pattern()
+Pattern::Pattern() : Pattern(new Static_Helper(), true)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -14,7 +14,6 @@ Pattern::Pattern()
 
   // numColors = 0;
   //  setImageZeros();
-
   if (DEBUGGING_PATTERN)
   {
     // Serial.flush();
@@ -25,6 +24,30 @@ Pattern::Pattern()
   // Set the default number of colors to 1 (some value is needed, and this simplifies things)
   //  setupColors(1);
 };
+
+Pattern::Pattern(Image_Helper * image_helper, bool groundRel): groundRel(groundRel) {
+  setImageHelper(image_helper);
+}
+
+Pattern::~Pattern() {
+  // Delete the Image_Helper that is owned by this Pattern
+  delete image_helper;
+}
+
+void Pattern::anim(int xTrueRounded) {
+  sendLEDsWithOffset((groundRel ? xTrueRounded : 0) - image_helper->getHelperOffset(xTrueRounded)); // Send the colors to the LED strip with an offset.  This offset will be modulus'd as needed.  The offset is defined as the negative of the helper's offset (so that positive offsets rotate the image forward), plus [xTrueRounded if the image position is defined relative to the ground, or 0 if the image position is defined relative to the wheel]
+}
+
+void Pattern::sendLEDsWithOffset(int offset) {
+  // Go through each LED, and send specified color to the LED strip
+  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++) {
+    // Find the image index to use by adding the offset to the LED number, and using modulus to stay within NUMLEDS
+    unsigned char imagePos = (unsigned char)((LEDNum + offset) % (int)NUMLEDS);
+
+    // Send the color at the specified location to the LED strip
+    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)));
+  }
+}
 
 // Pattern::Pattern(Color_** colorsIn, unsigned char numColorsIn) {
 //   setupColors(colorsIn, numColorsIn);
@@ -319,6 +342,10 @@ const unsigned char *Pattern::getImage()
   return image;
 }
 
+bool Pattern::supportIdle() {
+  return image_helper->isIdleAllowed(); // Whether or not this Pattern supports an idle animation is dependant entirely on the type of helper function
+}
+
 void Pattern_Handler::setColor(Color_ *newColor, unsigned char colorNum)
 {
   if (colorNum < numColors && colorNum != 0)
@@ -498,6 +525,17 @@ void Pattern::setImage(unsigned char *imageIn)
   // setupColors(numColorsInArray);
 };
 
+void Pattern::setImageFromBluetooth(btSerialWrapper btSer) {
+  // Read data in directly from the Bluetooth device, and set it as the image.
+  // NOTE: This function assumes that the Bluetooth Serial line is queued up such that the next NUM_BYTES_PER_IMAGE bytes are meant to define an image for a Pattern.  No error-checking can or will be performed.
+  btSer.nextMessageBytes(image, NUM_BYTES_PER_IMAGE);
+}
+
+void Pattern::setImageHelper(Image_Helper * image_helper_in) {
+  delete image_helper; // Delete the old image helper, if it exists
+  image_helper = image_helper_in;
+}
+
 // void Pattern::setImageZeros()
 // {
 //   // Using old image format (one char per LED, instead of one nible per LED)
@@ -671,45 +709,17 @@ void Pattern_Handler::preCalculateAllColor_()
 //};
 
 // Define the Image_Helper class and its derived forms
-unsigned char Static_Helper::getHelperOffset(int xTrueRounded) {
+Image_Helper::Image_Helper(bool idleAllowed): idleAllowed(idleAllowed) {};
+
+bool Image_Helper::isIdleAllowed() {
+  return idleAllowed;
+}
+
+int Static_Helper::getHelperOffset(int xTrueRounded) {
   return 0; // Always return 0, so that the image does not move
 }
 
 Moving_Helper::Moving_Helper(int rotateSpeed): rotateSpeed(rotateSpeed) {}
-
-unsigned char Moving_Helper::getHelperOffset(int xTrueRounded) {
-
-}
-
-void Moving_Helper::anim(int xTrueRounded)
-{
-  //  if (DEBUGGING_MOVINGIMAGE) {
-  //    Serial.println(F("Starting Moving Image upper level animation..."));
-  //  }
-  anim_preImagePosUpdate(xTrueRounded); // Perform the custom animation defined by the derived classes
-
-#if SRAM_ATTACHED
-  colorBlur();  // Calculate the blurring of the color memory
-  sendColors(); // Send the colors in colorMemory to the LEDs
-#endif
-
-  advanceLEDPos(); // Advance the LED position
-
-  if (DEBUGGING_MOVINGIMAGE)
-  {
-    Serial.println();
-  }
-};
-
-#if SRAM_ATTACHED
-void Moving_Helper::setImageBleed(unsigned char imageBleedIn)
-{
-  if (0 <= imageBleedIn && imageBleedIn < 255)
-  {
-    imageBleed = imageBleedIn;
-  }
-};
-#endif
 
 void Moving_Helper::setRotateSpeed(int rotateSpeedIn)
 {
@@ -721,48 +731,10 @@ int Moving_Helper::getRotateSpeed()
   return rotateSpeed;
 }
 
-float Moving_Helper::getImageMovementPos()
-{
-  return imageMovementPos;
-};
-
-//void Moving_Helper::colorBlur() {
-//  Method for doing color blur that requires a large amount of memory (NUMLIGHTSPERLED * NUMLEDS bytes) per pattern, in the form of the colorMemory array.
-//  May be useful if using external RAM.
-//  unsigned long dt = micros() - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
-//  float tune = 700; // Used to remap the imageBleed variable to make it easier to choose bleed times
-//  float bleedFac = (float)dt / 1000000.0; // Convert milliseconds to seconds
-//  if (DEBUGGING_MOVINGIMAGE) {
-//    Serial.println(dt);
-//    Serial.println(bleedFac, 10);
-//  }
-//  for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++) {
-//    if (DEBUGGING_MOVINGIMAGE && colorInd == 0) {
-//      Serial.println(1.0 - tune * bleedFac * (1.0 - pow((float)imageBleed / 255.0, .2)), 10);
-//    }
-//    //    colorMemory[colorInd].multiplyBrightness((bleedFac * (float)imageBleed) / 255.0);
-//    colorMemory[colorInd].multiplyBrightness(1.0 - tune * bleedFac * (1.0 - pow((float)imageBleed / 255.0, .2)));
-//  }
-//};
-
-void Moving_Helper::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
-{
-#if SRAM_ATTACHED
-  unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + imageMovementPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
-  if (DEBUGGING_MOVINGIMAGE)
-  {
-    Serial.println(thisInd);
-  }
-  colorMemory[thisInd] = colorObjIn;
-#endif
-};
-
-//void Moving_Helper::sendColors() {
-// Send colorMemory object (used with memory-expensive blur method)
-//  for (unsigned char i = 0; i < NUMLEDS; i++) {
-//    controller::sendPixel(colorMemory[i]); // Send the color in colorMemory
-//  }
-//}
+int Moving_Helper::getHelperOffset(int xTrueRounded) {
+  advanceLEDPos(); // Advance the LED position, based on the current time
+  return (unsigned char) round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
+}
 
 void Moving_Helper::advanceLEDPos()
 {
@@ -773,310 +745,381 @@ void Moving_Helper::advanceLEDPos()
   lastLEDAdvanceTime = thisLEDAdvanceTime;                                                            // Update lastLEDAdvanceTime
 };
 
-Still_Image_Main::Still_Image_Main(Speedometer *speedometer) : Pattern_Main(speedometer)
+#if SRAM_ATTACHED
+Moving_Helper(int rotateSpeed, imageBleed): rotateSpeed(rotateSpeed), imageBleed(imageBleed) {};
+
+void Moving_Helper::setImageBleed(unsigned char imageBleedIn)
 {
-  if (DEBUGGING_PATTERN)
+  if (0 <= imageBleedIn && imageBleedIn < 255)
   {
-    // Serial.flush();
-    Serial.println(F("Making still main pattern..."));
-    //    delay(500);
+    imageBleed = imageBleedIn;
   }
-  //  setImageZeros();
-  // setImageNumSegs(10);
-  //  Serial.println(F("Pattern set."));
+};
+
+void Moving_Helper::colorBlur() {
+ Method for doing color blur that requires a large amount of memory (NUMLIGHTSPERLED * NUMLEDS bytes) per pattern, in the form of the colorMemory array.
+ May be useful if using external RAM.
+ unsigned long dt = micros() - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
+ float tune = 700; // Used to remap the imageBleed variable to make it easier to choose bleed times
+ float bleedFac = (float)dt / 1000000.0; // Convert milliseconds to seconds
+ if (DEBUGGING_MOVINGIMAGE) {
+   Serial.println(dt);
+   Serial.println(bleedFac, 10);
+ }
+ for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++) {
+   if (DEBUGGING_MOVINGIMAGE && colorInd == 0) {
+     Serial.println(1.0 - tune * bleedFac * (1.0 - pow((float)imageBleed / 255.0, .2)), 10);
+   }
+   //    colorMemory[colorInd].multiplyBrightness((bleedFac * (float)imageBleed) / 255.0);
+   colorMemory[colorInd].multiplyBrightness(1.0 - tune * bleedFac * (1.0 - pow((float)imageBleed / 255.0, .2)));
+ }
+};
+
+void Moving_Helper::sendColors() {
+// Send colorMemory object (used with memory-expensive blur method)
+ for (unsigned char i = 0; i < NUMLEDS; i++) {
+   controller::sendPixel(colorMemory[i]); // Send the color in colorMemory
+ }
 }
 
-Still_Image_Main::Still_Image_Main(Speedometer *speedometer, unsigned char *imageIn) : Pattern_Main(speedometer)
+void Moving_Helper::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
 {
-  setImage(imageIn);
+  unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + imageMovementPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
+  if (DEBUGGING_MOVINGIMAGE)
+  {
+    Serial.println(thisInd);
+  }
+  colorMemory[thisInd] = colorObjIn;
 };
-
-void Still_Image_Main::anim()
-{
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    Serial.println(F("Main Start..."));
-    //    delay(500);
-  }
-
-  // Get the wheel reference location
-  int xTrueRounded = (int)roundf(speedometer->getPos());
-  //  Serial.print(F("xTrueRounded is: "));
-  //  Serial.println(xTrueRounded);
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    Serial.println(F("Got position..."));
-    //    delay(500);
-  }
-
-  // Pre-calculate all Color_'s
-  parent_handler->preCalculateAllColor_();
-  // preCalculateAllColor_();
-
-  // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
-  {
-    //    if (DEBUGGING_PATTERN) {
-    //      // Serial.flush();
-    //      Serial.print(F("Loop "));
-    //      Serial.print(LEDNum);
-    //      Serial.print(F(", xTrueRounded is "));
-    //      Serial.print(xTrueRounded);
-    //      Serial.print(F(", NUMLEDS is "));
-    //      Serial.println(NUMLEDS);
-    ////      delay(500);
-    //    }
-    unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)NUMLEDS); // Adjust the position in the image
-    //    if (DEBUGGING_PATTERN) {
-    //      Serial.print(F("imagePos is "));
-    //      Serial.println(imagePos);
-    //      Serial.print(F("image[imagePos] is "));
-    //      Serial.println(image[imagePos]);
-    //      Serial.print(F("Total number of colors is "));
-    //      Serial.println(getNumColors());
-    //      delay(500);
-    //      Serial.print(F("R = "));
-    //      Serial.print(colors[image[imagePos]]->getColor().r());
-    //      Serial.print(F(", G = "));
-    //      Serial.print(colors[image[imagePos]]->getColor().g());
-    //      Serial.print(F(", B = "));
-    //      Serial.print(colors[image[imagePos]]->getColor().b());
-    //      Serial.print(F(", W = "));
-    //      Serial.println(colors[image[imagePos]]->getColor().w());
-    //      Serial.println(F("Sending pixel..."));
-    //      delay(500);
-    //    }
-    //    controller::sendPixel(image[0][imagePos], image[1][imagePos], image[2][imagePos], image[3][imagePos]);
-    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)));
-  }
-
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    Serial.println(F("Finished Main..."));
-    delay(500);
-  }
-};
-
-Still_Image_Idle::Still_Image_Idle() : Pattern_Idle()
-{
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.println(F("Making Still_Image_Idle"));
-    //    // Serial.flush();
-    //    Serial.print(getNumColors());
-    //    Serial.println(F(" colors currently in still idle pattern..."));
-  }
-
-  // Set up black and red idle animation
-  //  setImageZeros();
-  // setImageNumSegs(10);
-
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.println(F("Done with Still_Image_Idle..."));
-    //    delay(200);
-  }
-
-  // Blink class leftovers
-  //  setupColors(2); // Need two colors for this animation
-  //  setColor(Color_Static(0, 0, 0, 0).getColor_(), 0);
-  //  setColor(Color_Static(150, 0, 0, 0).getColor_(), 1);
-};
-
-Still_Image_Idle::Still_Image_Idle(unsigned char *imageIn) : Pattern_Idle()
-{
-  setImage(imageIn);
-};
-
-void Still_Image_Idle::anim()
-{
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    //    Serial.println(F("Idle animation starting..."));
-  }
-  //  unsigned long curTime = millis();
-  //  Serial.print(F("Idle: "));
-  //  Serial.println((curTime - timeAtToggle));
-  //  if (!isIdle) {
-  //    // Idling just started
-  //    //    Serial.println(F("Start"));
-  //    isIdle = true;
-  //    timeAtToggle = curTime;
-  //    idleToggleSig = true;
-  //  }
-
-  // Blink class leftovers
-  //  if (idleToggleSig) {
-  //    if ((curTime - timeAtToggle) > timeOn) {
-  //      idleToggleSig = false;
-  //      //      idleBrightness = 0;
-  //      timeAtToggle = curTime;
-  //      //      Serial.println(F("Off"));
-  //    }
-  //  } else {
-  //    if ((curTime - timeAtToggle) > timeOff) {
-  //      idleToggleSig = true;
-  //      //      idleBrightness = 150;
-  //      timeAtToggle = curTime;
-  //      //      Serial.println(F("On"));
-  //    }
-  //  }
-  //  if (DEBUGGING_PATTERN) {
-  // Serial.flush();
-  //    Serial.println(F("Setting color..."));
-  //    delay(500);
-  //  }
-
-  //  Color_ *thisC;
-  //  if (idleToggleSig) {
-  //    thisC = colors[0];
-
-  //    if (DEBUGGING_PATTERN) {
-  //      // Serial.flush();
-  //      Serial.print(F("Using first color of "));
-  //      Serial.print(getNumColors());
-  //      //      delay(500);
-  //      Serial.print(F(" total colors..."));
-  //      Serial.print(F("R = "));
-  //      Serial.print(colors[0]->getColor().r());
-  //      Serial.print(F(", G = "));
-  //      Serial.print(colors[0]->getColor().g());
-  //      Serial.print(F(", B = "));
-  //      Serial.print(colors[0]->getColor().b());
-  //      Serial.print(F(", W = "));
-  //      Serial.println(colors[0]->getColor().w());
-  //      //      delay(500);
-  //    }
-  //  } else {
-  //    if (DEBUGGING_PATTERN) {
-  // Serial.flush();
-  //      Serial.println(F("Using second color..."));
-  // delay(1000);
-  //    }
-  //    thisC = colors[1];
-  //  }
-
-  // Pre-calculate all Color_'s
-  parent_handler->preCalculateAllColor_();
-  // preCalculateAllColor_();
-
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.flush();
-    //    Serial.println(F("Sending all LEDs..."));
-    //    delay(1000);
-  }
-  // Load the image onto the wheel, as is
-  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
-  {
-    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)));
-  }
-
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.flush();
-    //    Serial.println(F("Sent all LEDs..."));
-    //    delay(1000);
-  }
-
-  //  Serial.println();
-};
-
-// Moving Image Main functions
-Moving_Helper_Main::Moving_Helper_Main(Speedometer *speedometer, unsigned char *image) : Still_Image_Main(speedometer, image){};
-Moving_Helper_Main::Moving_Helper_Main(Speedometer *speedometer) : Still_Image_Main(speedometer){};
-
-void Moving_Helper_Main::anim_preImagePosUpdate(int xTrueRounded)
-{
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.flush();
-    Serial.println(F("Main animation starting..."));
-  }
-
-  // int xTrueRounded = (int)roundf(speedometer->getPos());
-
-  // Pre-calculate all Color_'s
-  parent_handler->preCalculateAllColor_();
-  // preCalculateAllColor_();
-
-  // Load the image into color memory, as is
-  for (unsigned char thisWheelPos = 0; thisWheelPos < NUMLEDS; thisWheelPos++)
-  {
-// Add a new color to the LED strip
-#if SRAM_ATTACHED
-    // Add the pixel color specified to RAM, to be sent after processing
-    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(((thisWheelPos + xTrueRounded) % (int)NUMLEDS))), imagePos);
-#else
-    // Send the pixels directly to the LED strip
-    unsigned char thisInd = (unsigned char)fmod(round(((thisWheelPos + xTrueRounded) % (int)NUMLEDS) - getImageMovementPos()), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
-    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisInd)));
 #endif
-  }
 
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.flush();
-    Serial.println(F("Wrote all LEDs to colorMemory..."));
-    //    delay(1000);
-  }
+// For the Spinner_Helper class, note that it does NOT allow an idle, so construct the Image_Helper accordingly
+Spinner_Helper::Spinner_Helper(): Image_Helper(false) {};
+Spinner_Helper::Spinner_Helper(signed char intertia): Image_Helper(false), inertia(inertia) {}
 
-  //  Serial.println();
+void Spinner_Helper::setInertia(signed char inertiaIn) {
+  inertia = inertiaIn;
+}
+
+unsigned char Spinner_Helper::getInertia() {
+  return inertia;
+}
+
+int Spinner_Helper::getHelperOffset(int xTrueRounded) {
+  advanceLEDPos(); // Advance the LED position, based on the current time
+  return (unsigned char) round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
+}
+
+void Spinner_Helper::advanceLEDPos() {
+  // TODO: Write the Spinner image type!!!  
+  // Calculate the next position based on the physical model
+  imageMovementPos++;
 };
 
-// Moving Image Idle functions
-Moving_Helper_Idle::Moving_Helper_Idle(unsigned char *image) : Still_Image_Idle(image){};
-Moving_Helper_Idle::Moving_Helper_Idle() : Still_Image_Idle()
-{
-  if (DEBUGGING_PATTERN)
-  {
-    //    Serial.flush();
-    //    Serial.println(F("Finished making Moving_Helper_Idle"));
-    //    delay(500);
-  }
-};
+// Still_Image_Main::Still_Image_Main(Speedometer *speedometer) : Pattern_Main(speedometer)
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     // Serial.flush();
+//     Serial.println(F("Making still main pattern..."));
+//     //    delay(500);
+//   }
+//   //  setImageZeros();
+//   // setImageNumSegs(10);
+//   //  Serial.println(F("Pattern set."));
+// }
 
-void Moving_Helper_Idle::anim_preImagePosUpdate()
-{
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.flush();
-    Serial.println(F("Idle animation starting..."));
-  }
+// Still_Image_Main::Still_Image_Main(Speedometer *speedometer, unsigned char *imageIn) : Pattern_Main(speedometer)
+// {
+//   setImage(imageIn);
+// };
 
-  // Pre-calculate all Color_'s
-  parent_handler->preCalculateAllColor_();
-  // preCalculateAllColor_();
+// void Still_Image_Main::anim()
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     // Serial.flush();
+//     Serial.println(F("Main Start..."));
+//     //    delay(500);
+//   }
 
-  // Load the image onto the wheel, as is
-  for (unsigned char thisWheelPos = 0; thisWheelPos < NUMLEDS; thisWheelPos++)
-  {
-#if SRAM_ATTACHED
-    // Add the pixel color specified to RAM, to be sent after processing
-    addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisWheelPos)), thisWheelPos); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
-#else
-    // Add a new color to the LED strip
-    unsigned char thisInd = (unsigned char)fmod(round(((thisWheelPos) % (int)NUMLEDS) - getImageMovementPos()), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
-    controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisInd)));
-#endif
-  }
+//   // Get the wheel reference location
+//   int xTrueRounded = (int)roundf(speedometer->getPos());
+//   //  Serial.print(F("xTrueRounded is: "));
+//   //  Serial.println(xTrueRounded);
+//   if (DEBUGGING_PATTERN)
+//   {
+//     // Serial.flush();
+//     Serial.println(F("Got position..."));
+//     //    delay(500);
+//   }
 
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.flush();
-    Serial.println(F("Wrote all LEDs to colorMemory..."));
-    //    delay(1000);
-  }
+//   // Pre-calculate all Color_'s
+//   parent_handler->preCalculateAllColor_();
+//   // preCalculateAllColor_();
 
-  //  Serial.println();
-};
+//   // Load the image onto the wheel, as is
+//   for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+//   {
+//     //    if (DEBUGGING_PATTERN) {
+//     //      // Serial.flush();
+//     //      Serial.print(F("Loop "));
+//     //      Serial.print(LEDNum);
+//     //      Serial.print(F(", xTrueRounded is "));
+//     //      Serial.print(xTrueRounded);
+//     //      Serial.print(F(", NUMLEDS is "));
+//     //      Serial.println(NUMLEDS);
+//     ////      delay(500);
+//     //    }
+//     unsigned char imagePos = (unsigned char)((LEDNum + xTrueRounded) % (int)NUMLEDS); // Adjust the position in the image
+//     //    if (DEBUGGING_PATTERN) {
+//     //      Serial.print(F("imagePos is "));
+//     //      Serial.println(imagePos);
+//     //      Serial.print(F("image[imagePos] is "));
+//     //      Serial.println(image[imagePos]);
+//     //      Serial.print(F("Total number of colors is "));
+//     //      Serial.println(getNumColors());
+//     //      delay(500);
+//     //      Serial.print(F("R = "));
+//     //      Serial.print(colors[image[imagePos]]->getColor().r());
+//     //      Serial.print(F(", G = "));
+//     //      Serial.print(colors[image[imagePos]]->getColor().g());
+//     //      Serial.print(F(", B = "));
+//     //      Serial.print(colors[image[imagePos]]->getColor().b());
+//     //      Serial.print(F(", W = "));
+//     //      Serial.println(colors[image[imagePos]]->getColor().w());
+//     //      Serial.println(F("Sending pixel..."));
+//     //      delay(500);
+//     //    }
+//     //    controller::sendPixel(image[0][imagePos], image[1][imagePos], image[2][imagePos], image[3][imagePos]);
+//     controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)));
+//   }
 
-// Actually send a bit to the string. We must to drop to asm to enusre that the complier does
-// not reorder things and make it so the delay happens in the wrong place.
+//   if (DEBUGGING_PATTERN)
+//   {
+//     // Serial.flush();
+//     Serial.println(F("Finished Main..."));
+//     delay(500);
+//   }
+// };
+
+// Still_Image_Idle::Still_Image_Idle() : Pattern_Idle()
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.println(F("Making Still_Image_Idle"));
+//     //    // Serial.flush();
+//     //    Serial.print(getNumColors());
+//     //    Serial.println(F(" colors currently in still idle pattern..."));
+//   }
+
+//   // Set up black and red idle animation
+//   //  setImageZeros();
+//   // setImageNumSegs(10);
+
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.println(F("Done with Still_Image_Idle..."));
+//     //    delay(200);
+//   }
+
+//   // Blink class leftovers
+//   //  setupColors(2); // Need two colors for this animation
+//   //  setColor(Color_Static(0, 0, 0, 0).getColor_(), 0);
+//   //  setColor(Color_Static(150, 0, 0, 0).getColor_(), 1);
+// };
+
+// Still_Image_Idle::Still_Image_Idle(unsigned char *imageIn) : Pattern_Idle()
+// {
+//   setImage(imageIn);
+// };
+
+// void Still_Image_Idle::anim()
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     // Serial.flush();
+//     //    Serial.println(F("Idle animation starting..."));
+//   }
+//   //  unsigned long curTime = millis();
+//   //  Serial.print(F("Idle: "));
+//   //  Serial.println((curTime - timeAtToggle));
+//   //  if (!isIdle) {
+//   //    // Idling just started
+//   //    //    Serial.println(F("Start"));
+//   //    isIdle = true;
+//   //    timeAtToggle = curTime;
+//   //    idleToggleSig = true;
+//   //  }
+
+//   // Blink class leftovers
+//   //  if (idleToggleSig) {
+//   //    if ((curTime - timeAtToggle) > timeOn) {
+//   //      idleToggleSig = false;
+//   //      //      idleBrightness = 0;
+//   //      timeAtToggle = curTime;
+//   //      //      Serial.println(F("Off"));
+//   //    }
+//   //  } else {
+//   //    if ((curTime - timeAtToggle) > timeOff) {
+//   //      idleToggleSig = true;
+//   //      //      idleBrightness = 150;
+//   //      timeAtToggle = curTime;
+//   //      //      Serial.println(F("On"));
+//   //    }
+//   //  }
+//   //  if (DEBUGGING_PATTERN) {
+//   // Serial.flush();
+//   //    Serial.println(F("Setting color..."));
+//   //    delay(500);
+//   //  }
+
+//   //  Color_ *thisC;
+//   //  if (idleToggleSig) {
+//   //    thisC = colors[0];
+
+//   //    if (DEBUGGING_PATTERN) {
+//   //      // Serial.flush();
+//   //      Serial.print(F("Using first color of "));
+//   //      Serial.print(getNumColors());
+//   //      //      delay(500);
+//   //      Serial.print(F(" total colors..."));
+//   //      Serial.print(F("R = "));
+//   //      Serial.print(colors[0]->getColor().r());
+//   //      Serial.print(F(", G = "));
+//   //      Serial.print(colors[0]->getColor().g());
+//   //      Serial.print(F(", B = "));
+//   //      Serial.print(colors[0]->getColor().b());
+//   //      Serial.print(F(", W = "));
+//   //      Serial.println(colors[0]->getColor().w());
+//   //      //      delay(500);
+//   //    }
+//   //  } else {
+//   //    if (DEBUGGING_PATTERN) {
+//   // Serial.flush();
+//   //      Serial.println(F("Using second color..."));
+//   // delay(1000);
+//   //    }
+//   //    thisC = colors[1];
+//   //  }
+
+//   // Pre-calculate all Color_'s
+//   parent_handler->preCalculateAllColor_();
+//   // preCalculateAllColor_();
+
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.flush();
+//     //    Serial.println(F("Sending all LEDs..."));
+//     //    delay(1000);
+//   }
+//   // Load the image onto the wheel, as is
+//   for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+//   {
+//     controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(LEDNum)));
+//   }
+
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.flush();
+//     //    Serial.println(F("Sent all LEDs..."));
+//     //    delay(1000);
+//   }
+
+//   //  Serial.println();
+// };
+
+// // Moving Image Main functions
+// Moving_Helper_Main::Moving_Helper_Main(Speedometer *speedometer, unsigned char *image) : Still_Image_Main(speedometer, image){};
+// Moving_Helper_Main::Moving_Helper_Main(Speedometer *speedometer) : Still_Image_Main(speedometer){};
+
+// void Moving_Helper_Main::anim_preImagePosUpdate(int xTrueRounded)
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.flush();
+//     Serial.println(F("Main animation starting..."));
+//   }
+
+//   // int xTrueRounded = (int)roundf(speedometer->getPos());
+
+//   // Pre-calculate all Color_'s
+//   parent_handler->preCalculateAllColor_();
+//   // preCalculateAllColor_();
+
+//   // Load the image into color memory, as is
+//   for (unsigned char thisWheelPos = 0; thisWheelPos < NUMLEDS; thisWheelPos++)
+//   {
+// // Add a new color to the LED strip
+// #if SRAM_ATTACHED
+//     // Add the pixel color specified to RAM, to be sent after processing
+//     addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(((thisWheelPos + xTrueRounded) % (int)NUMLEDS))), imagePos);
+// #else
+//     // Send the pixels directly to the LED strip
+//     unsigned char thisInd = (unsigned char)fmod(round(((thisWheelPos + xTrueRounded) % (int)NUMLEDS) - getImageMovementPos()), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
+//     controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisInd)));
+// #endif
+//   }
+
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.flush();
+//     Serial.println(F("Wrote all LEDs to colorMemory..."));
+//     //    delay(1000);
+//   }
+
+//   //  Serial.println();
+// };
+
+// // Moving Image Idle functions
+// Moving_Helper_Idle::Moving_Helper_Idle(unsigned char *image) : Still_Image_Idle(image){};
+// Moving_Helper_Idle::Moving_Helper_Idle() : Still_Image_Idle()
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     //    Serial.flush();
+//     //    Serial.println(F("Finished making Moving_Helper_Idle"));
+//     //    delay(500);
+//   }
+// };
+
+// void Moving_Helper_Idle::anim_preImagePosUpdate()
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.flush();
+//     Serial.println(F("Idle animation starting..."));
+//   }
+
+//   // Pre-calculate all Color_'s
+//   parent_handler->preCalculateAllColor_();
+//   // preCalculateAllColor_();
+
+//   // Load the image onto the wheel, as is
+//   for (unsigned char thisWheelPos = 0; thisWheelPos < NUMLEDS; thisWheelPos++)
+//   {
+// #if SRAM_ATTACHED
+//     // Add the pixel color specified to RAM, to be sent after processing
+//     addImagePosition(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisWheelPos)), thisWheelPos); // Use overriden copy assignment operator, which copies the color data to the colorMemory array
+// #else
+//     // Add a new color to the LED strip
+//     unsigned char thisInd = (unsigned char)fmod(round(((thisWheelPos) % (int)NUMLEDS) - getImageMovementPos()), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
+//     controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(thisInd)));
+// #endif
+//   }
+
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.flush();
+//     Serial.println(F("Wrote all LEDs to colorMemory..."));
+//     //    delay(1000);
+//   }
+
+//   //  Serial.println();
+// };
+
+// // Actually send a bit to the string. We must to drop to asm to enusre that the complier does
+// // not reorder things and make it so the delay happens in the wrong place.
 
 void controller::sendBit(bool bitVal)
 {
@@ -1223,7 +1266,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer) : speedometer(speedom
     //    Serial.println(freeRam());
     Serial.println();
   }
-  setMainPattern(M_GREL_STILL);
+  setMainPattern(new Pattern());
 
   if (DEBUGGING_PATTERN)
   {
@@ -1237,7 +1280,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer) : speedometer(speedom
     delay(1000);
   }
   //  setIdlePattern(I_MOVING);
-  setIdlePattern(I_STILL);
+  setIdlePattern(new Pattern());
 
   if (DEBUGGING_PATTERN)
   {
@@ -1251,7 +1294,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer) : speedometer(speedom
   }
 };
 
-Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, unsigned char numColorsIn) : speedometer(speedometer)
+Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, unsigned char numColorsIn) : Pattern_Handler(speedometer)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1278,7 +1321,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
     //    Serial.println(freeRam());
     Serial.println();
   }
-  setMainPattern(M_GREL_STILL);
+  setMainPattern(new Pattern());
 
   if (DEBUGGING_PATTERN)
   {
@@ -1292,7 +1335,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
     delay(1000);
   }
   //  setIdlePattern(I_MOVING);
-  setIdlePattern(I_STILL);
+  setIdlePattern(new Pattern());
 
   if (DEBUGGING_PATTERN)
   {
@@ -1306,16 +1349,16 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
   }
 };
 
-boolean Pattern_Main::doesAllowIdle()
-{
-  return allowIdle;
-}
+// boolean Pattern_Main::doesAllowIdle()
+// {
+//   return allowIdle;
+// }
 
 void Pattern_Handler::mainLoop()
 {
-  if (speedometer->isSlow() && mainPattern->doesAllowIdle())
+  if (speedometer->isSlow() && mainPattern->supportIdle())
   {
-    // Wheel is moving slowly, do idle animation
+    // Wheel is moving slowly (and the main Pattern supports an idle function), do idle animation
 
     if (DEBUGGING_PATTERN)
     {
@@ -1350,7 +1393,7 @@ void Pattern_Handler::mainLoop()
   controller::show_LEDs();
 };
 
-void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum)
+void Pattern_Handler::setMainPattern(Pattern * newMainPattern)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1369,18 +1412,30 @@ void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum)
     Serial.println(freeRam());
     Serial.println(F(""));
   }
-  switch (newAnimationEnum)
-  {
-  case M_GREL_STILL:
-    mainPattern = new Still_Image_Main(speedometer);
-    break;
-  case M_GREL_MOVING:
-    mainPattern = new Moving_Helper_Main(speedometer);
-    break;
-  default:
-    mainPattern = new Still_Image_Main(speedometer);
-    break;
+  // switch (newAnimationEnum)
+  // {
+  // case M_GREL_STILL:
+  //   mainPattern = new Pattern(new Static_Helper(), true);
+  //   break;
+  // case M_GREL_MOVING:
+  //   mainPattern = new Moving_Helper_Main(speedometer);
+  //   break;
+  // default:
+  //   mainPattern = new Still_Image_Main(speedometer);
+  //   break;
+  // }
+
+  mainPattern = newMainPattern; // Assign the new Pattern to the main Pattern in this Handler
+
+  if (mainPattern->supportIdle()) {
+    // If the Pattern supports an idle animation, create a new placeholder, in case a new one is not added
+    idlePattern = new Pattern();
+  } else {
+    // If the pattern does not support an idle animation, delete the idlePattern
+    delete idlePattern;
+    idlePattern = NULL;
   }
+
 
   if (DEBUGGING_PATTERN)
   {
@@ -1391,15 +1446,7 @@ void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum)
   }
 };
 
-Pattern_Handler::~Pattern_Handler()
-{
-  deleteColorArray(); // Delete the color array when the Pattern is deleted
-
-  delete mainPattern;
-  delete idlePattern;
-}
-
-void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum)
+void Pattern_Handler::setIdlePattern(Pattern * newIdlePattern)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1416,8 +1463,6 @@ void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum)
   //    Serial.println(F("Checked and potentially deleted idle pointer..."));
   //  }
 
-  Pattern_Idle *newPattern; // Create a pointer for a new pattern
-
   if (DEBUGGING_PATTERN)
   {
     // Serial.flush();
@@ -1427,20 +1472,28 @@ void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum)
     Serial.println(F(""));
   }
 
-  switch (newAnimationEnum)
-  {
-  case I_STILL:
-    newPattern = new Still_Image_Idle();
-    break;
-  case I_MOVING:
-    newPattern = new Moving_Helper_Idle();
-    break;
-  default:
-    newPattern = new Still_Image_Idle();
-    break;
+    if (!newIdlePattern->supportIdle()) {
+    // If the incoming Pattern does not support an idle, then it cannot be used as an idle.
+    // Create a simple Pattern as a place-holder
+    idlePattern = new Pattern();
+    return;
   }
 
-  idlePattern = newPattern; // Assign the new pattern
+  idlePattern = newIdlePattern; // Assign the new Pattern to the idle Pattern in this Handler
+
+  // switch (newAnimationEnum)
+  // {
+  // case I_STILL:
+  //   newPattern = new Still_Image_Idle();
+  //   break;
+  // case I_MOVING:
+  //   newPattern = new Moving_Helper_Idle();
+  //   break;
+  // default:
+  //   newPattern = new Still_Image_Idle();
+  //   break;
+  // }
+  // idlePattern = newPattern; // Assign the new pattern
 
   if (DEBUGGING_PATTERN)
   {
@@ -1452,30 +1505,38 @@ void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum)
   }
 };
 
-// Encoding Image type functions
-ImageMeta_BT Pattern::getImageType()
+Pattern_Handler::~Pattern_Handler()
 {
-  ImageMeta_BT im = ImageMeta_BT_default;
-  im.type = ImageType_CONSTANT_BT; // TODO: Perhaps the default should be stationary? (or whatever I end up calling not-moving-relative-to-the-wheel)
-  im.parameter_set = ImageMetaParam_BT_default;
-  im.parameter_set.p1 = 0;
-  return im;
+  deleteColorArray(); // Delete the color array when the Pattern is deleted
+
+  delete mainPattern;
+  delete idlePattern;
 }
 
-ImageMeta_BT Moving_Helper_Main::getImageType()
-{
-  ImageMeta_BT im = ImageMeta_BT_default;
-  im.type = ImageType_CONSTANT_BT;
-  im.parameter_set = ImageMetaParam_BT_default;
-  im.parameter_set.p1 = getRotateSpeed();
-  return im;
-}
+// // Encoding Image type functions
+// ImageMeta_BT Pattern::getImageType()
+// {
+//   ImageMeta_BT im = ImageMeta_BT_default;
+//   im.type = ImageType_CONSTANT_BT; // TODO: Perhaps the default should be stationary? (or whatever I end up calling not-moving-relative-to-the-wheel)
+//   im.parameter_set = ImageMetaParam_BT_default;
+//   im.parameter_set.p1 = 0;
+//   return im;
+// }
 
-ImageMeta_BT Moving_Helper_Idle::getImageType()
-{
-  ImageMeta_BT im = ImageMeta_BT_default;
-  im.type = ImageType_CONSTANT_BT;
-  im.parameter_set = ImageMetaParam_BT_default;
-  im.parameter_set.p1 = getRotateSpeed();
-  return im;
-}
+// ImageMeta_BT Moving_Helper_Main::getImageType()
+// {
+//   ImageMeta_BT im = ImageMeta_BT_default;
+//   im.type = ImageType_CONSTANT_BT;
+//   im.parameter_set = ImageMetaParam_BT_default;
+//   im.parameter_set.p1 = getRotateSpeed();
+//   return im;
+// }
+
+// ImageMeta_BT Moving_Helper_Idle::getImageType()
+// {
+//   ImageMeta_BT im = ImageMeta_BT_default;
+//   im.type = ImageType_CONSTANT_BT;
+//   im.parameter_set = ImageMetaParam_BT_default;
+//   im.parameter_set.p1 = getRotateSpeed();
+//   return im;
+// }

@@ -30,6 +30,9 @@ public:
   void setP0(float *newP0); // Set a new P0 matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_states)
   void setR(float *newR);   // Set a new R matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_observed)
 
+  void setP0Elem(unsigned char row, unsigned char col, float newElem); // Set a new value for an element in P0
+  void setRElem(unsigned char row, unsigned char col, float newElem); // Set a new value for an element in R
+
   float getQ();          // Get the value of Q
   const float **getP0(); // Get a pointer to the p0 matrix
   const float **getR();  // Get a pointer to the r matrix

@@ -853,7 +853,7 @@ void Kalman::setQ(float newQ)
 
 void Kalman::setP0(float *newP0)
 {
-  // Set a new value for PPrior
+  // Set a new value for PPrior (there's definitely a "more C" way of doing this, but I can't for the life of me figure out how to do it consistently)
   for (unsigned char col = 0; col < N_STA; col++)
   {
     for (unsigned char row = 0; row < N_STA; row++)
@@ -872,6 +872,20 @@ void Kalman::setR(float *newR)
     {
       R[row][col] = newR[row + N_OBS * col];
     }
+  }
+}
+
+void Kalman::setP0Elem(unsigned char row, unsigned char col, float newElem) {
+  // Set a new value for the given element of P0, assuming the row and col are within bounds
+  if (row < N_STA && col < N_STA) {
+    PPrior[row][col] = newElem;
+  }
+}
+
+void Kalman::setRElem(unsigned char row, unsigned char col, float newElem) {
+  // Set a new value for the given element of R, assuming the row and col are within bounds
+  if (row < N_OBS && col < N_OBS) {
+    R[row][col] = newElem;
   }
 }
 
