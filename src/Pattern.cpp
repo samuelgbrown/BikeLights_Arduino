@@ -670,43 +670,18 @@ void Pattern_Handler::preCalculateAllColor_()
 //  }
 //};
 
-Pattern_Main::Pattern_Main(Speedometer *speedometer) : speedometer(speedometer){};
-
-Moving_Image::Moving_Image()
-{
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    //    Serial.println(F("Creating Moving_Image..."));
-    //    Serial.print(F("Current memory: "));
-    //    Serial.println(freeRam());
-    //    delay(500);
-  }
-
-  // Initialize the colorMemory array with colorObj's whose color data will be rewritten each anim_preImagePosUpdate()
-  // Used with the memory-expensive color blur method
-  //  for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++) {
-  //    if (DEBUGGING_PATTERN) {
-  //      // Serial.flush();
-  //      //      Serial.print(F("Making color object "));
-  //      //      Serial.print(colorInd);
-  //      //      Serial.println(F("..."));
-  //      //    delay(500);
-  //    }
-  //    colorMemory[colorInd] = colorObj();
-  //  }
-
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    //    Serial.println(F("Finished making Moving_Image..."));
-    //    Serial.print(F("Current memory: "));
-    //    Serial.println(freeRam());
-    //    delay(500);
-  }
+// Define the Image_Helper class and its derived forms
+unsigned char Static_Helper::getHelperOffset(int xTrueRounded) {
+  return 0; // Always return 0, so that the image does not move
 }
 
-void Moving_Image::anim(int xTrueRounded)
+Moving_Helper::Moving_Helper(int rotateSpeed): rotateSpeed(rotateSpeed) {}
+
+unsigned char Moving_Helper::getHelperOffset(int xTrueRounded) {
+
+}
+
+void Moving_Helper::anim(int xTrueRounded)
 {
   //  if (DEBUGGING_MOVINGIMAGE) {
   //    Serial.println(F("Starting Moving Image upper level animation..."));
@@ -727,7 +702,7 @@ void Moving_Image::anim(int xTrueRounded)
 };
 
 #if SRAM_ATTACHED
-void Moving_Image::setImageBleed(unsigned char imageBleedIn)
+void Moving_Helper::setImageBleed(unsigned char imageBleedIn)
 {
   if (0 <= imageBleedIn && imageBleedIn < 255)
   {
@@ -736,22 +711,22 @@ void Moving_Image::setImageBleed(unsigned char imageBleedIn)
 };
 #endif
 
-void Moving_Image::setRotateSpeed(int rotateSpeedIn)
+void Moving_Helper::setRotateSpeed(int rotateSpeedIn)
 {
   rotateSpeed = rotateSpeedIn;
 };
 
-int Moving_Image::getRotateSpeed()
+int Moving_Helper::getRotateSpeed()
 {
   return rotateSpeed;
 }
 
-float Moving_Image::getImageMovementPos()
+float Moving_Helper::getImageMovementPos()
 {
   return imageMovementPos;
 };
 
-//void Moving_Image::colorBlur() {
+//void Moving_Helper::colorBlur() {
 //  Method for doing color blur that requires a large amount of memory (NUMLIGHTSPERLED * NUMLEDS bytes) per pattern, in the form of the colorMemory array.
 //  May be useful if using external RAM.
 //  unsigned long dt = micros() - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
@@ -770,7 +745,7 @@ float Moving_Image::getImageMovementPos()
 //  }
 //};
 
-void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
+void Moving_Helper::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
 {
 #if SRAM_ATTACHED
   unsigned char thisInd = (unsigned char)fmod(round((float)imagePosition + imageMovementPos), NUMLEDS); // Add currentLED pos to imagePosition, then wrap it within NUMLEDS to reference colorMemory (This may be slow?)
@@ -782,14 +757,14 @@ void Moving_Image::addImagePosition(colorObj colorObjIn, unsigned char imagePosi
 #endif
 };
 
-//void Moving_Image::sendColors() {
+//void Moving_Helper::sendColors() {
 // Send colorMemory object (used with memory-expensive blur method)
 //  for (unsigned char i = 0; i < NUMLEDS; i++) {
 //    controller::sendPixel(colorMemory[i]); // Send the color in colorMemory
 //  }
 //}
 
-void Moving_Image::advanceLEDPos()
+void Moving_Helper::advanceLEDPos()
 {
   unsigned long thisLEDAdvanceTime = micros();
   unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
@@ -1012,10 +987,10 @@ void Still_Image_Idle::anim()
 };
 
 // Moving Image Main functions
-Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer, unsigned char *image) : Still_Image_Main(speedometer, image){};
-Moving_Image_Main::Moving_Image_Main(Speedometer *speedometer) : Still_Image_Main(speedometer){};
+Moving_Helper_Main::Moving_Helper_Main(Speedometer *speedometer, unsigned char *image) : Still_Image_Main(speedometer, image){};
+Moving_Helper_Main::Moving_Helper_Main(Speedometer *speedometer) : Still_Image_Main(speedometer){};
 
-void Moving_Image_Main::anim_preImagePosUpdate(int xTrueRounded)
+void Moving_Helper_Main::anim_preImagePosUpdate(int xTrueRounded)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1054,18 +1029,18 @@ void Moving_Image_Main::anim_preImagePosUpdate(int xTrueRounded)
 };
 
 // Moving Image Idle functions
-Moving_Image_Idle::Moving_Image_Idle(unsigned char *image) : Still_Image_Idle(image){};
-Moving_Image_Idle::Moving_Image_Idle() : Still_Image_Idle()
+Moving_Helper_Idle::Moving_Helper_Idle(unsigned char *image) : Still_Image_Idle(image){};
+Moving_Helper_Idle::Moving_Helper_Idle() : Still_Image_Idle()
 {
   if (DEBUGGING_PATTERN)
   {
     //    Serial.flush();
-    //    Serial.println(F("Finished making Moving_Image_Idle"));
+    //    Serial.println(F("Finished making Moving_Helper_Idle"));
     //    delay(500);
   }
 };
 
-void Moving_Image_Idle::anim_preImagePosUpdate()
+void Moving_Helper_Idle::anim_preImagePosUpdate()
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1400,7 +1375,7 @@ void Pattern_Handler::setMainPattern(MAIN_ANIM newAnimationEnum)
     mainPattern = new Still_Image_Main(speedometer);
     break;
   case M_GREL_MOVING:
-    mainPattern = new Moving_Image_Main(speedometer);
+    mainPattern = new Moving_Helper_Main(speedometer);
     break;
   default:
     mainPattern = new Still_Image_Main(speedometer);
@@ -1458,7 +1433,7 @@ void Pattern_Handler::setIdlePattern(IDLE_ANIM newAnimationEnum)
     newPattern = new Still_Image_Idle();
     break;
   case I_MOVING:
-    newPattern = new Moving_Image_Idle();
+    newPattern = new Moving_Helper_Idle();
     break;
   default:
     newPattern = new Still_Image_Idle();
@@ -1487,7 +1462,7 @@ ImageMeta_BT Pattern::getImageType()
   return im;
 }
 
-ImageMeta_BT Moving_Image_Main::getImageType()
+ImageMeta_BT Moving_Helper_Main::getImageType()
 {
   ImageMeta_BT im = ImageMeta_BT_default;
   im.type = ImageType_CONSTANT_BT;
@@ -1496,7 +1471,7 @@ ImageMeta_BT Moving_Image_Main::getImageType()
   return im;
 }
 
-ImageMeta_BT Moving_Image_Idle::getImageType()
+ImageMeta_BT Moving_Helper_Idle::getImageType()
 {
   ImageMeta_BT im = ImageMeta_BT_default;
   im.type = ImageType_CONSTANT_BT;

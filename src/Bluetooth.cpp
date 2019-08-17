@@ -719,7 +719,7 @@ void Bluetooth::processBWA(BWA_BT &message)
             pattern_handler->setIdlePattern(I_STILL); // TODO: May need to be revised, once I update Android to have still/moving for idle/main individually
 
             // Now set the speed
-            static_cast<Moving_Image_Main *>(pattern_handler->mainPattern)->setRotateSpeed(rotationSpeed);
+            static_cast<Moving_Helper_Main *>(pattern_handler->mainPattern)->setRotateSpeed(rotationSpeed);
         }
         break;
 

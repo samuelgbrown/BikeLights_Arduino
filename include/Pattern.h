@@ -91,23 +91,45 @@ private:
 // 4. Derived classes have getLEDOffset(int xTrueRounded), which defines this image's behavior
 // Need basic function sendLEDsWithOffset(int offset) that applies image to the LED strip, but offsets the image by some number which is dependant on the class.  Number will be offset = xTrueRounded + this_pattern_offset, where this_pattern_offset is defined by the class (Moving, Spinner, Still, wRel, gRel, ...)
 // gRel will use xTrueRounded, wRel will not.  Moving and Spinner both have internal calculations to perform.
-// Moving_Helper and Spinner_Helper (or any other similar class) will derive the Image_Helper class, which simply has a pure virtual function getHelperOffset(int xTrueRounded).  Define anim(xTrueRounded) as: sendLEDsWithOffset(getLEDOffset(xTrueRounded)) , and give Pattern a new virtual function int getLEDOffset(int xTrueRounded).  Example implementations:
-// wRel_Still: return 0;
+// Moving_Helper and Spinner_Helper (or any other similar class) will derive the Image_Helper class, which simply has a pure virtual function unsigned char getHelperOffset(int xTrueRounded).  Define anim(xTrueRounded) as: sendLEDsWithOffset(getLEDOffset(xTrueRounded)) , and give Pattern a new virtual function int getLEDOffset(int xTrueRounded).  Example implementations:
+// wRel_Still: return 0; (getHelperOffset returns a 0;)
 // gRel_Still: return xTrueRounded;
-// wRel_Moving (derives Moving_Helper): return getHelpderOffset(xTrueRounded);
-// gRel_Moving (derives Moving_Helper): return xTrueRounded + getHelpderOffset(xTrueRounded);
-// Spinner (derives Spinner_Helper): return getHelpderOffset(xTrueRounded);
+// wRel_Moving (derives Moving_Helper): return getHelperOffset(xTrueRounded);
+// gRel_Moving (derives Moving_Helper): return xTrueRounded + getHelperOffset(xTrueRounded);
+// Spinner (derives Spinner_Helper): return getHelperOffset(xTrueRounded);
+// The getHelperOffset function will be called once per
 
-// An abstract class to describe Patterns that use a moving image
+// An abstract helper class that defines the single function that all helpers must return.  It allows the derived classes to change how the image moves around the wheel (either relative to the ground, or relative to the wheel)
+class Image_Helper
+{
+  virtual unsigned char getHelperOffset(int xTrueRounded) = 0; // Returns the image offset defined by this image helper.  Called once per loop, it must perform all necessary calculations to updating and returning the offset value
+};
+
+// A helper class to describe Patterns whose images do not move over time
+class Static_Helper: public Image_Helper
+{
+  unsigned char getHelperOffset(int xTrueRounded); // Always returns a 0, because the image should not move
+};
+
+
+// A helper class to describe Patterns that use a moving image
 // TODO: Improve the documentation and naming of the variables in here; blurring may become viable if I use SRAM, and I'm never going to get it to work if I have no idea what any of this stuff does.
-class Moving_Image
+class Moving_Helper
 {
 public:
-  Moving_Image();                                            // Constructor
-  void anim(int xTrueRounded);                               // The internal animation function; calls anim_preImagePosUpdate(), which is defined by derived class
-  virtual void anim_preImagePosUpdate(int xTrueRounded) = 0; // Each derived Pattern makes an animation that is run, similar to the anim() function of each other Pattern.  However, the imageMovementPos must be advanced each animation cycle, which will be done in the real Moving_Image::anim()
+// Class specific functions
+  Moving_Helper();
+  Moving_Helper(int rotateSpeed);
 
   void setRotateSpeed(int rotateSpeedIn);                                  // Change rotateSpeed
+
+// Image_Helper function
+  unsigned char getHelperOffset(int xTrueRounded); // Return the current image position
+
+// TODO: Functions below here need to be stripped for parts so that they fit into the functions above here.  They should probably also become private, if they need to be individual functions at all
+  void anim(int xTrueRounded);                               // The internal animation function; calls anim_preImagePosUpdate(), which is defined by derived class
+  virtual void anim_preImagePosUpdate(int xTrueRounded) = 0; // Each derived Pattern makes an animation that is run, similar to the anim() function of each other Pattern.  However, the imageMovementPos must be advanced each animation cycle, which will be done in the real Moving_Helper::anim()
+
   int getRotateSpeed();                                                    // Get the rotation speed
   float getImageMovementPos();                                             // Get the current value of the protected imageMovementPos variable
   void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the anim_preImagePosUpdate() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by imageMovementPos and "blurring")
@@ -126,6 +148,7 @@ private:
   float imageMovementPos = 0;           // Current image reference position around the wheel
   unsigned long lastLEDAdvanceTime = 0; // The time at which imageMovementPos was last updated
 
+// TODO: Should probably incorporate this into getHelperOffset
   void advanceLEDPos(); // Advance the current location of the image reference position around the wheel
 
 #if SRAM_ATTACHED
@@ -194,16 +217,16 @@ public:
 };
 
 // A main animation that features an image that appears to rotates at a set speed relative to the ground
-class Moving_Image_Main : public Still_Image_Main, public Moving_Image
+class Moving_Helper_Main : public Still_Image_Main, public Moving_Helper
 {
 public:
-  Moving_Image_Main(Speedometer *speedometer, unsigned char *image); // Constructor
-  Moving_Image_Main(Speedometer *speedometer);                       // Constructor
+  Moving_Helper_Main(Speedometer *speedometer, unsigned char *image); // Constructor
+  Moving_Helper_Main(Speedometer *speedometer);                       // Constructor
 
   ImageMeta_BT getImageType();
 
   void anim_preImagePosUpdate(int xTrueRounded); // Main animation function
-  void anim() { Moving_Image::anim(); };         // Redefine anim() to be the Moving_Image anim()
+  void anim() { Moving_Helper::anim(); };         // Redefine anim() to be the Moving_Helper anim()
 };
 
 // An idle animation that features an image that does not rotate relative to the wheel
@@ -225,16 +248,16 @@ private:
 };
 
 // An idle animation that features an image that rotates relative to the wheel
-class Moving_Image_Idle : public Still_Image_Idle, public Moving_Image
+class Moving_Helper_Idle : public Still_Image_Idle, public Moving_Helper
 {
 public:
-  Moving_Image_Idle(unsigned char *image); // Constructor
-  Moving_Image_Idle();                     // Constructor
+  Moving_Helper_Idle(unsigned char *image); // Constructor
+  Moving_Helper_Idle();                     // Constructor
 
   ImageMeta_BT getImageType();
 
   void anim_preImagePosUpdate(int xTrueRounded); // Idle animation function
-  void anim() { Moving_Image::anim(); };         // Redefine anim() to be the Moving_Image anim()
+  void anim() { Moving_Helper::anim(); };         // Redefine anim() to be the Moving_Helper anim()
 };
 
 // A class in charge of communicating with the LED strip
