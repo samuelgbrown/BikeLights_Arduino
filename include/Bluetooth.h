@@ -56,10 +56,11 @@ private:
         // Construct a stream wrapper object
         btSerialWrapper(SoftwareSerial stream);
 
+        // Functions for receiving messages
         // Get the next byte(s) in the stream, if available
         bool initReceiveMessage(); // Returns true on success
-        bool nextMessageByte(unsigned char & byteDestination); // Returns true on success 
-        bool nextMessageBytes(unsigned char * byteDestinationArray, unsigned char numBytes);
+        bool readNextMessageByte(unsigned char & byteDestination); // Returns true on success 
+        bool readNextMessageBytes(unsigned char * byteDestinationArray, unsigned char numBytes);
 
         // Getters for information about the content of the message
         unsigned char getTotalMessages();
@@ -70,6 +71,12 @@ private:
         unsigned char getCurMessageNum();
         unsigned char getCurByteNum();
         int available();
+
+        // Functions for sending messages
+        bool preloadMetadata(bool request, unsigned char content);
+        bool initSendMessage(); // Returns true on success
+        bool writeNextMessageByte(unsigned char byteSource);
+        bool writeNextMessageBytes(unsigned char * byteSourceArray, unsigned char numBytes);
 
         private:
         // Meta data from the message

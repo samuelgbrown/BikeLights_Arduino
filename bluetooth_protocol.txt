@@ -2,18 +2,19 @@ This file is scratch-space for designing the byte-code that will represent the i
 Every bit will be represented as a one- or two-character symbol.  A byte that represents a single piece of information when interpretted together will be represented as a one- or two- character symbol preceded by "b_"
 
 The message will be encoded per-byte.  The following is a breakdown per byte of the information encoded.
-If any message does not fit in 64 bytes, then it will be broken into as many 62-byte messages (n <= 2^4) as required to fit it.  The first two bytes will be filled in according to the pattern below, otherwise subsequent messages will pick up where the last left off.
+If any message being sent from Android to Arduino does not fit in 64 bytes, then it will be broken into as many 62-byte messages (n <= 2^4) as required to fit it.  The first two bytes will be filled in according to the pattern below, otherwise subsequent messages will pick up where the last left off.
 
 Maximum values enforced by this standard:
-Message size:               64B (dependant on Serial buffer size of Arduino)
-Number of messages:         15 (TT, S)
-Number of LEDs:             255 (N)
-Size of palette:            255 (PC)
-Number of colorObj_meta:    255 (NC)
+Message size (Android to Arduino):  64B (dependant on Serial buffer size of Arduino)
+Message size (Arduino to Android):  Unlimited
+Number of messages:                 15 (TT, S)
+Number of LEDs:                     255 (N)
+Size of palette:                    255 (PC)
+Number of colorObj_meta:            255 (NC)
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # #
-- R C1 C2 C3 X X X X | TT1 TT2 TT3 TT4 S1 S2 S3 S4 | []-
+- R C1 C2 C3 X X X X | [TT1 TT2 TT3 TT4 S1 S2 S3 S4] | []-
 R (bool) - 1 if the message is requesting an update from the system regarding information about the content implied by C (S) will be disregarded).  0 if the message contains information
 C (3uint) - A numerical representation of the type of information contained in this message, when interpretted as an unsigned integer
     0 - Bike Wheel Animation
@@ -22,6 +23,7 @@ C (3uint) - A numerical representation of the type of information contained in t
     3 - Storage information
     4 - Battery information
 X - Unused
+If the message is being sent from Android to Arduino, then the second byte will be sent
 TT (4uint) - The number of 4-byte messages required to convey this information
 S (4uint) - The number of this message in the sequence up to T messages
 

@@ -528,7 +528,7 @@ void Pattern::setImage(unsigned char *imageIn)
 void Pattern::setImageFromBluetooth(btSerialWrapper btSer) {
   // Read data in directly from the Bluetooth device, and set it as the image.
   // NOTE: This function assumes that the Bluetooth Serial line is queued up such that the next NUM_BYTES_PER_IMAGE bytes are meant to define an image for a Pattern.  No error-checking can or will be performed.
-  btSer.nextMessageBytes(image, NUM_BYTES_PER_IMAGE);
+  btSer.readNextMessageBytes(image, NUM_BYTES_PER_IMAGE);
 }
 
 void Pattern::setImageHelper(Image_Helper * image_helper_in) {
