@@ -350,10 +350,110 @@ void Bluetooth::mainLoop() {
 
             } else {
                 // This message is a request for information from the Arduino
-                switch (btSer.getContent()) {
+
+                // Start sending a message back, starting with the metadata
+                unsigned char content = btSer.getContent();
+                btSer.writeMetadata(false, content);
+                
+                switch (content) {
                     case 0:
                     // Bike wheel animation
                     // TODO: Construct a byte array using the current values in the Pattern
+                    // Send the firsts byte with the BWA meta-data
+                    btSer.writeNextMessageByte((unsigned char) NUMLEDS);
+                    btSer.writeNextMessageByte(pattern_handler->getNumColors());
+
+                    // Go through each Color_ in the palette, and encode it into the message
+                    for (unsigned char colorNum = 0;colorNum < pattern_handler->getNumColors(); colorNum++) {
+
+                        // First, get the type of color
+                        switch (pattern_handler->getColor(colorNum)->getType) {
+
+                            case COLOR_STATIC:
+                            {
+                            // First, send the color type as an unsigned char
+                            {
+                                unsigned char colorNumByte = 0U; // An entire byte of zeros has a 0 in the correct place to denote a Static Color_
+                                btSer.writeNextMessageByte(colorNumByte);
+                            }
+
+                            // Next and finally, send the RGBW values of the static color as a group of 4 bytes
+                            btSer.writeNextMessageBytes(pattern_handler->getColor(colorNum)->getColor().c, 4);
+
+                            break;
+                            }
+                            case COLOR_DTIME:
+                            {
+                            const Color_dTime * thisColor_dTime = static_cast<const Color_dTime *> (pattern_handler->getColor(colorNum));
+
+                            // First, send the color type as an unsigned char
+                            {
+                                unsigned char colorNumByte = 0U;
+                                putDataToByte(colorNumByte, 1U, 4U, 4);
+                                btSer.writeNextMessageByte(colorNumByte);
+                            }
+
+                            // Next, send the number of colorObj_meta's that are going to be sent
+                            btSer.writeNextMessageByte(thisColor_dTime->getNumColors());
+
+                            // Go through each colorObj_meta held by this Color_, and send them one at a time
+                            for (unsigned char colorObjNum = 0;colorObjNum < thisColor_dTime->getNumColors();colorObjNum++) {
+                                // For each colorObj_meta held by this Color_, send the data over Bluetooth
+
+                                // First, send the RGBW data
+                                btSer.writeNextMessageBytes(thisColor_dTime->getThisColorObj(colorObjNum).c, 4);
+
+                                // Next, send the Blend Type
+                                btSer.writeNextMessageByte(getByteFromBlendType(thisColor_dTime->getThisBlendType(colorObjNum)));
+
+                                // Finally, send the T value
+                                {
+                                    unsigned char thisLongCharArray [4]; // A byte array to hold the byte-wise representation of the trigger value
+                                    getByteArrayFromLong(thisLongCharArray, thisColor_dTime->getThisTrigger(colorObjNum)); // Assign the trigger value to the byte array
+                                    btSer.writeNextMessageBytes(thisLongCharArray, 4); // Send the byte array over the Bluetooth connection
+                                }
+                            }
+
+                            break;
+                            }
+                            case COLOR_DVEL:
+                            {
+                            const Color_dVel * thisColor_dVel = static_cast<const Color_dVel *> (pattern_handler->getColor(colorNum));
+
+                            // First, send the color type as an unsigned char
+                            {
+                                unsigned char colorNumByte = 0U;
+                                putDataToByte(colorNumByte, 2U, 4U, 4);
+                                btSer.writeNextMessageByte(colorNumByte);
+                            }
+
+                            // Next, send the number of colorObj_meta's that are going to be sent
+                            btSer.writeNextMessageByte(thisColor_dVel->getNumColors());
+
+                            // Go through each colorObj_meta held by this Color_, and send them one at a time
+                            for (unsigned char colorObjNum = 0;colorObjNum < thisColor_dVel->getNumColors();colorObjNum++) {
+                                // For each colorObj_meta held by this Color_, send the data over Bluetooth
+
+                                // First, send the RGBW data
+                                btSer.writeNextMessageBytes(thisColor_dVel->getThisColorObj(colorObjNum).c, 4);
+
+                                // Next, send the Blend Type
+                                btSer.writeNextMessageByte(getByteFromBlendType(thisColor_dVel->getThisBlendType(colorObjNum)));
+
+                                // Finally, send the T value
+                                {
+                                    unsigned char thisFloatCharArray [4]; // A byte array to hold the byte-wise representation of the trigger value
+                                    getByteArrayFromFloat(thisFloatCharArray, thisColor_dVel->getThisTrigger(colorObjNum)); // Assign the trigger value to the byte array
+                                    btSer.writeNextMessageBytes(thisFloatCharArray, 4); // Send the byte array over the Bluetooth connection
+                                }
+                            }
+
+                            break;
+                            }
+                        }
+                    }
+
+                    // TODO: Next, send the Image information
 
                     break;
                     case 1:
@@ -437,17 +537,6 @@ unsigned long getFloatFromByteArray(unsigned char * byteArray, unsigned char fir
     return *((float *) floatByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
 }
 
-BLEND_TYPE getBlendTypeFromByte(unsigned char byte) {
-    switch (byte) {
-        case 0:
-            return B_LINEAR;
-        break;
-        case 1:
-            return B_CONSTANT;
-        break;
-    }
-}
-
 // Bit-wise writing functions
 void putBoolToByte(unsigned char & byteDest, bool data, unsigned char bitLoc) {
     // Right-most bit is 0, left-most is 7
@@ -479,6 +568,38 @@ void putZerosToByte(unsigned char &byteDest, unsigned char clearSize, unsigned c
 void putMaskExceptDataToByte(unsigned char byteDest, unsigned char dataSize, unsigned char bitLoc) {
     // Will write all zeros to all but a defined position in byteDest, to make writing a pattern of bits more robust
     byteDest &= ((1U << dataSize) - 1U) << bitLoc;
+}
+
+void getByteArrayFromLong(unsigned char outputCharArray[4], unsigned long inputLong) {
+    *((unsigned long *) outputCharArray) = inputLong; // TODO: Does this even goddamn work...?
+}
+
+void getByteArrayFromFloat(unsigned char outputCharArray[4], float inputFloat) {
+    *((float *) outputCharArray) = inputFloat; // TODO: Does this even goddamn work...?
+}
+
+BLEND_TYPE getBlendTypeFromByte(unsigned char byte) {
+    switch (byte) {
+        case 0:
+            return B_LINEAR;
+        break;
+        case 1:
+            return B_CONSTANT;
+        break;
+    }
+}
+
+unsigned char getByteFromBlendType(BLEND_TYPE blend_type_in) {
+    switch (blend_type_in)
+    {
+    case B_CONSTANT:
+        return 0U;
+        break;
+    
+    case B_LINEAR:
+        return 1U;
+        break;
+    }
 }
 
 btSerialWrapper::btSerialWrapper(SoftwareSerial stream): stream(stream) {}
@@ -634,16 +755,19 @@ int btSerialWrapper::available() {
     return stream.available();
 }
 
-bool btSerialWrapper::preloadMetadata(bool request, unsigned char content) {
+bool btSerialWrapper::writeMetadata(bool thisRequest, unsigned char thisContent) {
     // TODO: Make sure this gets sent first!  May need instead to store the values to send in the writeNextMessageByte() ?
-    // Load the meta-data for this transmission
+    // First, reset the communication meta-data
+    resetCommunicationData();
+
+    // Next, Send the meta-data for this transmission
     // TODO: May not need to send meta-data aside from content type! Do tests!
     if (nextByteNum == 0) {
         // If this is the very beginning of the data transmission, then encode some meta-data to the first byte
         if (stream.availableForWrite()) {
             unsigned char firstByte = 0U;
-            putBoolToByte(firstByte, request, 7);
-            putDataToByte(firstByte, content, 3, 4);
+            putBoolToByte(firstByte, thisRequest, 7);
+            putDataToByte(firstByte, thisContent, 3, 4);
             
             stream.write(firstByte);
         } else {

@@ -73,7 +73,7 @@ private:
         int available();
 
         // Functions for sending messages
-        bool preloadMetadata(bool request, unsigned char content);
+        bool writeMetadata(bool request, unsigned char content);
         bool initSendMessage(); // Returns true on success
         bool writeNextMessageByte(unsigned char byteSource);
         bool writeNextMessageBytes(unsigned char * byteSourceArray, unsigned char numBytes);

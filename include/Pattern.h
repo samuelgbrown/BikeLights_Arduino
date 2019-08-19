@@ -104,7 +104,6 @@ public:
   void setIdlePattern(Pattern * newIdlePattern); // Set the idle pattern
 
   // Functions to manage the "palette" array of Color_**'s, or the Color_'s that this pattern may show
-  unsigned char numColors;      // The number of palette is defaulted to 0 (Max of 255 Color_'s)
   unsigned char getNumColors(); // Get the number of palette currently assigned to this pattern
 
   void setupPalette(unsigned char numColors);
@@ -115,7 +114,8 @@ public:
 #endif
 
   void setColor(Color_ *newColor, unsigned char colorNum); // Set a Color_ in the specified location
-  Color_ *getColor(unsigned char colorNum);                // Get a pointer to the Color_ at the specified location
+  const Color_ *getColor(unsigned char colorNum);                // Get a pointer to the Color_ at the specified location
+  unsigned char numColors;      // The number of palette is defaulted to 0 (Max of 16 Color_'s)
 
   void setBrightnessFactor(float newBrightnessFactor); // Set the brightnessFactor
   float getBrightnessFactor();                         // Get the brightness factor

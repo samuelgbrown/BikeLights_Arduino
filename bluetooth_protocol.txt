@@ -61,7 +61,7 @@ CT (4uint) - Color_ type
     B (8uint) - The blend-type that this colorObj_meta uses
         0 - Constant
         1 - Linear
-    T (4ulong/4float) - The T value of this colorObj_meta, represented as 4-bytes to be interpretted according to the type of Color_ that holds this colorObj
+    T (4ulong for time-based/4float for vel-based) - The T value of this colorObj_meta, represented as 4-bytes to be interpretted according to the type of Color_ that holds this colorObj
     # # # # # # # # # # # # # # # # # # # # # # #
 
 The Image information will be encoded in the following way:

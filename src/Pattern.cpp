@@ -383,7 +383,7 @@ void Pattern_Handler::setColor(Color_ *newColor, unsigned char colorNum)
   // If colorNum refers to a location outside of the size of colors, then do nothing.
 };
 
-Color_ *Pattern_Handler::getColor(unsigned char colorNum)
+const Color_ *Pattern_Handler::getColor(unsigned char colorNum)
 {
   // Ensure that the Color_ index to be returned is within bounds
   if (colorNum < 0)
