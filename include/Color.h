@@ -52,11 +52,10 @@ public:
 
   Color_ *getColor_(); // Get a Color_* pointer from any of the derived classes
 
-  boolean isThisEmpty() const; // Public interface to see if this object is empty
+  // boolean isThisEmpty() const; // Public interface to see if this object is empty
 
 protected:
-  // TODO: MEMORY: Get rid of the isEmpty?  Turns out I didn't use this feature, I don't think...
-  boolean isEmpty = false; // Does this Color_ represent a pure black empty color object? (Can only be true by getting an unmodified Color_Static object instantiated by the blank constructor, Color_Static())
+  // boolean isEmpty = false; // Does this Color_ represent a pure black empty color object? (Can only be true by getting an unmodified Color_Static object instantiated by the blank constructor, Color_Static())
 };
 
 class Color_Static : public Color_

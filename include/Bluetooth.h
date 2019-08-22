@@ -73,11 +73,13 @@ private:
         int available();
 
         // Functions for sending messages
-        bool writeMetadata(bool request, unsigned char content);
-        bool initSendMessage(); // Returns true on success
-        bool writeNextMessageByte(unsigned char byteSource);
-        bool writeNextMessageBytes(unsigned char * byteSourceArray, unsigned char numBytes);
+        bool writeMetadata(const bool request, const unsigned char content);
+        bool writeNextMessageByte(const unsigned char byteSource);
+        bool writeNextMessageBytes(const unsigned char * byteSourceArray, const unsigned char numBytes);
 
+        // Reset the communication meta-data
+        void resetCommunicationData();
+        
         private:
         // Meta data from the message
         unsigned char totalMessages = 0;
@@ -88,9 +90,6 @@ private:
         unsigned char curMessageNum = 0; // The message that is being read now
         unsigned char nextByteNum = 0; // The byte that will be read next
         SoftwareSerial stream;
-
-        // Private functions for controlling stream
-        void resetCommunicationData();
     };
 
 #endif

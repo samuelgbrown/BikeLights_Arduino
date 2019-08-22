@@ -50,7 +50,7 @@ CT (4uint) - Color_ type
     - b_R | b_G | b_B | b_W -
     R, B, G, W (8uint) - The brightness of the indicated LED for this color
 
-    # # # # # # # # # # # # # # # # # # # # # # #
+    # # # # # # # # # # # # # # # # # #4 # # # # #
     CT == 1: Time-based Color_ AND Velocity-based Color_
     - b_NC -
     NC (8uint) - The number of colorObj_meta's that will be encoded in the following bytes
@@ -78,7 +78,7 @@ IPM (8sint) - The parameter set for the main Image, dependant on IT
 IM (byte) - The image values for the main image.  Each half byte (nibble) represents the index in the palette that this LED is colored.  There are N/2 bytes in this portion
 
 IF SI == 1, the bytes in the bracket will be used.  Otherwise, they are excluded.
-ITI (4uint) - The Image Type for the idle image
+ITI (8uint) - The Image Type for the idle image
     0 - Wheel_rel_rot (constant rotation, relative to the wheel)
 IPM (8sint) - The parameter set for the main Image, dependant on IT
     0 - The rotation rate

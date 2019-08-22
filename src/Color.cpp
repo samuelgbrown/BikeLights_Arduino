@@ -99,10 +99,10 @@ Color_ *Color_::getColor_()
   return this;
 };
 
-boolean Color_::isThisEmpty() const
-{
-  return isEmpty;
-}
+// boolean Color_::isThisEmpty() const
+// {
+//   return isEmpty;
+// }
 
 Color_Static::Color_Static(unsigned char r, unsigned char g, unsigned char b, unsigned char w)
 {
@@ -125,7 +125,7 @@ Color_Static::Color_Static(unsigned char * cA): c(cA) {};
 
 Color_Static::Color_Static()
 {
-  isEmpty = true;
+  // isEmpty = true;
 };
 
 Color_Static::Color_Static(const Color_Static &c)
@@ -201,31 +201,31 @@ colorObj Color_Static::getColor() const
 
 void Color_Static::rS(unsigned char rNew)
 {
-  isEmpty = false;
+  // isEmpty = false;
   c.c[1] = rNew;
 };
 
 void Color_Static::gS(unsigned char gNew)
 {
-  isEmpty = false;
+  // isEmpty = false;
   c.c[2] = gNew;
 };
 
 void Color_Static::bS(unsigned char bNew)
 {
-  isEmpty = false;
+  // isEmpty = false;
   c.c[3] = bNew;
 };
 
 void Color_Static::wS(unsigned char wNew)
 {
-  isEmpty = false;
+  // isEmpty = false;
   c.c[4] = wNew;
 };
 
 void Color_Static::cS(colorObj cNew)
 {
-  isEmpty = false;
+  // isEmpty = false;
   c = cNew;
 };
 

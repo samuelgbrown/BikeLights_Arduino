@@ -133,22 +133,37 @@ class Pattern_Handler;
 #define Battery_BT_Tag bluetooth_BluetoothMessage_battery_tag
 
 // Define enums used for different animations
-enum MAIN_ANIM
+// enum MAIN_ANIM
+// {
+//   M_WREL_STILL, // No rotation relative to the wheel
+//   M_WREL_MOVING, // Constant relative to the wheel
+//   M_GREL_STILL,      // No rotation relative to the ground
+//   M_GREL_MOVING,     // Constant rotation relative to the ground
+//   M_SPINNER,    // "Spinner" behavior
+//   M_NOTHING     // No animation (remove?)
+// };
+
+// enum IDLE_ANIM
+// {
+//   I_STATIONARY, // No rotation relative to the wheel
+//   I_STILL,      // No rotation relative to the ground
+//   I_MOVING,     // Constant rotation relative to the ground
+//   I_NOTHING     // No animation (remove?)
+// };
+
+
+enum IMAGE_REFPT
 {
-  M_WREL_STILL, // No rotation relative to the wheel
-  M_WREL_MOVING, // Constant relative to the wheel
-  M_GREL_STILL,      // No rotation relative to the ground
-  M_GREL_MOVING,     // Constant rotation relative to the ground
-  M_SPINNER,    // "Spinner" behavior
-  M_NOTHING     // No animation (remove?)
+  WREL, // Rotation relative to the wheel
+  GREL, // Rotation relative to the ground
+  NOTHING     // No animation (remove?)
 };
 
-enum IDLE_ANIM
+enum IMAGE_HELPER_TYPE
 {
-  I_STATIONARY, // No rotation relative to the wheel
-  I_STILL,      // No rotation relative to the ground
-  I_MOVING,     // Constant rotation relative to the ground
-  I_NOTHING     // No animation (remove?)
+  STATIC, // The image does not move relative to its reference point
+  MOVING, // The image does move relative to its reference point
+  SPINNER // The image behaves like a "Spinner"
 };
 
 enum BLEND_TYPE

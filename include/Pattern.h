@@ -60,12 +60,15 @@ public:
 
   unsigned char getImageValInPos(unsigned char LEDNum); // Get the value of image at the specified location
   unsigned char getImageRawByte(unsigned char byteNum); // Get the raw byte value in image at the specified location
-  const unsigned char *getImage();                      // Get a pointer to the image
+  const unsigned char *getImage() const;                      // Get a pointer to the image
 
   // Function for encoding information to Android
-  virtual ImageMeta_BT getImageType(); // Get the type of image represented by this Pattern, and its related information (default is a constant with 0 rotational speed)
+  // virtual ImageMeta_BT getImageType(); // Get the type of image represented by this Pattern, and its related information (default is a constant with 0 rotational speed)
+  
+  unsigned char getImageType() const; // Get the type of Image that is being used
+  bool supportIdle() const; // Does this Pattern support an idle animation?
+  signed char getHelperParameter() const; // Get the parameter for the Image_Helper assigned to this Pattern
 
-  bool supportIdle(); // Does this Pattern support an idle animation?
 protected:
 // TODO: Is this needed?
   // unsigned char numColors;                       // The number of palette is defaulted to 0 (Max of 255 Color_'s)
@@ -100,8 +103,12 @@ public:
   ~Pattern_Handler();                                                                      // Destructor
 
   void mainLoop();                             // Main function that executes every loop
+  
   void setMainPattern(Pattern * newMainPattern); // Set the main pattern
   void setIdlePattern(Pattern * newIdlePattern); // Set the idle pattern
+
+  const Pattern * getMainPattern(); // Get a const pointer to the main Pattern
+  const Pattern * getIdlePattern(); // Get a const pointer to the main Pattern
 
   // Functions to manage the "palette" array of Color_**'s, or the Color_'s that this pattern may show
   unsigned char getNumColors(); // Get the number of palette currently assigned to this pattern
@@ -160,8 +167,9 @@ class Image_Helper
   public:
   Image_Helper(bool idleAllowed = true);
   virtual int getHelperOffset(int xTrueRounded) = 0; // Returns the image offset defined by this image helper.  Called once per loop, it must perform all necessary calculations to updating and returning the offset value
-
   bool isIdleAllowed();
+  virtual IMAGE_HELPER_TYPE getType() = 0;
+  virtual signed char getHelperParameter() = 0; // Get the parameter information for this Helper (can be expanded later on by making it into 2 functions: one to return the number of bytes required to encode the data, and another to assign the data to an array that will be assigned to a pointer passed to the function)
 
   private:
   bool idleAllowed; // Does this Image_Helper generate a Pattern that allows an idle animation?  Derived classes must overwrite this if they do not allow idle animations (such as the Spinner)
@@ -173,6 +181,9 @@ class Static_Helper: public Image_Helper
 {
   public:
   Static_Helper();
+  IMAGE_HELPER_TYPE getType() {return STATIC;} // Static image helper
+  signed char getHelperParameter();
+
   int getHelperOffset(int xTrueRounded); // Always returns a 0, because the image should not move
 };
 
@@ -183,9 +194,12 @@ class Moving_Helper : public Image_Helper
 public:
 // Class specific functions
   Moving_Helper();
-  Moving_Helper(int rotateSpeed);
+  Moving_Helper(signed char rotateSpeed);
 
-  void setRotateSpeed(int rotateSpeedIn);                                  // Change rotateSpeed
+  IMAGE_HELPER_TYPE getType() {return MOVING;} // Moving image helper
+  signed char getHelperParameter();
+
+  void setRotateSpeed(signed char rotateSpeedIn);                                  // Change rotateSpeed
   int getRotateSpeed();                                                    // Get the rotation speed
 
 // Image_Helper function
@@ -202,7 +216,7 @@ protected:
 #endif
 
 private:
-  int rotateSpeed = 10;                 // Speed of image rotation (in LEDs/second)
+  signed char rotateSpeed = 10;                 // Speed of image rotation (in LEDs/second)
   float imageMovementPos = 0;           // Current image reference position around the wheel
   unsigned long lastLEDAdvanceTime = micros(); // The time at which imageMovementPos was last updated
 
@@ -222,6 +236,9 @@ class Spinner_Helper: public Image_Helper
   public:
   Spinner_Helper(); // Constructor
   Spinner_Helper(signed char inertia); // Constructor
+
+  IMAGE_HELPER_TYPE getType() {return SPINNER;} // Spinner image helper
+  signed char getHelperParameter();
 
   void setInertia(signed char inertiaIn); // Change inertia
   unsigned char getInertia(); // Get the inertia

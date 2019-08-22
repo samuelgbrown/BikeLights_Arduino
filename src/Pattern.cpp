@@ -337,13 +337,42 @@ unsigned char Pattern::getImageRawByte(unsigned char byteNum)
   return 0;
 }
 
-const unsigned char *Pattern::getImage()
+const unsigned char *Pattern::getImage() const
 {
   return image;
 }
 
-bool Pattern::supportIdle() {
+unsigned char Pattern::getImageType() const {
+  // Annoyingly, the Android and Arduino systems think that different parts of the Image type are important, so the information sent to Android is a wierd amalgamation of the reference point information and the helper type
+  
+  // Find out which type of image is being used
+  if (image_helper->getType() == SPINNER) {
+    // If this is a spinner, return that information
+    return 2U;
+  } else {
+    // Otherwise, return the reference point information
+    if (groundRel) {
+      return 1U;
+    } else {
+      return 0U;
+    }
+  }
+}
+
+bool Pattern::supportIdle() const {
   return image_helper->isIdleAllowed(); // Whether or not this Pattern supports an idle animation is dependant entirely on the type of helper function
+}
+
+signed char Pattern::getHelperParameter() const {
+  return image_helper->getHelperParameter();
+}
+
+const Pattern * Pattern_Handler::getMainPattern() {
+  return mainPattern;
+}
+
+const Pattern * Pattern_Handler::getIdlePattern() {
+  return idlePattern;
 }
 
 void Pattern_Handler::setColor(Color_ *newColor, unsigned char colorNum)
@@ -719,6 +748,11 @@ int Static_Helper::getHelperOffset(int xTrueRounded) {
   return 0; // Always return 0, so that the image does not move
 }
 
+signed char Static_Helper::getHelperParameter() {
+  // Always return 0
+  return 0;
+}
+
 Moving_Helper::Moving_Helper(int rotateSpeed): rotateSpeed(rotateSpeed) {}
 
 void Moving_Helper::setRotateSpeed(int rotateSpeedIn)
@@ -744,6 +778,10 @@ void Moving_Helper::advanceLEDPos()
   imageMovementPos = fmodf(imageMovementPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update imageMovementPos, and keep it between 0<=imageMovementPos<NUMLEDS
   lastLEDAdvanceTime = thisLEDAdvanceTime;                                                            // Update lastLEDAdvanceTime
 };
+
+signed char Moving_Helper::getHelperParameter() {
+  return rotateSpeed;
+}
 
 #if SRAM_ATTACHED
 Moving_Helper(int rotateSpeed, imageBleed): rotateSpeed(rotateSpeed), imageBleed(imageBleed) {};
@@ -815,6 +853,10 @@ void Spinner_Helper::advanceLEDPos() {
   // Calculate the next position based on the physical model
   imageMovementPos++;
 };
+
+signed char Spinner_Helper::getHelperParameter() {
+  return inertia;
+}
 
 // Still_Image_Main::Still_Image_Main(Speedometer *speedometer) : Pattern_Main(speedometer)
 // {
