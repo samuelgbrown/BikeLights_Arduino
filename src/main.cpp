@@ -22,7 +22,9 @@ Pattern_Handler *pattern_handler = NULL; // Make a generic pattern object
 #if !NO_BLUETOOTH
 Bluetooth *bluetooth = NULL;
 #endif
-Still_Image_Idle *idlePat = NULL; // Used for debugging
+
+// TODO: DEBUGGING
+Pattern *idlePat = NULL; // Used for debugging
 
 void setup()
 {

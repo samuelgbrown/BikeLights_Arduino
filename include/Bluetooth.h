@@ -23,6 +23,7 @@ public:
 
     void mainLoop(); // The main loop that is called repeatedly for the Bluetooth class
 
+    #if USE_NANOPB
     // Decode methods (Generate local classes from a protocol buffer stream)
     void processBWA(BWA_BT &message);               // Take a BWA_BT Message, process it, and send it directly to the Pattern_Handler whose pointer is stored
     void processKalman(Kalman_BT &message);         // Take a Kalman_BT Message, process it, and send it directly to the Speedometer whose pointer is stored
@@ -42,10 +43,14 @@ public:
     static ImageType_BT PBFromImageType(Pattern_Handler *pattern_handler_in); // Convert the information in a pattern_handler to an ImageType_BT variable
     static BlendType_BT PBFromBlendType(BLEND_TYPE blendType);                // Convert a BLEND_TYPE Message to a BlendType_BT variable
     static ColorType_BT PBFromColorType(COLOR_TYPE colorType);                // Convert a COLOR_TYPE Message to a ColorType_BT variable
-
+    #endif
+    
 private:
-    // TODO: Convert this to hardware serial!!!
-    btSerialWrapper btSer = btSerialWrapper(SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX)); // Initialize the Serial connection to the bluetooth device (HC06)
+    #if BLUETOOTH_USE_HARDWARESERIAL
+    btSerialWrapper btSer = btSerialWrapper(&Serial); // Initialize the Serial connection to the bluetooth device (HC06)
+    #else
+    btSerialWrapper btSer = btSerialWrapper(new SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX)); // Initialize the Serial connection to the bluetooth device (HC06)
+    #endif
     Pattern_Handler *pattern_handler = NULL;                                 // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
     Speedometer *speedometer = NULL;                                         // A pointer to the speedometer, so we can change it using information sent via Bluetooth
 };
@@ -54,7 +59,7 @@ private:
     class btSerialWrapper {
         public:
         // Construct a stream wrapper object
-        btSerialWrapper(SoftwareSerial stream);
+        btSerialWrapper(Stream * stream);
 
         // Functions for receiving messages
         // Get the next byte(s) in the stream, if available
@@ -89,7 +94,8 @@ private:
         // Information for keeping of where we are in the entire communication
         unsigned char curMessageNum = 0; // The message that is being read now
         unsigned char nextByteNum = 0; // The byte that will be read next
-        SoftwareSerial stream;
+        
+        Stream * stream;
     };
 
 #endif

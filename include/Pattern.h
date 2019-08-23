@@ -69,15 +69,6 @@ public:
   bool supportIdle() const; // Does this Pattern support an idle animation?
   signed char getHelperParameter() const; // Get the parameter for the Image_Helper assigned to this Pattern
 
-protected:
-// TODO: Is this needed?
-  // unsigned char numColors;                       // The number of palette is defaulted to 0 (Max of 255 Color_'s)
-
-  // void preCalculateAllColor_();                                // Pre-calculate all colorObj's from each Color_ being used this loop
-  // colorObj getPreCalculatedColorInPos(unsigned char colorNum); // Get a specific colorObj according to its position in palette (If using this function, MUST have run preCalculateAllColor_() earlier in the loop)
-
-  //    void serialWriteAllColors(); // Write all palette to the output
-
 private:
   bool groundRel = true; // Should the Pattern be calculated relative to the ground, or relative to the wheel (i.e. if ground-relative, a non-moving image will appear still from a person standing on the street.  If wheel-relative, a non-moving image will appear to rotate at the same rate as the wheel)
   Pattern_Handler *parent_handler; // A pointer to the parent pattern_handler, used to get access to the color palette
@@ -86,12 +77,6 @@ private:
   
   void sendLEDsWithOffset(int offset); // Function to send the image to the LED strip, using some LED offset calculated by the Image_Helper (and the wheel position, if displaying the image relative to the ground)
   void setImageHelper(Image_Helper * image_helper_in); // Function to set the Image_Helper
-  
-  // TODO: Reconfigure so that Pattern_Handler is in control of the palette
-  // void deleteColorArray(); // Delete the array palette and its contents
-
-  // Color_** palette = NULL; // Array of Color_ objects
-  // colorObj * preCalculatedColors = NULL; // Array (of size numColors) of colorObj's that represents the colorObj for each Color_ represented in image that is being used this loop (each Color_ is calculated only once, so computation time will be saved on dynamic palette).
 };
 
 // Object that holds onto and manages each pattern currently instantiated (one main, and one idle)
@@ -145,21 +130,6 @@ private:
   float brightnessFactor = 1.0f;        // A scale factor to adjust the brightness each time the colors are precalculated (can be used to homogenously dim the LEDs)
   bool mainAllowsIdle = false; // Does the main Pattern allow an idle Pattern?
 };
-
-// TODO: START HERE: Pattern redesign:
-// 1. Patterns will not hold onto a Speedometer pointer, only Pattern_Handler will.  It will pass the "xTrueRounded" int to each Pattern through its anim() function (soon to be anim(int xTrueRounded))
-// 2. Idle and Main patterns will be identical, due to 1. An anim() will still exist, which will simply call anim(0).  anim() will be used by Pattern_Handler to force a Pattern to be an "idle" Pattern (not dependant on wheel speed).
-// 3. The Pattern_Handler will hold onto the allowIdle bool, updated each time the main pattern is reassigned (idle pattern will be deleted when main pattern does not support idle)
-// 4. Derived classes have getLEDOffset(int xTrueRounded), which defines this image's behavior
-// Need basic function sendLEDsWithOffset(int offset) that applies image to the LED strip, but offsets the image by some number which is dependant on the class.  Number will be offset = xTrueRounded + this_pattern_offset, where this_pattern_offset is defined by the class (Moving, Spinner, Still, wRel, gRel, ...)
-// gRel will use xTrueRounded, wRel will not.  Moving and Spinner both have internal calculations to perform.
-// Moving_Helper and Spinner_Helper (or any other similar class) will derive the Image_Helper class, which simply has a pure virtual function unsigned char getHelperOffset(int xTrueRounded).  Define anim(xTrueRounded) as: sendLEDsWithOffset(getLEDOffset(xTrueRounded)) , and give Pattern a new virtual function int getLEDOffset(int xTrueRounded).  Example implementations:
-// wRel_Still: return 0; (getHelperOffset returns a 0;)
-// gRel_Still: return xTrueRounded;
-// wRel_Moving (derives Moving_Helper): return getHelperOffset(xTrueRounded);
-// gRel_Moving (derives Moving_Helper): return xTrueRounded + getHelperOffset(xTrueRounded);
-// Spinner (derives Spinner_Helper): return getHelperOffset(xTrueRounded);
-// The getHelperOffset function will be called once per loop
 
 // An abstract helper class that defines the single function that all helpers must return.  It allows the derived classes to change how the image moves around the wheel (either relative to the ground, or relative to the wheel)
 class Image_Helper

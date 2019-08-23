@@ -27,11 +27,15 @@ void Bluetooth::mainLoop() {
             bool readSuccess = btSer.initReceiveMessage();
 
             // while (messageNum < totalNumMessages) {
-                if (btSer.isRequest()) {
+                if (!btSer.isRequest()) {
                 // If this message contains content sent by the Android program, then read the message and update the Arduino
                 switch (btSer.getContent()) {
                     case 0:
+                    {
                     // Bike wheel animation
+
+                    // TODO: Tell the wheel to stop for a moment, and have it start up again after
+
                     // First, get the invariate information from the head of the BWA message, the meta-data of the palette and image
 
                     unsigned char incomingNumLEDs;
@@ -40,8 +44,8 @@ void Bluetooth::mainLoop() {
                     btSer.readNextMessageByte(incomingNumLEDs); // Get the number of LEDs that the Android thinks we have
                     btSer.readNextMessageByte(totalNumColor_s); // Get the number of Color_'s that are in the palette
 
-                    // TODO: Start process of saving the information from the message to an actual object (set the size of the palette)
-                    // pattern_handler->setupPalette(totalNumColor_s); // TODO: DO NOT USE THIS FUNCTION (feed an entire array of Color_'s into the function)
+                    pattern_handler->setupPalette(1); // Set up the palette with a single, static Color_, minimizing the RAM requirements
+
                     Color_ ** newColor_Array = new Color_ * [totalNumColor_s]; // Create an array of pointers to Color_ objects that will be creaforted soon.  This array will be *copied*.
 
                     // Start saving the palette information
@@ -54,6 +58,7 @@ void Bluetooth::mainLoop() {
                         // Depending on the type of Color_ we are expecting for this position in the palette, intepret the data differently
                         switch (thisColor_Type) {
                             case 0:
+                            {
                             // Static Color
 
                             // Get the RBGW values from the message
@@ -63,8 +68,10 @@ void Bluetooth::mainLoop() {
                             // Create a new Static Color_ object from this array
                             newColor_Array[thisColor_Num] = new Color_Static(incomingColors);
                             break;
+                            }
 
                             case 1:
+                            {
                             // Time-based Color_
                             // This is a dynamic Color_, so the loading process will be quite similar
                             unsigned char numColorObj_metas;
@@ -104,8 +111,10 @@ void Bluetooth::mainLoop() {
                             // Create the Color_dTime object
                             newColor_Array[thisColor_Num] = new Color_dTime(newColorObjs, newTimeTs, newBs, numColorObj_metas);
                             break;
+                            }
 
                             case 2:
+                            {
                             // Velocity-based Color_
                             // This is a dynamic Color_, so the loading process will be quite similar
                             unsigned char numColorObj_metas;
@@ -143,20 +152,18 @@ void Bluetooth::mainLoop() {
                                     btSer.readNextMessageBytes(thisTValArray, 4);
                                     newVelTs[colorObjNum] = getFloatFromByteArray(thisTValArray, 0);
                                 }
-                                // TODO: Assign the colorObj, BLEND_TYPE, and t value for this Color_dVel
 
                             }
 
                             // Create the Color_dVel object
                             newColor_Array[thisColor_Num] = new Color_dVel(speedometer, newColorObjs, newVelTs, newBs, numColorObj_metas);
                             break;
+                            }
                         }
                     }
 
                     // Now that we have a complete array of Color_'s, assign it to the Pattern_Handler
                     pattern_handler->setupPalette(newColor_Array, totalNumColor_s);
-
-                    // TODO: Start saving the image(s)
 
                     // Next, start saving the Pattern information
                     // First, get the palette-specific meta-data
@@ -179,9 +186,6 @@ void Bluetooth::mainLoop() {
                         btSer.readNextMessageByte(imageParamByte);
                         mainImageParam = getNSIntFromByte(imageParamByte, 8, 0);
                     }
-
-                    // TODO: Set the main image type on the Pattern, and apply the parameter(s), as needed
-                    // TODO: START HERE: Implement a still/moving paradigm for both wheel-relative and ground-relative rotation
 
                     Image_Helper * main_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
                     bool groundRel = true; // Is the Pattern's motion defined relative to the wheel, or relative to the ground?
@@ -291,7 +295,9 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
                     case 1:
+                    {
                     // Kalman Info
                     unsigned char numObs; // Number of observed parameters
                     unsigned char numState; // Number of state parameters
@@ -335,7 +341,9 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
                     case 2:
+                    {
                     // Brightness scale
 
                     {
@@ -346,6 +354,7 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
                 }
 
             } else {
@@ -357,8 +366,8 @@ void Bluetooth::mainLoop() {
                 
                 switch (content) {
                     case 0:
+                    {
                     // Bike wheel animation
-                    // TODO: Construct a byte array using the current values in the Pattern
                     // Send the firsts byte with the BWA meta-data
                     btSer.writeNextMessageByte((unsigned char) NUMLEDS);
                     btSer.writeNextMessageByte(pattern_handler->getNumColors());
@@ -480,9 +489,10 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
                     case 1:
+                    {
                     // Kalman Info
-                    // TODO: Start populating!!!
 
                     {
                         // First, send the number of observation an state variables
@@ -496,7 +506,7 @@ void Bluetooth::mainLoop() {
                         // Next, send Q
                         unsigned char QFloatArray[4];
                         putFloatToByteArray(QFloatArray, speedometer->getKalman()->getQ());
-                        btSer.writeNextMessageBytes(QFloatArray, 4)
+                        btSer.writeNextMessageBytes(QFloatArray, 4);
                     }
 
                     {
@@ -510,7 +520,10 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
+
                     case 2:
+                    {
                     // Brightness scale
 
                     {
@@ -521,8 +534,12 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
+
                     case 3:
+                    {
                     // Storage
+                    
 
                     {
                         // First, send the amount of remaining RAM, recorded before this process started
@@ -539,7 +556,10 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
+
                     case 4:
+                    {
                     // Battery
 
                     {
@@ -548,6 +568,8 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
+                    }
+
                     // TODO: Check all request cases!!!
                 }
 
@@ -688,7 +710,7 @@ unsigned char getByteFromBlendType(BLEND_TYPE blend_type_in) {
     }
 }
 
-btSerialWrapper::btSerialWrapper(SoftwareSerial stream): stream(stream) {}
+btSerialWrapper::btSerialWrapper(Stream * stream): stream(stream) {}
 
 bool btSerialWrapper::initReceiveMessage() {
     // This function reads the meta-data from the next message, if it exists, and returns if the meta-data was successfully read
@@ -698,7 +720,7 @@ bool btSerialWrapper::initReceiveMessage() {
 
             // Read the first two bytes into a temporary buffer
             unsigned char tmpStreamBuf[2];
-            stream.readBytes(tmpStreamBuf, 2);
+            stream->readBytes(tmpStreamBuf, 2);
 
             // Read the data from this temporary buffer
             request = getBoolFromByte(tmpStreamBuf[0], 7); // Determine if this is a request for information, or a message containing infromation
@@ -729,7 +751,7 @@ boolean btSerialWrapper::readNextMessageByte(unsigned char & byteDestination) {
 
         // Now that we definitely have read the meta-data, read the next byte from the stream into byteDestination
         unsigned char tmpStreamBuf[1]; // A small temporary buffer to read bytes into before being moved into byteDestination
-        stream.readBytes(tmpStreamBuf, 1); // (Always reading a single byte at a time.  Perhaps this is inefficient...)
+        stream->readBytes(tmpStreamBuf, 1); // (Always reading a single byte at a time.  Perhaps this is inefficient...)
         byteDestination = tmpStreamBuf[0]; // Get the first (only) byte from thisStreamBuf, and put it into the output bytesDestination
 
         // Iterate the byte number (is this actually used...?  Perhaps for debugging...)
@@ -744,9 +766,9 @@ boolean btSerialWrapper::readNextMessageByte(unsigned char & byteDestination) {
         // Check if we're expecting more content for this communication
         if (curMessageNum < totalMessages) {
             // We are expecting more content from this communication, ask for the next bit from Android
-            // TODO: Send a message to Android requesting the next message in this communication
+            // TODO_JAVA: Send a message to Android requesting the next message in this communication
 
-            // TODO: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
+            // TODO_JAVA: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
 
             // Reset the byte number and iterate the curMessageNum, so we know to extract the metadata next round
             nextByteNum = 0;
@@ -785,7 +807,7 @@ boolean btSerialWrapper::readNextMessageBytes(unsigned char * byteDestination, u
             unsigned char thisNumBytesToRead = min(numBytes, numBytesLeftInMessage); // Calculate the number of bytes to read from this message
             
             // Read a series of bytes from the stream
-            stream.readBytes(byteDestination + curByteDestInd, thisNumBytesToRead); // Read this number of bytes from the stream into byteDestination, offset by the number of bytes we have already read in
+            stream->readBytes(byteDestination + curByteDestInd, thisNumBytesToRead); // Read this number of bytes from the stream into byteDestination, offset by the number of bytes we have already read in
             nextByteNum += thisNumBytesToRead;
 
             // Prepare for the next loop, if needed
@@ -798,9 +820,9 @@ boolean btSerialWrapper::readNextMessageBytes(unsigned char * byteDestination, u
             // Check if we're expecting more content for this communication
             if (curMessageNum < totalMessages) {
                 // We are expecting more content from this communication, ask for the next bit from Android
-                // TODO: Send a message to Android requesting the next message in this communication
+                // TODO_JAVA: Send a message to Android requesting the next message in this communication
 
-                // TODO: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
+                // TODO_JAVA: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
 
                 // Reset the byte number and iterate the curMessageNum, so we know to extract the metadata next round
                 nextByteNum = 0;
@@ -812,7 +834,7 @@ boolean btSerialWrapper::readNextMessageBytes(unsigned char * byteDestination, u
                 // We are not expecting any more information from this communication
 
                 // Reset the communication, and return nothing
-                resetCommunicationData(); // Should have been reset by this point already, but may as well just confirm TODO: Move the initReceiveMessage() function into here, if we're expecting another message?
+                resetCommunicationData(); // Should have been reset by this point already, but may as well just confirm
 
                 byteDestination = 0;
                 return false; // Error, because there was nothing to read
@@ -838,24 +860,22 @@ unsigned char btSerialWrapper::getCurMessageNum() {
 }
 
 int btSerialWrapper::available() {
-    return stream.available();
+    return stream->available();
 }
 
 bool btSerialWrapper::writeMetadata(bool thisRequest, unsigned char thisContent) {
-    // TODO: Make sure this gets sent first!  May need instead to store the values to send in the writeNextMessageByte() ?
     // First, reset the communication meta-data
     resetCommunicationData();
 
     // Next, Send the meta-data for this transmission
-    // TODO: May not need to send meta-data aside from content type! Do tests!
     if (nextByteNum == 0) {
         // If this is the very beginning of the data transmission, then encode some meta-data to the first byte
-        if (stream.availableForWrite()) {
+        if (stream->availableForWrite()) {
             unsigned char firstByte = 0U;
             putBoolToByte(firstByte, thisRequest, 7);
             putDataToByte(firstByte, thisContent, 3, 4);
             
-            stream.write(firstByte);
+            stream->write(firstByte);
         } else {
             // The stream is not available for writing for some reason
             return false;
@@ -868,9 +888,8 @@ bool btSerialWrapper::writeMetadata(bool thisRequest, unsigned char thisContent)
 }
 
 bool btSerialWrapper::writeNextMessageByte(unsigned char byteSource) {
-    // TODO: Write bytes to the message.  Take care of meta-data and multiple messaging automatically...if needed?
-    if (stream.availableForWrite()) {
-        stream.write(byteSource);
+    if (stream->availableForWrite()) {
+        stream->write(byteSource);
         return true;
     } else {
         return false;
@@ -879,8 +898,8 @@ bool btSerialWrapper::writeNextMessageByte(unsigned char byteSource) {
 
 bool btSerialWrapper::writeNextMessageBytes(const unsigned char * byteSourceArray, const unsigned char numBytes) {
     // Write a series of bytes to the Bluetooth stream
-    if (stream.availableForWrite()) {
-        stream.write(byteSourceArray, numBytes);
+    if (stream->availableForWrite()) {
+        stream->write(byteSourceArray, numBytes);
         return true;
     } else {
         return false;
@@ -895,6 +914,7 @@ void btSerialWrapper::resetCommunicationData() {
     nextByteNum = 0;
 }
 
+#if USE_NANOPB
 bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
 {
     // A decode callback for a pb_istream_t built from a Serial stream
@@ -913,7 +933,6 @@ bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
     return bytesToRead == count; // If we read the correct number of bytes, return a positive
 }
 
-#if USE_NANOPB
 void mainLoop()
 {
     // Check if there is anything on the serial line
@@ -926,7 +945,7 @@ void mainLoop()
         }
         else
         {
-            // TODO: Do a RAM check?
+            // TODO_OLD: Do a RAM check?
 
             // // Process using the protocol buffer
             // uint8_t buffer[64]; // Buffer that will read from the Software Serial stream
@@ -947,7 +966,7 @@ void mainLoop()
             Message_BT message;
             {
                 // Read the message from a serial stream (do so inside of a block, so the large serStream object is dismissed immediately after)
-                pb_istream_t serStream = {&bluetooth_decode_callback, &btSer, 256}; // TODO: Memory: Is this enough?  Do I need more/less?
+                pb_istream_t serStream = {&bluetooth_decode_callback, &btSer, 256}; // TODO_OLD: Memory: Is this enough?  Do I need more/less?
                 message = bluetooth_BluetoothMessage_init_default;                  // Initialize the message
                 bool status = pb_decode(&serStream, Message_BT_Fields, &message);
             }
@@ -963,7 +982,7 @@ void mainLoop()
             // Try using https://github.com/nanopb/nanopb/blob/master/examples/using_union_messages/decode.c to figure out which content is there (try setting no_unions:true ?).  Perhaps try this first as a standard C++ program to see what happens if we just decode the thing without setting arg/funcs...may require writing encoding code first
             // message.contents.bike_wheel_anim.image_main.funcs = MAKE A FUNCTION THAT WILL READ FROM THE SERIAL INPUT AND PLACE THE VALUES DIRECTLY INTO THE ARG VARIABLE, WHICH IS A POINTER TO THE PATTERN_HANDLER, TO GET THE IMAGE_MAIN ARRAY (and possibly the image_idle?)
 
-            // TODO: Put this into a callback: depending on what we're expecting, we may need to decode differently (i.e. getting a BWA or a Kalman, or getting/not getting an image_idle)
+            // TODO_OLD: Put this into a callback: depending on what we're expecting, we may need to decode differently (i.e. getting a BWA or a Kalman, or getting/not getting an image_idle)
             if (message.request)
             {
                 // The message is requesting information from the Arduino
@@ -975,7 +994,7 @@ void mainLoop()
                 // Make room for a new Message_BT, to send.
                 Message_BT message_out;
 
-                //  TODO: Populate message_out
+                //  TODO_OLD: Populate message_out
                 switch (message.which_contents)
                 {
                 case BWA_BT_Tag:
@@ -1000,7 +1019,7 @@ void mainLoop()
                     message_out.type = MessageType_Storage;
                     break;
                 case Battery_BT_Tag:
-                    // TODO: Uhhhhh...
+                    // TODO_OLD: Uhhhhh...
                     message_out.type = MessageType_Battery;
                     break;
                 }
@@ -1009,9 +1028,9 @@ void mainLoop()
                 message_out.which_contents = message_type_which;
                 message_out.request = false;
 
-                // TODO: Send the message
+                // TODO_OLD: Send the message
 
-                // TODO: Release the memory held by the message we just sent
+                // TODO_OLD: Release the memory held by the message we just sent
                 pb_release(Message_BT_Fields, &message_out);
             }
             else
@@ -1075,13 +1094,13 @@ void Bluetooth::processBWA(BWA_BT &message)
         {
             // Convert the Pattern to a Still Image
             pattern_handler->setMainPattern(M_GREL_STILL);
-            pattern_handler->setIdlePattern(I_STILL); // TODO: May need to be revised, once I update Android to have still/moving for idle/main individually
+            pattern_handler->setIdlePattern(I_STILL); // TODO_OLD: May need to be revised, once I update Android to have still/moving for idle/main individually
         }
         else
         {
             int rotationSpeed = message.image_meta.parameter_set.p1;
             pattern_handler->setMainPattern(M_GREL_MOVING);
-            pattern_handler->setIdlePattern(I_STILL); // TODO: May need to be revised, once I update Android to have still/moving for idle/main individually
+            pattern_handler->setIdlePattern(I_STILL); // TODO_OLD: May need to be revised, once I update Android to have still/moving for idle/main individually
 
             // Now set the speed
             static_cast<Moving_Helper_Main *>(pattern_handler->mainPattern)->setRotateSpeed(rotationSpeed);
@@ -1093,7 +1112,7 @@ void Bluetooth::processBWA(BWA_BT &message)
         // bluetooth_BluetoothMessage m = bluetooth_BluetoothMessage_init_zero;
 
     case ImageType_SPINNER_BT:
-        // TODO: Yet to be implemented!
+        // TODO_OLD: Yet to be implemented!
         break;
     }
 
@@ -1112,14 +1131,14 @@ Color_ *Bluetooth::Color_FromPB(Color_BT &color_bt, Speedometer *speedometer)
     // First, get the type of Color_ that will be created
     if (color_bt.type == ColorType_STATIC_BT)
     {
-        // TODO: SAFETY: Check the number of colorObjs?
+        // TODO_OLD: SAFETY: Check the number of colorObjs?
         // If this is a static color, then we only ever need a single colorObj to describe it.
         newColor = new Color_Static(ColorObjFromPB(color_bt.color_objs[0]));
     }
     else
     {
         // If this is a dynamic color, then we're going to need an array of colorObj's, plus their metadata.  Create the array of the colorObjs and the blend_type's (the t array will be constructed once we know of what type the array is)
-        // TODO: MEMORY: Pass a reference to this array, along with the size, but don't copy the entire array in the constructor, just record the pointer and the number of colorObj's that were created right HERE.
+        // TODO_OLD: MEMORY: Pass a reference to this array, along with the size, but don't copy the entire array in the constructor, just record the pointer and the number of colorObj's that were created right HERE.
         colorObj *allC = new colorObj[color_bt.color_objs_count];
         BLEND_TYPE *allB = new BLEND_TYPE[color_bt.color_objs_count];
         for (unsigned char i = 0; i < color_bt.color_objs_count; i++)
@@ -1194,7 +1213,7 @@ void Bluetooth::processKalman(Kalman_BT &message)
     // This message may not be "full" (i.e. the Android app may only be trying to send one or two parameters at a time).
     // So, we should check that each one is not the default value before anything.
 
-    // TODO: SAFETY: Should we check the number of observable/state parameters that is included in the message and/or the sizes of R/P0?
+    // TODO_OLD: SAFETY: Should we check the number of observable/state parameters that is included in the message and/or the sizes of R/P0?
 
     // Check if there's a new Q
     if (message.q != 0)
@@ -1230,7 +1249,7 @@ BWA_BT Bluetooth::PBFromPattern()
     // Generate a BWA_BT object from the information stored in Pattern_Handler
     BWA_BT messageOut = BWA_BT_default; // Create a new default BWA_BT object, as an initialization
 
-    // TODO: Need to free this array using pb_release (or free()).  Still need memfree_BT()...?
+    // TODO_OLD: Need to free this array using pb_release (or free()).  Still need memfree_BT()...?
     // First, encode the image(s)
     messageOut.image_idle = new pb_bytes_array_t[NUM_BYTES_PER_IMAGE];
 
@@ -1275,8 +1294,8 @@ BWA_BT Bluetooth::PBFromPattern()
     messageOut.image_meta = pattern_handler->mainPattern->getImageType();
     // messageOut.image_meta.type = PBFromImageType(pattern_handler);
     // messageOut.image_meta.parameter_set = pattern_handler->mainPattern->getImageType();
-    // TODO: Get paramter from idle animation, too!!!  (first, implement it on the Android side)
-    // TODO: Also, must implement "stationary" (or whatever I'm going to call it, when the image doesn't move relative to the rest of the wheel) in both Android and Arduino
+    // TODO_OLD: Get paramter from idle animation, too!!!  (first, implement it on the Android side)
+    // TODO_OLD: Also, must implement "stationary" (or whatever I'm going to call it, when the image doesn't move relative to the rest of the wheel) in both Android and Arduino
 
     // Then, encode the palette
     messageOut.palette = new Color_BT[pattern_handler->getNumColors()];
@@ -1311,7 +1330,7 @@ Color_BT Bluetooth::PBFromColor_(Color_ *color_)
 
         //
         //
-        // TODO: REMEMBER TO PROPERLY delete[] THE ColorObj_BT ARRAY BY CALLING memfree_BT!!!
+        // TODO_OLD: REMEMBER TO PROPERLY delete[] THE ColorObj_BT ARRAY BY CALLING memfree_BT!!!
         //
         //
 
@@ -1329,11 +1348,11 @@ Color_BT Bluetooth::PBFromColor_(Color_ *color_)
             Color_dTime *thisColor_dt = (Color_dTime *)color_; // Get a pointer to the Color_ that's of the correct derived class type
 
             // Go through all of the colorObj's (and meta data), and add the information
-            // TODO: Will need to convert T so that it can hold a float?  Or, just use long as for velocity, as well (no reason it couldn't work, right?)
+            // TODO_OLD: Will need to convert T so that it can hold a float?  Or, just use long as for velocity, as well (no reason it couldn't work, right?)
 
             //
             //
-            // TODO: REMEMBER TO PROPERLY delete[] THE ColorObj_BT ARRAY BY CALLING memfree_BT!!!
+            // TODO_OLD: REMEMBER TO PROPERLY delete[] THE ColorObj_BT ARRAY BY CALLING memfree_BT!!!
             //
             //
 
@@ -1355,11 +1374,11 @@ Color_BT Bluetooth::PBFromColor_(Color_ *color_)
             Color_dVel *thisColor_dv = (Color_dVel *)color_; // Get a pointer to the Color_ that's of the correct derived class type
 
             // Go through all of the colorObj's (and meta data), and add the information
-            // TODO: Will need to convert T so that it can hold a float?  Or, just use long as for velocity, as well (no reason it couldn't work, right?)
+            // TODO_OLD: Will need to convert T so that it can hold a float?  Or, just use long as for velocity, as well (no reason it couldn't work, right?)
 
             //
             //
-            // TODO: REMEMBER TO PROPERLY delete[] THE ColorObj_BT ARRAY BY CALLING memfree_BT!!!
+            // TODO_OLD: REMEMBER TO PROPERLY delete[] THE ColorObj_BT ARRAY BY CALLING memfree_BT!!!
             //
             //
 
