@@ -34,8 +34,6 @@ void Bluetooth::mainLoop() {
                     {
                     // Bike wheel animation
 
-                    // TODO: Tell the wheel to stop for a moment, and have it start up again after
-
                     // First, get the invariate information from the head of the BWA message, the meta-data of the palette and image
 
                     unsigned char incomingNumLEDs;
@@ -109,7 +107,7 @@ void Bluetooth::mainLoop() {
                             }
 
                             // Create the Color_dTime object
-                            newColor_Array[thisColor_Num] = new Color_dTime(newColorObjs, newTimeTs, newBs, numColorObj_metas);
+                            newColor_Array[thisColor_Num] = new Color_dTime(newColorObjs, newTimeTs, newBs, numColorObj_metas); // These arrays are not deleted, because they will now be owned by the Color_dTime
                             break;
                             }
 
@@ -156,7 +154,7 @@ void Bluetooth::mainLoop() {
                             }
 
                             // Create the Color_dVel object
-                            newColor_Array[thisColor_Num] = new Color_dVel(speedometer, newColorObjs, newVelTs, newBs, numColorObj_metas);
+                            newColor_Array[thisColor_Num] = new Color_dVel(speedometer, newColorObjs, newVelTs, newBs, numColorObj_metas); // These arrays are not deleted, because they will now be owned by the Color_dVel
                             break;
                             }
                         }
@@ -294,6 +292,8 @@ void Bluetooth::mainLoop() {
 
                     }
 
+                    speedometer->getKalman()->resetFilter(); // Finally, reset the Kalman filter
+
                     break;
                     }
                     case 1:
@@ -339,6 +339,8 @@ void Bluetooth::mainLoop() {
                             }
                         }
                     }
+
+                    speedometer->getKalman()->resetFilter(); // Reset the Kalman filter
 
                     break;
                     }
@@ -570,7 +572,6 @@ void Bluetooth::mainLoop() {
                     break;
                     }
 
-                    // TODO: Check all request cases!!!
                 }
 
                 // Finalize the connection

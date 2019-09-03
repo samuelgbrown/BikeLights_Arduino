@@ -192,8 +192,15 @@ private:
 class Color_dVel : public Color_d<float>
 {
 public:
-  Color_dVel(Speedometer *speedometer);                                                                   // Constructor
+  Color_dVel(Speedometer *speedometer);   
+  Color_dVel(Speedometer *speedometer, unsigned char numColors);                                                                // Constructor
   Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors); // Constructor
+  
+
+  Color_dVel(const Color_dVel &c); // Copy Constructor
+  
+  ~Color_dVel(); // Destructor
+  
   Color_dVel *clone() const;
 
   COLOR_TYPE getType() const

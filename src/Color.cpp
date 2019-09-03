@@ -345,9 +345,11 @@ Color_d<T>::Color_d(const Color_d &c)
     }
   }
 
+  #if COLORD_COPY_ARRAYS
   delete[] newColorArray;
   delete[] newTArray;
   delete[] newBlendArray;
+  #endif
 }
 
 template <class T>
@@ -698,10 +700,12 @@ void Color_d<T>::setupArrays(unsigned char numColorsIn)
 
   setupArrays(newColorArray, newTriggerArray, newBlendArray, numColorsIn);
 
+  #if COLORD_COPY_ARRAYS
   // Delete newColorArray, newTriggerArray, and newBlendArray
   delete[] newColorArray;
   delete[] newTriggerArray;
   delete[] newBlendArray;
+  #endif
 
   if (DEBUGGING_PATTERN)
   {
@@ -732,12 +736,10 @@ template <class T>
 void Color_d<T>::setupArrays(colorObj *cAIn, T *tAIn, BLEND_TYPE *bAIn, unsigned char numColorsIn)
 {
   // This function will take ownership of any input arrays; THEY SHOULD NOT BE DELETED BY THE CALLING FUNCTION.  
-  // TODO: START CHECKING TODO'S HERE: Check all uses of this function
 
   deleteAllArrays(); // Always delete the old array when a new one is being created
 
-  // TODO: Change this so that arrays don't get copied, but instead the pointer just gets passed?
-
+#if COLORD_COPY_ARRAYS
   if (DEBUGGING_PATTERN)
   {
     // Serial.flush();
@@ -854,6 +856,12 @@ void Color_d<T>::setupArrays(colorObj *cAIn, T *tAIn, BLEND_TYPE *bAIn, unsigned
   //  *tA = *tAIn;
   //  *bA = *bAIn;
   numColors = numColorsIn;
+  #else
+  // Take ownership of the incoming arrays
+  cA = cAIn;
+  tA = tAIn;
+  bA = bAIn;
+  #endif
 
   sortAllArrays();
 };
@@ -961,89 +969,92 @@ Color_dTime::Color_dTime(colorObj *cA, unsigned long *tA, BLEND_TYPE *bA, unsign
 
                                                                                                      };
 
-Color_dTime::Color_dTime(const Color_dTime &c) : Color_d<unsigned long>(c.getNumColors())
-{
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.println(F("Copying Color_dTime..."));
-    Serial.print(F("Source color has "));
-    delay(200);
-    Serial.println(c.getNumColors());
-    delay(200);
-  }
-  colorObj *newColorArray = new colorObj[c.getNumColors()];
-  unsigned long *newTArray = new unsigned long[c.getNumColors()];
-  BLEND_TYPE *newBlendArray = new BLEND_TYPE[c.getNumColors()];
+// Color_dTime::Color_dTime(const Color_dTime &c) : Color_d<unsigned long>(c.getNumColors())
+Color_dTime::Color_dTime(const Color_dTime &c) : Color_d<unsigned long>(c) {}
 
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.println(F("Allocated arrays..."));
-    delay(200);
-  }
+// {
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.println(F("Copying Color_dTime..."));
+//     Serial.print(F("Source color has "));
+//     delay(200);
+//     Serial.println(c.getNumColors());
+//     delay(200);
+//   }
+//   colorObj *newColorArray = new colorObj[c.getNumColors()];
+//   unsigned long *newTArray = new unsigned long[c.getNumColors()];
+//   BLEND_TYPE *newBlendArray = new BLEND_TYPE[c.getNumColors()];
 
-  for (unsigned char i = 0; i < c.getNumColors(); i++)
-  {
-    newColorArray[i] = c.getThisColorObj(i);
-    newTArray[i] = c.getThisTrigger(i);
-    newBlendArray[i] = c.getThisBlendType(i);
-  }
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.println(F("Allocated arrays..."));
+//     delay(200);
+//   }
 
-  //  newColorArray = c.getAllColorObjs();
-  //  newTArray = c.getAllTriggers();
-  //  newBlendArray = c.getAllBlendTypes();
+//   for (unsigned char i = 0; i < c.getNumColors(); i++)
+//   {
+//     newColorArray[i] = c.getThisColorObj(i);
+//     newTArray[i] = c.getThisTrigger(i);
+//     newBlendArray[i] = c.getThisBlendType(i);
+//   }
 
-  setupArrays(newColorArray, newTArray, newBlendArray, c.getNumColors());
+//   //  newColorArray = c.getAllColorObjs();
+//   //  newTArray = c.getAllTriggers();
+//   //  newBlendArray = c.getAllBlendTypes();
 
-  if (DEBUGGING_PATTERN)
-  {
-    for (unsigned char i = 0; i < c.getNumColors(); i++)
-    {
-      Serial.print(i);
-      Serial.print(F(" Old: t = "));
-      Serial.print(c.getThisTrigger(i));
-      Serial.print(F(", b = "));
-      Serial.print(c.getThisBlendType(i));
-      Serial.print(F(", c = ("));
-      Serial.print(c.getThisColorObj(i).c[0]);
-      Serial.print(F(","));
-      Serial.print(c.getThisColorObj(i).c[1]);
-      Serial.print(F(","));
-      Serial.print(c.getThisColorObj(i).c[2]);
-      Serial.print(F(","));
-      Serial.print(c.getThisColorObj(i).c[3]);
-      Serial.println(F(")"));
-      Serial.print(i);
-      Serial.print(F(" New: t = "));
-      Serial.print(tA[i]);
-      Serial.print(F(", b = "));
-      Serial.print(bA[i]);
-      Serial.print(F(", c = ("));
-      Serial.print(cA[i].c[0]);
-      Serial.print(F(","));
-      Serial.print(cA[i].c[1]);
-      Serial.print(F(","));
-      Serial.print(cA[i].c[2]);
-      Serial.print(F(","));
-      Serial.print(cA[i].c[3]);
-      Serial.println(F(")"));
-      Serial.println(F(""));
-    }
-  }
+//   setupArrays(newColorArray, newTArray, newBlendArray, c.getNumColors());
 
-  //  delete [] newColorArray;
-  //  delete [] newTArray;
-  //  delete [] newBlendArray;
+//   if (DEBUGGING_PATTERN)
+//   {
+//     for (unsigned char i = 0; i < c.getNumColors(); i++)
+//     {
+//       Serial.print(i);
+//       Serial.print(F(" Old: t = "));
+//       Serial.print(c.getThisTrigger(i));
+//       Serial.print(F(", b = "));
+//       Serial.print(c.getThisBlendType(i));
+//       Serial.print(F(", c = ("));
+//       Serial.print(c.getThisColorObj(i).c[0]);
+//       Serial.print(F(","));
+//       Serial.print(c.getThisColorObj(i).c[1]);
+//       Serial.print(F(","));
+//       Serial.print(c.getThisColorObj(i).c[2]);
+//       Serial.print(F(","));
+//       Serial.print(c.getThisColorObj(i).c[3]);
+//       Serial.println(F(")"));
+//       Serial.print(i);
+//       Serial.print(F(" New: t = "));
+//       Serial.print(tA[i]);
+//       Serial.print(F(", b = "));
+//       Serial.print(bA[i]);
+//       Serial.print(F(", c = ("));
+//       Serial.print(cA[i].c[0]);
+//       Serial.print(F(","));
+//       Serial.print(cA[i].c[1]);
+//       Serial.print(F(","));
+//       Serial.print(cA[i].c[2]);
+//       Serial.print(F(","));
+//       Serial.print(cA[i].c[3]);
+//       Serial.println(F(")"));
+//       Serial.println(F(""));
+//     }
+//   }
 
-  if (DEBUGGING_PATTERN)
-  {
-    Serial.println(F("Copied Color_dTime!!!"));
-    Serial.println(F(""));
-  }
-};
+// #if COLORD_COPY_ARRAYS
+//   // Delete the arrays that were just created
+//    delete [] newColorArray;
+//    delete [] newTArray;
+//    delete [] newBlendArray;
+// #endif
 
-Color_dTime::~Color_dTime(){
+//   if (DEBUGGING_PATTERN)
+//   {
+//     Serial.println(F("Copied Color_dTime!!!"));
+//     Serial.println(F(""));
+//   }
+// };
 
-};
+Color_dTime::~Color_dTime() {};
 
 Color_dTime *Color_dTime::clone() const
 {
@@ -1112,11 +1123,15 @@ unsigned long Color_dTime::getCurVal() const
   return millis() % tA[numColors - 1];
 };
 
-Color_dVel::Color_dVel(Speedometer *speedometer) : speedometer(speedometer){};
+Color_dVel::Color_dVel(Speedometer *speedometer) : speedometer(speedometer), Color_d<float>() {};
 
-Color_dVel::Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors) : speedometer(speedometer), Color_d<float>(cA, tA, bA, numColors)
-{
-}
+Color_dVel::Color_dVel(Speedometer *Speedometer, unsigned char numColors) : speedometer(speedometer), Color_d<float>(numColors) {};
+
+Color_dVel::Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors) : speedometer(speedometer), Color_d<float>(cA, tA, bA, numColors) {};
+
+Color_dVel::Color_dVel(const Color_dVel &c) : Color_d<float>(c) {};
+
+Color_dVel::~Color_dVel() {};
 
 Color_dVel *Color_dVel::clone() const
 {

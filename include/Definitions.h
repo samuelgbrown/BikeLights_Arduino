@@ -16,6 +16,7 @@
 #define SRAM_ATTACHED false // Is SRAM attached to this unit?  If so, then certain memory intensive computations, such as blurring, can be done
 #define USE_NANOPB false // Should we use the nanoPB library (currently unusable due to severe FRAM limitations, ~10KB over the 32KB limit)
 #define BLUETOOTH_USE_HARDWARESERIAL false // Should the HardwareSerial connection on the Arduino be used for communicating with the Bluetooth connection (should be used when not debugging, if possible)
+#define COLORD_COPY_ARRAYS false // Should the Color_d<T>::setupArrays() function copy input arrays (takes more memory), or take ownership of new arrays that come in (arrays CANNOT be deleted by calling function)
 
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?

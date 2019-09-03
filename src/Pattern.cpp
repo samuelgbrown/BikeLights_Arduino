@@ -172,7 +172,7 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
   //    delete newColorArray[i];
   //  }
 
-  delete[] newColorArray;
+  // delete[] newColorArray;
 
   //  if (DEBUGGING_PATTERN) {
   //    Serial.println(F("Deleted temporary color array"));
@@ -183,6 +183,7 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
 void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColorsIn)
 {
   deleteColorArray(); // Always delete the old arrays when new ones are being created
+  // TODO: Change this function so that it takes ownership of the incoming array, so that it does not need to be deleted
 
   //  if (DEBUGGING_PATTERN) {
   //    Serial.println(F("Checking input color array for first empty..."));
@@ -215,11 +216,11 @@ void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColo
   //    delay(500);
   //  }
 
-  palette = new Color_ *[numColorsIn];             // Allocate space for the color array
   preCalculatedColors = new colorObj[numColorsIn]; // Allocate space for the preCalculatedColors array
 
-  copyArray<Color_ *>(newColorArray, palette, numColorsIn); // Copy over the pointers to the incoming Color_* array
-  //  *colors = *newColorArray; // TODO: Should we use this method, of just transfering the array?  Go through all code and see if this would be ok.
+  // palette = new Color_ *[numColorsIn];             // Allocate space for the color array
+  // copyArray<Color_ *>(newColorArray, palette, numColorsIn); // Copy over the pointers to the incoming Color_* array
+  palette = newColorArray; // TODO: Should we use this method, of just transfering the array?  Go through all code and see if this would be ok.
   numColors = numColorsIn;
 
   //  if (DEBUGGING_PATTERN) {
@@ -1559,7 +1560,7 @@ Pattern_Handler::~Pattern_Handler()
 // ImageMeta_BT Pattern::getImageType()
 // {
 //   ImageMeta_BT im = ImageMeta_BT_default;
-//   im.type = ImageType_CONSTANT_BT; // TODO: Perhaps the default should be stationary? (or whatever I end up calling not-moving-relative-to-the-wheel)
+//   im.type = ImageType_CONSTANT_BT;
 //   im.parameter_set = ImageMetaParam_BT_default;
 //   im.parameter_set.p1 = 0;
 //   return im;

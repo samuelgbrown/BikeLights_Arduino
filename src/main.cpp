@@ -222,7 +222,7 @@ void loop()
         //    delay(500);
       }
       // Execute the Bluetooth main loop
-      // bluetooth->mainLoop(); // TODO: Uncommenting this line (i.e. giving the compiler access to all of the Bluetooth code) cuases the code to be too big to fit onto the Arduino...fuck.
+      bluetooth->mainLoop();
 #endif
     }
 
