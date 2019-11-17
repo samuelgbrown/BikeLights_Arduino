@@ -754,9 +754,9 @@ signed char Static_Helper::getHelperParameter() {
   return 0;
 }
 
-Moving_Helper::Moving_Helper(int rotateSpeed): rotateSpeed(rotateSpeed) {}
+Moving_Helper::Moving_Helper(signed char rotateSpeed) : rotateSpeed(rotateSpeed) {}
 
-void Moving_Helper::setRotateSpeed(int rotateSpeedIn)
+void Moving_Helper::setRotateSpeed(signed char rotateSpeedIn)
 {
   rotateSpeed = rotateSpeedIn;
 };
@@ -1399,6 +1399,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
 
 void Pattern_Handler::mainLoop()
 {
+  if (powerStateChanged) {
   if (speedometer->isSlow() && mainPattern->supportIdle())
   {
     // Wheel is moving slowly (and the main Pattern supports an idle function), do idle animation
@@ -1434,6 +1435,20 @@ void Pattern_Handler::mainLoop()
 
   // Display the image
   controller::show_LEDs();
+  } else {
+    if (powerStateChanged) {
+      // If the power state just changed, then send all blank values to ensure that the wheel is off
+      for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++) {
+        // For each LED, send a blank color
+        controller::sendPixel(0, 0, 0, 0);
+      }
+
+      // Now that we have blanked out the wheel, note that we have prepared the wheel for being off
+      powerStateChangedOff = false;
+    }
+
+    // If the power state has not changed, then continue the main loop() function without changing the LEDs
+  }
 };
 
 void Pattern_Handler::setMainPattern(Pattern * newMainPattern)
@@ -1554,6 +1569,16 @@ Pattern_Handler::~Pattern_Handler()
 
   delete mainPattern;
   delete idlePattern;
+}
+
+void Pattern_Handler::setPowerState(bool newPowerState) {
+  // Set the power state of the wheel
+  powerState = newPowerState;
+  powerStateChangedOff = !newPowerState; // Has the power just been turned off? Needed to prepare the wheel to be off (send all blank values to the LEDs)
+}
+
+bool Pattern_Handler::getPowerState() {
+  return powerState;
 }
 
 // // Encoding Image type functions

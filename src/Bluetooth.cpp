@@ -344,18 +344,29 @@ void Bluetooth::mainLoop() {
 
                     break;
                     }
+
                     case 2:
                     {
-                    // Brightness scale
-
-                    {
-                        // Read in the brightness factor from the Message
-                        unsigned char brightnessFactorByteArray[4];
-                        btSer.readNextMessageBytes(brightnessFactorByteArray, 4);
-                        pattern_handler->setBrightnessFactor(getFloatFromByteArray(brightnessFactorByteArray, 0));
+                        // Brightness scale
+                        {
+                            // Read in the brightness factor from the Message
+                            unsigned char brightnessFactorByteArray[4];
+                            btSer.readNextMessageBytes(brightnessFactorByteArray, 4);
+                            pattern_handler->setBrightnessFactor(getFloatFromByteArray(brightnessFactorByteArray, 0));
+                        }
+                        break;
                     }
 
-                    break;
+                    case 5:
+                    {
+                        // Power State
+                        {
+                            // Read in the power state from the Message
+                            unsigned char powerStateByte;
+                            btSer.readNextMessageByte(powerStateByte);
+                            bool powerState = getBoolFromByte(powerStateByte, 7);
+                            pattern_handler->setPowerState(powerStateByte);
+                        }
                     }
                 }
 
@@ -572,6 +583,16 @@ void Bluetooth::mainLoop() {
                     break;
                     }
 
+                    case 5:
+                    {
+                    {
+                        // Power State
+                        unsigned char powerStateByte;
+                        putBoolToByte(powerStateByte, pattern_handler->getPowerState(), 7);
+                        btSer.writeNextMessageByte(powerStateByte);
+                    }
+                    }
+
                 }
 
                 // Finalize the connection
@@ -585,12 +606,6 @@ void Bluetooth::mainLoop() {
 }
 
 // Bit-wise reading functions
-bool getBoolFromByte(unsigned char byte, unsigned char bitPos) {
-    // Extract a single bit from a byte, and interpret it as a boolean.
-    // bitPos is the number of the bit (starting with the right-most bit as 0)
-    return (byte >> bitPos) & 1U; // Shift the byte bitPos bits to the right, so the bit of interest is in the least-significant position.  Then, mask it with 1 (0b00000001)
-}
-
 unsigned char getNUIntFromByte(unsigned char byte, unsigned char intSize, unsigned char firstBitPos) {
     // Get some n-sized unsigned integer from a byte.
     // NOTE: intsize MUST be less than 8!!!  No checks will be performed!!!
@@ -607,7 +622,23 @@ signed char getNSIntFromByte(unsigned char byte, unsigned char intSize, unsigned
     return (byte >> firstBitPos) & bitMask;
 }
 
+bool getBoolFromByte(unsigned char byte, unsigned char bitPos) {
+    // Extract a single bit from a byte, and interpret it as a boolean.
+    // bitPos is the number of the bit (starting with the right-most bit as 0)
+    return (byte >> bitPos) & 1U; // Shift the byte bitPos bits to the right, so the bit of interest is in the least-significant position.  Then, mask it with 1 (0b00000001)
+}
+
 // Byte-wise reading functions
+void putZerosToByte(unsigned char &byteDest, unsigned char clearSize, unsigned char bitLoc) {
+    // Will write all zeros to a defined position in byteDest, to make writing a pattern of bits easier
+    byteDest &= ~(((1U << clearSize) - 1U) << bitLoc);
+}
+
+void putMaskExceptDataToByte(unsigned char byteDest, unsigned char dataSize, unsigned char bitLoc) {
+    // Will write all zeros to all but a defined position in byteDest, to make writing a pattern of bits more robust
+    byteDest &= ((1U << dataSize) - 1U) << bitLoc;
+}
+
 unsigned long getLongFromByteArray(unsigned char * byteArray, unsigned char firstBytePos) {
     // TODO: CHECK THIS CODE!!!
     // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to an unsigned long
@@ -624,7 +655,7 @@ unsigned long getLongFromByteArray(unsigned char * byteArray, unsigned char firs
     return *((unsigned long *) longByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
 }
 
-unsigned long getFloatFromByteArray(unsigned char * byteArray, unsigned char firstBytePos) {
+float getFloatFromByteArray(unsigned char * byteArray, unsigned char firstBytePos) {
     // TODO: CHECK THIS CODE!!!
     // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to a float
     
@@ -661,16 +692,6 @@ void putDataToByte(unsigned char &byteDest, unsigned char data, unsigned char in
     putZerosToByte(byteDest, intSize, bitLoc); // First, clear the indicated bits in the destination, so that new data can be placed there
     putMaskExceptDataToByte(data, intSize, bitLoc); // Second, clear all except the indicated bits in data so that no spare bits interfere with placing the data
     byteDest |= data; // Data is clear everywhere except the data, and byteDest is clear in the data location, so only the data pattern will be written to byteDest
-}
-
-void putZerosToByte(unsigned char &byteDest, unsigned char clearSize, unsigned char bitLoc) {
-    // Will write all zeros to a defined position in byteDest, to make writing a pattern of bits easier
-    byteDest &= ~(((1U << clearSize) - 1U) << bitLoc);
-}
-
-void putMaskExceptDataToByte(unsigned char byteDest, unsigned char dataSize, unsigned char bitLoc) {
-    // Will write all zeros to all but a defined position in byteDest, to make writing a pattern of bits more robust
-    byteDest &= ((1U << dataSize) - 1U) << bitLoc;
 }
 
 void putLongToByteArray(unsigned char outputCharArray[4], unsigned long inputLong) {
@@ -741,56 +762,58 @@ bool btSerialWrapper::initReceiveMessage() {
     }
 }
 
-boolean btSerialWrapper::readNextMessageByte(unsigned char & byteDestination) {
-    // Check if there is any available data
-    if (available() > 0) {
-        // We have data avilable
-        // Check if we've already read the meta-data from this message
-        if (nextByteNum == 0) {
-            initReceiveMessage(); // If this message has not been read yet, get the meta-data from this one
-        }
+// boolean btSerialWrapper::readNextMessageByte(unsigned char & byteDestination) {
+//     // Check if there is any available data
+//     if (available() > 0) {
+//         // We have data avilable
+//         // Check if we've already read the meta-data from this message
+//         if (nextByteNum == 0) {
+//             initReceiveMessage(); // If this message has not been read yet, get the meta-data from this one
+//         }
 
-        // Now that we definitely have read the meta-data, read the next byte from the stream into byteDestination
-        unsigned char tmpStreamBuf[1]; // A small temporary buffer to read bytes into before being moved into byteDestination
-        stream->readBytes(tmpStreamBuf, 1); // (Always reading a single byte at a time.  Perhaps this is inefficient...)
-        byteDestination = tmpStreamBuf[0]; // Get the first (only) byte from thisStreamBuf, and put it into the output bytesDestination
+//         // Now that we definitely have read the meta-data, read the next byte from the stream into byteDestination
+//         unsigned char tmpStreamBuf[1]; // A small temporary buffer to read bytes into before being moved into byteDestination
+//         stream->readBytes(tmpStreamBuf, 1); // (Always reading a single byte at a time.  Perhaps this is inefficient...)
+//         byteDestination = tmpStreamBuf[0]; // Get the first (only) byte from thisStreamBuf, and put it into the output bytesDestination
 
-        // Iterate the byte number (is this actually used...?  Perhaps for debugging...)
-        nextByteNum++;
+//         // Iterate the byte number (is this actually used...?  Perhaps for debugging...)
+//         nextByteNum++;
 
-        // Finally, return success
-        return true;
+//         // Finally, return success
+//         return true;
 
-    } else {
-        // If no data is available
+//     } else {
+//         // If no data is available
 
-        // Check if we're expecting more content for this communication
-        if (curMessageNum < totalMessages) {
-            // We are expecting more content from this communication, ask for the next bit from Android
-            // TODO_JAVA: Send a message to Android requesting the next message in this communication
+//         // Check if we're expecting more content for this communication
+//         if (curMessageNum <= totalMessages) {
+//             // We are expecting more content from this communication, ask for the next bit from Android
+//             // TODO_JAVA: Send a message to Android requesting the next message in this communication
 
-            // TODO_JAVA: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
+//             // TODO_JAVA: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
 
-            // Reset the byte number and iterate the curMessageNum, so we know to extract the metadata next round
-            nextByteNum = 0;
-            curMessageNum++;
+//             // Finally, call this function once more since we just got a new message
+//             return readNextMessageByte(byteDestination);
 
-            // Finally, call this function once more since we just got a new message
-            return readNextMessageByte(byteDestination);
+//             // TODO: Give this function the same treatment as the readMessageBytes function
 
-        } else {
-            // We are not expecting any more information from this communication
+//         } else {
+//             // We are not expecting any more information from this communication
 
-            // Reset the communication, and return nothing
-            resetCommunicationData(); // Should have been reset by this point already, but may as well just confirm
+//             // Reset the communication, and return nothing
+//             resetCommunicationData(); // Should have been reset by this point already, but may as well just confirm
 
-            byteDestination = 0;
-            return false; // Error, because there was nothing to read
-        }
-    }
+//             byteDestination = 0;
+//             return false; // Error, because there was nothing to read
+//         }
+//     }
+// }
+
+bool btSerialWrapper::readNextMessageByte(unsigned char & byteDestination) {
+    readNextMessageBytes(& byteDestination, 1);
 }
 
-boolean btSerialWrapper::readNextMessageBytes(unsigned char * byteDestination, unsigned char numBytes) {
+bool btSerialWrapper::readNextMessageBytes(unsigned char * byteDestinationArray, unsigned char numBytes) {
     // TODO: TEST THIS OUT!!!  If it doesn't work, then just loop through calls to readNextMessageByte
     unsigned char curByteDestInd = 0; // Initialize the current location in the byteDestination array
 
@@ -808,28 +831,37 @@ boolean btSerialWrapper::readNextMessageBytes(unsigned char * byteDestination, u
             unsigned char thisNumBytesToRead = min(numBytes, numBytesLeftInMessage); // Calculate the number of bytes to read from this message
             
             // Read a series of bytes from the stream
-            stream->readBytes(byteDestination + curByteDestInd, thisNumBytesToRead); // Read this number of bytes from the stream into byteDestination, offset by the number of bytes we have already read in
-            nextByteNum += thisNumBytesToRead;
+            stream->readBytes(byteDestinationArray + curByteDestInd, thisNumBytesToRead); // Read this number of bytes from the stream into byteDestination, offset by the number of bytes we have already read in
+            nextByteNum += thisNumBytesToRead; // Update the pointer to the next byte location
 
             // Prepare for the next loop, if needed
-            curByteDestInd += thisNumBytesToRead; // Update out location in byteDestination
+            curByteDestInd += thisNumBytesToRead; // Update our location in byteDestination
             numBytes -= thisNumBytesToRead; // Update the number of bytes that still need to be read into byteDestination
+
+            // Check if we just read the last of the bytes in the most recent message
+            if (MAX_BT_BUFFER_SIZE - nextByteNum <= 0) {
+                // Send a quick message to Java to let it know that we finished reading its last message.  It will work on getting the next message to us while we either a) exit this function, or b) swing around to the "else" statement and wait in the while loop for a minute
+                sendConfirmation();
+            }
 
         } else {
             // If there is no data available
 
             // Check if we're expecting more content for this communication
-            if (curMessageNum < totalMessages) {
-                // We are expecting more content from this communication, ask for the next bit from Android
-                // TODO_JAVA: Send a message to Android requesting the next message in this communication
-
+            if (curMessageNum <= totalMessages) {
+                // We are expecting more content from this communication, so try reading the next message from Android (since we already sent a confirmation)
                 // TODO_JAVA: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
+                long startTime = millis();
+                while (available() == 0 & (millis() < (startTime + BLUETOOTH_TIMEOUT_MILLI))) {
+                    // While there is nothing to read, wait for BLUETOOTH_TIMEOUT_MILLI milliseconds
+                }
 
-                // Reset the byte number and iterate the curMessageNum, so we know to extract the metadata next round
-                nextByteNum = 0;
-                curMessageNum++;
+                if (available() == 0) {
+                    // If we timed out of the communication loop, abandon the connection
+                    return false;
+                }
 
-                // Finally, continue out of this loop since we just got a new message
+                // If we just got a new message, continue in the main while loop, to read the data
                 continue;
             } else {
                 // We are not expecting any more information from this communication
@@ -837,7 +869,7 @@ boolean btSerialWrapper::readNextMessageBytes(unsigned char * byteDestination, u
                 // Reset the communication, and return nothing
                 resetCommunicationData(); // Should have been reset by this point already, but may as well just confirm
 
-                byteDestination = 0;
+                byteDestinationArray = 0;
                 return false; // Error, because there was nothing to read
             }
         }
@@ -853,7 +885,7 @@ unsigned char btSerialWrapper::getContent() {
 }
 
 bool btSerialWrapper::isRequest() {
-    return isRequest;
+    return request;
 }
 
 unsigned char btSerialWrapper::getCurMessageNum() {
@@ -862,6 +894,27 @@ unsigned char btSerialWrapper::getCurMessageNum() {
 
 int btSerialWrapper::available() {
     return stream->available();
+}
+
+bool btSerialWrapper::sendConfirmation() {
+    // Create a "header" (with no body) with the meta data of the data currently being received.
+    // Request is false, content is given by the member variable, and confirmation is true
+    unsigned char firstByte = 0U;
+    putDataToByte(firstByte, content, 3, 4);
+    putBoolToByte(firstByte, true, 3);
+
+    // The current/total message numbers are given by the member variables
+    unsigned char messageNumByte = 0U;
+    putDataToByte(messageNumByte, totalMessages, 4, 4);
+    putDataToByte(messageNumByte, curMessageNum, 4, 0);
+    
+    // Send the two bytes of data
+    stream->write(firstByte);
+    stream->write(messageNumByte);
+
+    // Finally, because this represents us being done with the message we were just reading, reset the byte number and iterate the curMessageNum
+    nextByteNum = 0;
+    curMessageNum++;
 }
 
 bool btSerialWrapper::writeMetadata(bool thisRequest, unsigned char thisContent) {
@@ -877,6 +930,8 @@ bool btSerialWrapper::writeMetadata(bool thisRequest, unsigned char thisContent)
             putDataToByte(firstByte, thisContent, 3, 4);
             
             stream->write(firstByte);
+
+            return true;
         } else {
             // The stream is not available for writing for some reason
             return false;

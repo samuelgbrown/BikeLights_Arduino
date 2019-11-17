@@ -50,6 +50,7 @@
 #define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
 #define MAX_BT_BUFFER_SIZE 64 // The number of bytes available to read from the Serial buffer
+#define BLUETOOTH_TIMEOUT_MILLI 5000 // The timeout period in which we will wait for a bluetooth message that we requested
 
 #define MAXPULSELENGTH 50000
 #define MAXTIMEBEWTEENTICS 1500

@@ -92,6 +92,9 @@ public:
   void setMainPattern(Pattern * newMainPattern); // Set the main pattern
   void setIdlePattern(Pattern * newIdlePattern); // Set the idle pattern
 
+  void setPowerState(bool newPowerState); // Set the power state of the wheel
+  bool getPowerState(); // Get the power state of the wheel
+
   const Pattern * getMainPattern(); // Get a const pointer to the main Pattern
   const Pattern * getIdlePattern(); // Get a const pointer to the main Pattern
 
@@ -129,6 +132,10 @@ private:
   colorObj *preCalculatedColors = NULL; // Array (of size numColors) of colorObj's that represents the colorObj for each Color_ represented in image that is being used this loop (each Color_ is calculated only once, so computation time will be saved on dynamic palette).
   float brightnessFactor = 1.0f;        // A scale factor to adjust the brightness each time the colors are precalculated (can be used to homogenously dim the LEDs)
   bool mainAllowsIdle = false; // Does the main Pattern allow an idle Pattern?
+
+  // Power state
+  bool powerState = true; // The power state of the LED (should the LED's be turned on? True = on)
+  bool powerStateChangedOff = false; // Has the powerstate recently been changed?
 };
 
 // An abstract helper class that defines the single function that all helpers must return.  It allows the derived classes to change how the image moves around the wheel (either relative to the ground, or relative to the wheel)

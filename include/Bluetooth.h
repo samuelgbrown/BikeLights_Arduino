@@ -92,8 +92,10 @@ private:
         bool request = false;
 
         // Information for keeping of where we are in the entire communication
-        unsigned char curMessageNum = 0; // The message that is being read now
+        unsigned char curMessageNum = 0; // The message that is being read now (or is being waited on being delivered)
         unsigned char nextByteNum = 0; // The byte that will be read next
+
+        bool sendConfirmation(); // A function for sending a confirmation to Android that we have received and processed a message
         
         Stream * stream;
     };

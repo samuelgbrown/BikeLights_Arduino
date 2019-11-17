@@ -4,7 +4,7 @@
         "PLATFORMIO_CALLER": "vscode"
     },
     "terminal.integrated.env.linux": {
-        "PATH": "/home/sambrown/.platformio/penv/bin:/home/sambrown/.platformio/penv:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/opt/cisco/anyconnect/bin/",
+        "PATH": "/home/sambrown/.platformio/penv/bin:/home/sambrown/.platformio/penv:/home/sambrown/anaconda3/bin:/home/sambrown/anaconda3/condabin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/opt/cisco/anyconnect/bin:/opt/cisco/anyconnect/bin/",
         "PLATFORMIO_CALLER": "vscode"
     }
 }
