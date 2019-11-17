@@ -25,22 +25,27 @@ Pattern::Pattern() : Pattern(new Static_Helper(), true)
   //  setupColors(1);
 };
 
-Pattern::Pattern(Image_Helper * image_helper, bool groundRel): groundRel(groundRel) {
+Pattern::Pattern(Image_Helper *image_helper, bool groundRel) : groundRel(groundRel)
+{
   setImageHelper(image_helper);
 }
 
-Pattern::~Pattern() {
+Pattern::~Pattern()
+{
   // Delete the Image_Helper that is owned by this Pattern
   delete image_helper;
 }
 
-void Pattern::anim(int xTrueRounded) {
+void Pattern::anim(int xTrueRounded)
+{
   sendLEDsWithOffset((groundRel ? xTrueRounded : 0) - image_helper->getHelperOffset(xTrueRounded)); // Send the colors to the LED strip with an offset.  This offset will be modulus'd as needed.  The offset is defined as the negative of the helper's offset (so that positive offsets rotate the image forward), plus [xTrueRounded if the image position is defined relative to the ground, or 0 if the image position is defined relative to the wheel]
 }
 
-void Pattern::sendLEDsWithOffset(int offset) {
+void Pattern::sendLEDsWithOffset(int offset)
+{
   // Go through each LED, and send specified color to the LED strip
-  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++) {
+  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+  {
     // Find the image index to use by adding the offset to the LED number, and using modulus to stay within NUMLEDS
     unsigned char imagePos = (unsigned char)((LEDNum + offset) % (int)NUMLEDS);
 
@@ -305,16 +310,15 @@ unsigned char Pattern::getImageValInPos(unsigned char LEDNum)
   {
     unsigned char imageInd = LEDNum >> 1; // Right bit-shift the incoming LED number to get the integer division by 2 of LEDNum (very fast, because I'm very cool)
 
-    switch (1 & LEDNum) // Figure out if LEDNum is even or odd, using exceedingly clever bit-wise arithmetic
+    if ((1 & LEDNum) == 0) // Figure out if LEDNum is even or odd, using exceedingly clever bit-wise arithmetic
     {
-    case 0:
       // The number is even, we'll want the first nibble (remember, image[] starts indexing at 0)
       return valFromFirstNibble(image[imageInd]); // Get the value from the first nibble of the LEDNum/2 index of the image
-      break;
-    case 1:
+    }
+    else
+    {
       // The number is odd, we'll want the second nibble
       return valFromSecondNibble(image[imageInd]); // Get the value from the first nibble of the LEDNum/2 index of the image
-      break;
     }
     // return image[LEDNum]; // Old method (where size(image) == NUMLEDS)
   }
@@ -343,36 +347,47 @@ const unsigned char *Pattern::getImage() const
   return image;
 }
 
-unsigned char Pattern::getImageType() const {
+unsigned char Pattern::getImageType() const
+{
   // Annoyingly, the Android and Arduino systems think that different parts of the Image type are important, so the information sent to Android is a wierd amalgamation of the reference point information and the helper type
-  
+
   // Find out which type of image is being used
-  if (image_helper->getType() == SPINNER) {
+  if (image_helper->getType() == SPINNER)
+  {
     // If this is a spinner, return that information
     return 2U;
-  } else {
+  }
+  else
+  {
     // Otherwise, return the reference point information
-    if (groundRel) {
+    if (groundRel)
+    {
       return 1U;
-    } else {
+    }
+    else
+    {
       return 0U;
     }
   }
 }
 
-bool Pattern::supportIdle() const {
+bool Pattern::supportIdle() const
+{
   return image_helper->isIdleAllowed(); // Whether or not this Pattern supports an idle animation is dependant entirely on the type of helper function
 }
 
-signed char Pattern::getHelperParameter() const {
+signed char Pattern::getHelperParameter() const
+{
   return image_helper->getHelperParameter();
 }
 
-const Pattern * Pattern_Handler::getMainPattern() {
+const Pattern *Pattern_Handler::getMainPattern()
+{
   return mainPattern;
 }
 
-const Pattern * Pattern_Handler::getIdlePattern() {
+const Pattern *Pattern_Handler::getIdlePattern()
+{
   return idlePattern;
 }
 
@@ -555,13 +570,15 @@ void Pattern::setImage(unsigned char *imageIn)
   // setupColors(numColorsInArray);
 };
 
-void Pattern::setImageFromBluetooth(btSerialWrapper btSer) {
+void Pattern::setImageFromBluetooth(btSerialWrapper btSer)
+{
   // Read data in directly from the Bluetooth device, and set it as the image.
   // NOTE: This function assumes that the Bluetooth Serial line is queued up such that the next NUM_BYTES_PER_IMAGE bytes are meant to define an image for a Pattern.  No error-checking can or will be performed.
   btSer.readNextMessageBytes(image, NUM_BYTES_PER_IMAGE);
 }
 
-void Pattern::setImageHelper(Image_Helper * image_helper_in) {
+void Pattern::setImageHelper(Image_Helper *image_helper_in)
+{
   delete image_helper; // Delete the old image helper, if it exists
   image_helper = image_helper_in;
 }
@@ -739,22 +756,28 @@ void Pattern_Handler::preCalculateAllColor_()
 //};
 
 // Define the Image_Helper class and its derived forms
-Image_Helper::Image_Helper(bool idleAllowed): idleAllowed(idleAllowed) {};
+Image_Helper::Image_Helper(bool idleAllowed) : idleAllowed(idleAllowed) {}
 
-bool Image_Helper::isIdleAllowed() {
+bool Image_Helper::isIdleAllowed()
+{
   return idleAllowed;
 }
 
-int Static_Helper::getHelperOffset(int xTrueRounded) {
+Static_Helper::Static_Helper() : Image_Helper() {}
+
+int Static_Helper::getHelperOffset(int xTrueRounded)
+{
   return 0; // Always return 0, so that the image does not move
 }
 
-signed char Static_Helper::getHelperParameter() {
+signed char Static_Helper::getHelperParameter()
+{
   // Always return 0
   return 0;
 }
 
-Moving_Helper::Moving_Helper(signed char rotateSpeed) : rotateSpeed(rotateSpeed) {}
+Moving_Helper::Moving_Helper() : Image_Helper(), rotateSpeed(10) {} // Initialize the rotation speed to 10
+Moving_Helper::Moving_Helper(signed char rotateSpeed) : Image_Helper(), rotateSpeed(rotateSpeed) {}
 
 void Moving_Helper::setRotateSpeed(signed char rotateSpeedIn)
 {
@@ -766,9 +789,10 @@ int Moving_Helper::getRotateSpeed()
   return rotateSpeed;
 }
 
-int Moving_Helper::getHelperOffset(int xTrueRounded) {
-  advanceLEDPos(); // Advance the LED position, based on the current time
-  return (unsigned char) round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
+int Moving_Helper::getHelperOffset(int xTrueRounded)
+{
+  advanceLEDPos();                               // Advance the LED position, based on the current time
+  return (unsigned char)round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
 }
 
 void Moving_Helper::advanceLEDPos()
@@ -780,12 +804,13 @@ void Moving_Helper::advanceLEDPos()
   lastLEDAdvanceTime = thisLEDAdvanceTime;                                                            // Update lastLEDAdvanceTime
 };
 
-signed char Moving_Helper::getHelperParameter() {
+signed char Moving_Helper::getHelperParameter()
+{
   return rotateSpeed;
 }
 
 #if SRAM_ATTACHED
-Moving_Helper(int rotateSpeed, imageBleed): rotateSpeed(rotateSpeed), imageBleed(imageBleed) {};
+Moving_Helper(int rotateSpeed, imageBleed) : rotateSpeed(rotateSpeed), imageBleed(imageBleed){};
 
 void Moving_Helper::setImageBleed(unsigned char imageBleedIn)
 {
@@ -795,18 +820,22 @@ void Moving_Helper::setImageBleed(unsigned char imageBleedIn)
   }
 };
 
-void Moving_Helper::colorBlur() {
+void Moving_Helper::colorBlur()
+{
  Method for doing color blur that requires a large amount of memory (NUMLIGHTSPERLED * NUMLEDS bytes) per pattern, in the form of the colorMemory array.
  May be useful if using external RAM.
  unsigned long dt = micros() - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
- float tune = 700; // Used to remap the imageBleed variable to make it easier to choose bleed times
- float bleedFac = (float)dt / 1000000.0; // Convert milliseconds to seconds
- if (DEBUGGING_MOVINGIMAGE) {
+ float tune = 700;                                 // Used to remap the imageBleed variable to make it easier to choose bleed times
+ float bleedFac = (float)dt / 1000000.0;           // Convert milliseconds to seconds
+ if (DEBUGGING_MOVINGIMAGE)
+ {
    Serial.println(dt);
    Serial.println(bleedFac, 10);
  }
- for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++) {
-   if (DEBUGGING_MOVINGIMAGE && colorInd == 0) {
+ for (unsigned char colorInd = 0; colorInd < NUMLEDS; colorInd++)
+ {
+   if (DEBUGGING_MOVINGIMAGE && colorInd == 0)
+   {
      Serial.println(1.0 - tune * bleedFac * (1.0 - pow((float)imageBleed / 255.0, .2)), 10);
    }
    //    colorMemory[colorInd].multiplyBrightness((bleedFac * (float)imageBleed) / 255.0);
@@ -814,11 +843,13 @@ void Moving_Helper::colorBlur() {
  }
 };
 
-void Moving_Helper::sendColors() {
-// Send colorMemory object (used with memory-expensive blur method)
- for (unsigned char i = 0; i < NUMLEDS; i++) {
-   controller::sendPixel(colorMemory[i]); // Send the color in colorMemory
- }
+void Moving_Helper::sendColors()
+{
+  // Send colorMemory object (used with memory-expensive blur method)
+  for (unsigned char i = 0; i < NUMLEDS; i++)
+  {
+    controller::sendPixel(colorMemory[i]); // Send the color in colorMemory
+  }
 }
 
 void Moving_Helper::addImagePosition(colorObj colorObjIn, unsigned char imagePosition)
@@ -833,29 +864,34 @@ void Moving_Helper::addImagePosition(colorObj colorObjIn, unsigned char imagePos
 #endif
 
 // For the Spinner_Helper class, note that it does NOT allow an idle, so construct the Image_Helper accordingly
-Spinner_Helper::Spinner_Helper(): Image_Helper(false) {};
-Spinner_Helper::Spinner_Helper(signed char intertia): Image_Helper(false), inertia(inertia) {}
+Spinner_Helper::Spinner_Helper() : Image_Helper(false){};
+Spinner_Helper::Spinner_Helper(signed char inertia) : Image_Helper(false), inertia(inertia) {}
 
-void Spinner_Helper::setInertia(signed char inertiaIn) {
+void Spinner_Helper::setInertia(signed char inertiaIn)
+{
   inertia = inertiaIn;
 }
 
-unsigned char Spinner_Helper::getInertia() {
+unsigned char Spinner_Helper::getInertia()
+{
   return inertia;
 }
 
-int Spinner_Helper::getHelperOffset(int xTrueRounded) {
-  advanceLEDPos(); // Advance the LED position, based on the current time
-  return (unsigned char) round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
+int Spinner_Helper::getHelperOffset(int xTrueRounded)
+{
+  advanceLEDPos();                               // Advance the LED position, based on the current time
+  return (unsigned char)round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
 }
 
-void Spinner_Helper::advanceLEDPos() {
-  // TODO: Write the Spinner image type!!!  
+void Spinner_Helper::advanceLEDPos()
+{
+  // TODO: Write the Spinner image type!!!
   // Calculate the next position based on the physical model
   imageMovementPos++;
 };
 
-signed char Spinner_Helper::getHelperParameter() {
+signed char Spinner_Helper::getHelperParameter()
+{
   return inertia;
 }
 
@@ -1399,46 +1435,51 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
 
 void Pattern_Handler::mainLoop()
 {
-  if (powerStateChanged) {
-  if (speedometer->isSlow() && mainPattern->supportIdle())
+  if (powerState)
   {
-    // Wheel is moving slowly (and the main Pattern supports an idle function), do idle animation
+    if (speedometer->isSlow() && mainPattern->supportIdle())
+    {
+      // Wheel is moving slowly (and the main Pattern supports an idle function), do idle animation
+
+      if (DEBUGGING_PATTERN)
+      {
+        // Serial.flush();
+        Serial.println(F("Idle animation..."));
+      }
+
+      idlePattern->anim();
+    }
+    else
+    {
+      // Wheel is moving at pace, do main animation
+
+      if (DEBUGGING_PATTERN)
+      {
+        //      // Serial.flush();
+        Serial.println(F("Main animation..."));
+        //      Serial.print(F("allowIdle set to "));
+        //      Serial.println(mainPattern->allowIdle);
+        delay(500);
+      }
+      mainPattern->anim((int)roundf(speedometer->getPos()));
+    }
 
     if (DEBUGGING_PATTERN)
     {
       // Serial.flush();
-      Serial.println(F("Idle animation..."));
+      Serial.println(F("Finished Pattern Handler loop..."));
     }
 
-    idlePattern->anim();
+    // Display the image
+    controller::show_LEDs();
   }
   else
   {
-    // Wheel is moving at pace, do main animation
-
-    if (DEBUGGING_PATTERN)
+    if (powerStateChangedOff)
     {
-      //      // Serial.flush();
-      Serial.println(F("Main animation..."));
-      //      Serial.print(F("allowIdle set to "));
-      //      Serial.println(mainPattern->allowIdle);
-      delay(500);
-    }
-    mainPattern->anim((int)roundf(speedometer->getPos()));
-  }
-
-  if (DEBUGGING_PATTERN)
-  {
-    // Serial.flush();
-    Serial.println(F("Finished Pattern Handler loop..."));
-  }
-
-  // Display the image
-  controller::show_LEDs();
-  } else {
-    if (powerStateChanged) {
       // If the power state just changed, then send all blank values to ensure that the wheel is off
-      for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++) {
+      for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+      {
         // For each LED, send a blank color
         controller::sendPixel(0, 0, 0, 0);
       }
@@ -1451,7 +1492,7 @@ void Pattern_Handler::mainLoop()
   }
 };
 
-void Pattern_Handler::setMainPattern(Pattern * newMainPattern)
+void Pattern_Handler::setMainPattern(Pattern *newMainPattern)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1485,15 +1526,17 @@ void Pattern_Handler::setMainPattern(Pattern * newMainPattern)
 
   mainPattern = newMainPattern; // Assign the new Pattern to the main Pattern in this Handler
 
-  if (mainPattern->supportIdle()) {
+  if (mainPattern->supportIdle())
+  {
     // If the Pattern supports an idle animation, create a new placeholder, in case a new one is not added
     idlePattern = new Pattern();
-  } else {
+  }
+  else
+  {
     // If the pattern does not support an idle animation, delete the idlePattern
     delete idlePattern;
     idlePattern = NULL;
   }
-
 
   if (DEBUGGING_PATTERN)
   {
@@ -1504,7 +1547,7 @@ void Pattern_Handler::setMainPattern(Pattern * newMainPattern)
   }
 };
 
-void Pattern_Handler::setIdlePattern(Pattern * newIdlePattern)
+void Pattern_Handler::setIdlePattern(Pattern *newIdlePattern)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1530,7 +1573,8 @@ void Pattern_Handler::setIdlePattern(Pattern * newIdlePattern)
     Serial.println(F(""));
   }
 
-    if (!newIdlePattern->supportIdle()) {
+  if (!newIdlePattern->supportIdle())
+  {
     // If the incoming Pattern does not support an idle, then it cannot be used as an idle.
     // Create a simple Pattern as a place-holder
     idlePattern = new Pattern();
@@ -1571,13 +1615,15 @@ Pattern_Handler::~Pattern_Handler()
   delete idlePattern;
 }
 
-void Pattern_Handler::setPowerState(bool newPowerState) {
+void Pattern_Handler::setPowerState(bool newPowerState)
+{
   // Set the power state of the wheel
   powerState = newPowerState;
   powerStateChangedOff = !newPowerState; // Has the power just been turned off? Needed to prepare the wheel to be off (send all blank values to the LEDs)
 }
 
-bool Pattern_Handler::getPowerState() {
+bool Pattern_Handler::getPowerState()
+{
   return powerState;
 }
 

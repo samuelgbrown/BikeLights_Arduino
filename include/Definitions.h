@@ -13,15 +13,15 @@
 */
 
 // Code differences based on hardware
-#define SRAM_ATTACHED false // Is SRAM attached to this unit?  If so, then certain memory intensive computations, such as blurring, can be done
-#define USE_NANOPB false // Should we use the nanoPB library (currently unusable due to severe FRAM limitations, ~10KB over the 32KB limit)
+#define SRAM_ATTACHED false                // Is SRAM attached to this unit?  If so, then certain memory intensive computations, such as blurring, can be done
+#define USE_NANOPB false                   // Should we use the nanoPB library (currently unusable due to severe FRAM limitations, ~10KB over the 32KB limit)
 #define BLUETOOTH_USE_HARDWARESERIAL false // Should the HardwareSerial connection on the Arduino be used for communicating with the Bluetooth connection (should be used when not debugging, if possible)
-#define COLORD_COPY_ARRAYS false // Should the Color_d<T>::setupArrays() function copy input arrays (takes more memory), or take ownership of new arrays that come in (arrays CANNOT be deleted by calling function)
+#define COLORD_COPY_ARRAYS false           // Should the Color_d<T>::setupArrays() function copy input arrays (takes more memory), or take ownership of new arrays that come in (arrays CANNOT be deleted by calling function)
 
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
 #define LIBRARY_TEST false         // Should a single script be run instead of the normal function (to test singular parts of the library)?
-#define NO_BLUETOOTH false          // Try compiling without any Bluetooth code...just cuz
+#define NO_BLUETOOTH false         // Try compiling without any Bluetooth code...just cuz
 
 // Debugging
 #define DEBUGGING_GENERAL true      // Breakdown every step that the software takes
@@ -49,7 +49,7 @@
 #define NUM_BYTES_PER_IMAGE NUMLEDS / 2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)
 #define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
-#define MAX_BT_BUFFER_SIZE 64 // The number of bytes available to read from the Serial buffer
+#define MAX_BT_BUFFER_SIZE 64        // The number of bytes available to read from the Serial buffer
 #define BLUETOOTH_TIMEOUT_MILLI 5000 // The timeout period in which we will wait for a bluetooth message that we requested
 
 #define MAXPULSELENGTH 50000
@@ -103,12 +103,11 @@ class Pattern_Handler;
 //   I_NOTHING     // No animation (remove?)
 // };
 
-
 enum IMAGE_REFPT
 {
-  WREL, // Rotation relative to the wheel
-  GREL, // Rotation relative to the ground
-  NOTHING     // No animation (remove?)
+  WREL,   // Rotation relative to the wheel
+  GREL,   // Rotation relative to the ground
+  NOTHING // No animation (remove?)
 };
 
 enum IMAGE_HELPER_TYPE

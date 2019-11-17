@@ -1,5 +1,158 @@
 #include "Bluetooth.h"
+#include "Pattern.h"
+#include "Speedometer.h"
+#include "Definitions.h"
 
+// Bit-wise reading functions
+unsigned char getNUIntFromByte(unsigned char byte, unsigned char intSize, unsigned char firstBitPos)
+{
+    // Get some n-sized unsigned integer from a byte.
+    // NOTE: intsize MUST be less than 8!!!  No checks will be performed!!!
+    // For example, an unsigned int is defined by the 3 bytes indicated by X in 0boooXXXoo, this function should be called as getNIntFromByte(0boooXXXoo, 3, 2)
+    unsigned char bitMask = (1U << intSize) - 1U; // Bit-mask generation idea from John Gietzan, on Stack Exchange (https://stackoverflow.com/a/1392065)
+    return (byte >> firstBitPos) & bitMask;
+}
+
+signed char getNSIntFromByte(unsigned char byte, unsigned char intSize, unsigned char firstBitPos)
+{
+    // Get some n-sized signed integer from a byte.
+    // NOTE: intsize MUST be less than 8!!!  No checks will be performed!!!
+    // For example, an unsigned int is defined by the 3 bytes indicated by X in 0boooXXXoo, this function should be called as getUIntFromByte(0boooXXXoo, 3, 2)
+    unsigned char bitMask = (1U << intSize) - 1U; // Bit-mask generation idea from John Gietzan, on Stack Exchange (https://stackoverflow.com/a/1392065)
+    return (byte >> firstBitPos) & bitMask;
+}
+
+bool getBoolFromByte(unsigned char byte, unsigned char bitPos)
+{
+    // Extract a single bit from a byte, and interpret it as a boolean.
+    // bitPos is the number of the bit (starting with the right-most bit as 0)
+    return (byte >> bitPos) & 1U; // Shift the byte bitPos bits to the right, so the bit of interest is in the least-significant position.  Then, mask it with 1 (0b00000001)
+}
+
+// Byte-wise reading functions
+void putZerosToByte(unsigned char &byteDest, unsigned char clearSize, unsigned char bitLoc)
+{
+    // Will write all zeros to a defined position in byteDest, to make writing a pattern of bits easier
+    byteDest &= ~(((1U << clearSize) - 1U) << bitLoc);
+}
+
+void putMaskExceptDataToByte(unsigned char byteDest, unsigned char dataSize, unsigned char bitLoc)
+{
+    // Will write all zeros to all but a defined position in byteDest, to make writing a pattern of bits more robust
+    byteDest &= ((1U << dataSize) - 1U) << bitLoc;
+}
+
+unsigned long getLongFromByteArray(unsigned char *byteArray, unsigned char firstBytePos)
+{
+    // TODO: CHECK THIS CODE!!!
+    // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to an unsigned long
+
+    // Create an array to be reinterpretted
+    unsigned char longByteArray[4];
+    // Copy the 4 bytes from byteArray, starting at firstBytePos, to longByteArray
+    for (int i = 0; i < 4; i++)
+    {
+        // I do not fucking trust the memory copying functions, probably due to my own incompetence, but still I'll do it the stupid way and let the goddamn compiler deal with it.
+        longByteArray[i] = byteArray[i + firstBytePos];
+    }
+
+    // Convert the byteArray to an unsigned long pointer, then dereference the pointer to get an unsigned long
+    return *((unsigned long *)longByteArray); // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
+}
+
+float getFloatFromByteArray(unsigned char *byteArray, unsigned char firstBytePos)
+{
+    // TODO: CHECK THIS CODE!!!
+    // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to a float
+
+    // Create an array to be reinterpretted
+    unsigned char floatByteArray[4];
+    // Copy the 4 bytes from byteArray, starting at firstBytePos, to longByteArray
+    for (int i = 0; i < 4; i++)
+    {
+        // I do not fucking trust the memory copying functions, probably due to my own incompetence, but still I'll do it the stupid way and let the goddamn compiler deal with it.
+        floatByteArray[i] = byteArray[i + firstBytePos];
+    }
+
+    // Convert the byteArray to a float pointer, then dereference the pointer to get a float
+    return *((float *)floatByteArray); // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
+}
+
+// Bit-wise writing functions
+void putBoolToByte(unsigned char &byteDest, bool data, unsigned char bitLoc)
+{
+    // Right-most bit is 0, left-most is 7
+
+    // Algorithm from Jeremy Ruten on Stack Exchange (https://stackoverflow.com/a/47990)
+    if (data)
+    {
+        // If we are writing a 1 to the bit at bitLoc
+        byteDest |= 1U << bitLoc;
+    }
+    else
+    {
+        // If we are writing a 0 to the bit at bitLoc
+        byteDest &= ~(1U << bitLoc);
+    }
+}
+
+void putDataToByte(unsigned char &byteDest, unsigned char data, unsigned char intSize, unsigned char bitLoc)
+{
+    // Will write an intSize-bit unsigned integer into the byte referenced by byteDest, at bit location bitLoc
+    // bitLoc indicates the position of the right-most bit in the data, where the right-most bit in the byte is 0.  I.e. making a zero'd byte to look like (0b01111000) would be done by calling putDataToByte(zeroByte, 15, 4, 3)
+
+    putZerosToByte(byteDest, intSize, bitLoc);      // First, clear the indicated bits in the destination, so that new data can be placed there
+    putMaskExceptDataToByte(data, intSize, bitLoc); // Second, clear all except the indicated bits in data so that no spare bits interfere with placing the data
+    byteDest |= data;                               // Data is clear everywhere except the data, and byteDest is clear in the data location, so only the data pattern will be written to byteDest
+}
+
+void putLongToByteArray(unsigned char outputCharArray[4], unsigned long inputLong)
+{
+    *((unsigned long *)outputCharArray) = inputLong; // TODO: Does this even goddamn work...?
+}
+
+void putFloatToByteArray(unsigned char outputCharArray[4], float inputFloat)
+{
+    *((float *)outputCharArray) = inputFloat; // TODO: Does this even goddamn work...?
+}
+
+unsigned char *putFloatMatToByteArray(const float **inputMat)
+{
+    // Reinterpret the incoming float 2D matric as an unsigned char array, where each group of 4 unsigned chars represents a float
+    // TODO: CHECK THIS FREAKING CODE!!!
+    return reinterpret_cast<unsigned char *>(inputMat);
+}
+
+BLEND_TYPE getBlendTypeFromByte(unsigned char byte)
+{
+    switch (byte)
+    {
+    case 0:
+        return B_LINEAR;
+        break;
+    case 1:
+        return B_CONSTANT;
+        break;
+    default:
+        return B_LINEAR;
+    }
+}
+
+unsigned char getByteFromBlendType(BLEND_TYPE blend_type_in)
+{
+    switch (blend_type_in)
+    {
+    case B_CONSTANT:
+        return 0U;
+        break;
+
+    case B_LINEAR:
+        return 1U;
+        break;
+    default:
+        return 0U;
+    }
+}
 
 Bluetooth::Bluetooth(Pattern_Handler *pattern_handler, Speedometer *speedometer) : pattern_handler(pattern_handler), speedometer(speedometer)
 {
@@ -9,7 +162,8 @@ Bluetooth::~Bluetooth()
 {
 }
 
-void Bluetooth::mainLoop() {
+void Bluetooth::mainLoop()
+{
     // Check if there is anything on the serial line
     int count = btSer.available();
     if (count > 0)
@@ -24,71 +178,75 @@ void Bluetooth::mainLoop() {
             int freeRamNow = freeRam();
 
             // Read the meta-data from the information that is now in the Bluetooth buffer, to initialize btSer member variables.
-            bool readSuccess = btSer.initReceiveMessage();
+            btSer.initReceiveMessage();
 
             // while (messageNum < totalNumMessages) {
-                if (!btSer.isRequest()) {
+            if (!btSer.isRequest())
+            {
                 // If this message contains content sent by the Android program, then read the message and update the Arduino
-                switch (btSer.getContent()) {
-                    case 0:
-                    {
-                    // Bike wheel animation
+                switch (btSer.getContent())
+                {
+                case 0:
+                {
+                    // Receiving Bike wheel animation
 
                     // First, get the invariate information from the head of the BWA message, the meta-data of the palette and image
 
                     unsigned char incomingNumLEDs;
                     unsigned char totalNumColor_s;
-                     
+
                     btSer.readNextMessageByte(incomingNumLEDs); // Get the number of LEDs that the Android thinks we have
                     btSer.readNextMessageByte(totalNumColor_s); // Get the number of Color_'s that are in the palette
 
                     pattern_handler->setupPalette(1); // Set up the palette with a single, static Color_, minimizing the RAM requirements
 
-                    Color_ ** newColor_Array = new Color_ * [totalNumColor_s]; // Create an array of pointers to Color_ objects that will be creaforted soon.  This array will be *copied*.
+                    Color_ **newColor_Array = new Color_ *[totalNumColor_s]; // Create an array of pointers to Color_ objects that will be creaforted soon.  This array will be *copied*.
 
                     // Start saving the palette information
-                    for (unsigned char thisColor_Num = 0;thisColor_Num < totalNumColor_s;thisColor_Num++) {
+                    for (unsigned char thisColor_Num = 0; thisColor_Num < totalNumColor_s; thisColor_Num++)
+                    {
                         // First, get this Color_ type
                         unsigned char thisColor_Type;
-                        btSer.readNextMessageByte(thisColor_Type); // Get the color type from the message
+                        btSer.readNextMessageByte(thisColor_Type);               // Get the color type from the message
                         thisColor_Type = getNUIntFromByte(thisColor_Type, 4, 4); // Save the first nibble to get the color type
 
                         // Depending on the type of Color_ we are expecting for this position in the palette, intepret the data differently
-                        switch (thisColor_Type) {
-                            case 0:
-                            {
+                        switch (thisColor_Type)
+                        {
+                        case 0:
+                        {
                             // Static Color
 
                             // Get the RBGW values from the message
-                            unsigned char incomingColors [NUMLIGHTSPERLED];
+                            unsigned char incomingColors[NUMLIGHTSPERLED];
                             btSer.readNextMessageBytes(incomingColors, NUMLIGHTSPERLED);
 
                             // Create a new Static Color_ object from this array
                             newColor_Array[thisColor_Num] = new Color_Static(incomingColors);
                             break;
-                            }
+                        }
 
-                            case 1:
-                            {
+                        case 1:
+                        {
                             // Time-based Color_
                             // This is a dynamic Color_, so the loading process will be quite similar
                             unsigned char numColorObj_metas;
                             btSer.readNextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
-                            
-                            // Set up the arrays that will be used to initialize the Color_d
-                            colorObj * newColorObjs = new colorObj[numColorObj_metas];
-                            BLEND_TYPE * newBs = new BLEND_TYPE[numColorObj_metas];
-                            unsigned long * newTimeTs = new unsigned long[numColorObj_metas];
 
-                            for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++) {
+                            // Set up the arrays that will be used to initialize the Color_d
+                            colorObj *newColorObjs = new colorObj[numColorObj_metas];
+                            BLEND_TYPE *newBs = new BLEND_TYPE[numColorObj_metas];
+                            unsigned long *newTimeTs = new unsigned long[numColorObj_metas];
+
+                            for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++)
+                            {
                                 // For every colorObjNum, get all of the information (LED brightnesses, T, and blend types)
 
                                 {
                                     // Get the colorObj for this index in the Color_d
-                                    unsigned char thisColorObjArray [NUMLIGHTSPERLED];
+                                    unsigned char thisColorObjArray[NUMLIGHTSPERLED];
                                     btSer.readNextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
                                     newColorObjs[colorObjNum] = colorObj(thisColorObjArray);
-
                                 }
 
                                 {
@@ -109,32 +267,28 @@ void Bluetooth::mainLoop() {
                             // Create the Color_dTime object
                             newColor_Array[thisColor_Num] = new Color_dTime(newColorObjs, newTimeTs, newBs, numColorObj_metas); // These arrays are not deleted, because they will now be owned by the Color_dTime
                             break;
-                            }
+                        }
 
-                            case 2:
-                            {
+                        case 2:
+                        {
                             // Velocity-based Color_
                             // This is a dynamic Color_, so the loading process will be quite similar
                             unsigned char numColorObj_metas;
                             btSer.readNextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
-                            
+
                             // Set up the arrays that will be used to initialize the Color_d
-                            colorObj * newColorObjs = new colorObj[numColorObj_metas];
-                            BLEND_TYPE * newBs = new BLEND_TYPE[numColorObj_metas];
-                            float * newVelTs = new float[numColorObj_metas];
+                            colorObj *newColorObjs = new colorObj[numColorObj_metas];
+                            BLEND_TYPE *newBs = new BLEND_TYPE[numColorObj_metas];
+                            float *newVelTs = new float[numColorObj_metas];
 
-                            for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++) {
+                            for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++)
+                            {
                                 // For every colorObjNum, get all of the information (LED brightnesses, T, and blend types)
-                                colorObj thisColorObj;
-                                BLEND_TYPE thisBlendType;
-                                float thisTVal;
-
                                 {
                                     // Get the colorObj for this index in the Color_d
-                                    unsigned char thisColorObjArray [NUMLIGHTSPERLED];
+                                    unsigned char thisColorObjArray[NUMLIGHTSPERLED];
                                     btSer.readNextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
                                     newColorObjs[colorObjNum] = colorObj(thisColorObjArray);
-
                                 }
 
                                 {
@@ -150,13 +304,12 @@ void Bluetooth::mainLoop() {
                                     btSer.readNextMessageBytes(thisTValArray, 4);
                                     newVelTs[colorObjNum] = getFloatFromByteArray(thisTValArray, 0);
                                 }
-
                             }
 
                             // Create the Color_dVel object
                             newColor_Array[thisColor_Num] = new Color_dVel(speedometer, newColorObjs, newVelTs, newBs, numColorObj_metas); // These arrays are not deleted, because they will now be owned by the Color_dVel
                             break;
-                            }
+                        }
                         }
                     }
 
@@ -185,54 +338,61 @@ void Bluetooth::mainLoop() {
                         mainImageParam = getNSIntFromByte(imageParamByte, 8, 0);
                     }
 
-                    Image_Helper * main_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
-                    bool groundRel = true; // Is the Pattern's motion defined relative to the wheel, or relative to the ground?
-                    switch (mainImageType) {
-                        case 0:
+                    Image_Helper *main_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
+                    bool groundRel = true;           // Is the Pattern's motion defined relative to the wheel, or relative to the ground?
+                    switch (mainImageType)
+                    {
+                    case 0:
                         // Wheel-relative motion
 
                         groundRel = false; // The motion is relative to the wheel, not the ground
 
                         // Create a different Image_Helper depending on whether or not there is motion (if there is no motion, we can save some RAM)
-                        if (mainImageParam == 0) {
+                        if (mainImageParam == 0)
+                        {
                             main_image_helper = new Static_Helper();
-                        } else {
+                        }
+                        else
+                        {
                             // If there is some movement relative to the wheel, use a slightly different Pattern type
                             main_image_helper = new Moving_Helper(mainImageParam);
                         }
                         break;
-                        case 1:
+                    case 1:
                         // Ground-relative motion
 
                         // Create a different Image_Helper depending on whether or not there is motion (if there is no motion, we can save some RAM)
-                        if (mainImageParam == 0) {
+                        if (mainImageParam == 0)
+                        {
                             main_image_helper = new Static_Helper();
-                        } else {
+                        }
+                        else
+                        {
                             // If there is some movement relative to the wheel, use a slightly different Pattern type
                             main_image_helper = new Moving_Helper(mainImageParam);
                         }
                         break;
-                        case 2:
+                    case 2:
                         // Spinner wheel
 
                         main_image_helper = new Spinner_Helper(mainImageParam);
                         break;
-                        default:
+                    default:
                         main_image_helper = new Static_Helper();
                     }
-                    
-                    Pattern * mainPattern = new Pattern(main_image_helper, groundRel); // Define the new Pattern that will be constructed based on the information from the message, then sent to the Pattern_Handler
+
+                    Pattern *mainPattern = new Pattern(main_image_helper, groundRel); // Define the new Pattern that will be constructed based on the information from the message, then sent to the Pattern_Handler
 
                     // Read in the main Image (could probably change this into a one-liner by writing the data directly into the image of the Pattern...but whatever)
                     mainPattern->setImageFromBluetooth(btSer);
-                    
+
                     // for (unsigned char curImageByte = 0; curImageByte < NUM_BYTES_PER_IMAGE; curImageByte++) {
                     //     // Go through each expected byte in the image, and extract it to the color
-                        
+
                     //     // Read the next byte from the message
                     //     unsigned char thisImageByte;
                     //     btSer.readNextMessageByte(thisImageByte);
-                        
+
                     //     // Set the newly read byte into the Pattern
                     //     mainPattern->setImageRawByte(thisImageByte);
                     // }
@@ -241,7 +401,8 @@ void Bluetooth::mainLoop() {
                     pattern_handler->setMainPattern(mainPattern);
 
                     // If this pattern supports an idle image, read the data from the message about the idle image
-                    if (supportsIdle) {
+                    if (supportsIdle)
+                    {
                         // First, get the image type for the idle image
                         unsigned char idleImageType;
                         signed char idleImageParam;
@@ -256,50 +417,53 @@ void Bluetooth::mainLoop() {
                             idleImageParam = getNSIntFromByte(idleImageParamByte, 8, 0);
                         }
 
-                        Image_Helper * idle_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
-                        switch (mainImageType) {
-                            case 0:
+                        Image_Helper *idle_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
+                        switch (mainImageType)
+                        {
+                        case 0:
                             // Wheel-relative motion
                             // NOTE: This is the only idle pattern that is defined at the moment
 
                             // Create a different Image_Helper depending on whether or not there is motion (if there is no motion, we can save some RAM)
-                            if (idleImageParam == 0) {
+                            if (idleImageParam == 0)
+                            {
                                 idle_image_helper = new Static_Helper();
-                            } else {
+                            }
+                            else
+                            {
                                 // If there is some movement relative to the wheel, use a slightly different Pattern type
                                 idle_image_helper = new Moving_Helper(idleImageParam);
                             }
                             break;
-                            default:
+                        default:
                             idle_image_helper = new Static_Helper();
                         }
 
-                        Pattern * idlePattern = new Pattern(idle_image_helper, false); // Define a Pattern using the Image_Helper we just defined, enforcing that it will be using wheel_relative motion
+                        Pattern *idlePattern = new Pattern(idle_image_helper, false); // Define a Pattern using the Image_Helper we just defined, enforcing that it will be using wheel_relative motion
 
                         // Read in the idle Image
                         idlePattern->setImageFromBluetooth(btSer);
 
                         // for (unsigned char curImageByte = 0; curImageByte < NUM_BYTES_PER_IMAGE; curImageByte++) {
                         //     // Go through each expected byte in the image, and extract it to the color
-                        
+
                         //     // Read the next byte from the message
                         //     unsigned char thisImageByte;
                         //     btSer.readNextMessageByte(thisImageByte);
-                        
+
                         //     // Set the newly read byte into the Pattern
                         //     idlePattern->setImageRawByte(thisImageByte);
                         // }
-
                     }
 
                     speedometer->getKalman()->resetFilter(); // Finally, reset the Kalman filter
 
                     break;
-                    }
-                    case 1:
-                    {
-                    // Kalman Info
-                    unsigned char numObs; // Number of observed parameters
+                }
+                case 1:
+                {
+                    // Receiving Kalman Info
+                    unsigned char numObs;   // Number of observed parameters
                     unsigned char numState; // Number of state parameters
 
                     {
@@ -308,33 +472,37 @@ void Bluetooth::mainLoop() {
                         btSer.readNextMessageByte(obsStateByte);
                         numObs = getNUIntFromByte(obsStateByte, 4, 4);
                         numState = getNUIntFromByte(obsStateByte, 4, 0);
-                        
+
                         // TODO: Error check if the observation and state variable numbers are the same between Arduino and Android?
                     }
 
                     {
                         // Next, read in 4 bytes that will be saved as Q
-                        unsigned char qByteArray [4];
+                        unsigned char qByteArray[4];
                         btSer.readNextMessageBytes(qByteArray, 4);
                         speedometer->getKalman()->setQ(getFloatFromByteArray(qByteArray, 0)); // Set the Q value in the Kalman filter
                     }
 
                     {
                         // Finally, read in the series of floats that will become the R and P0 matrices
-                        unsigned char thisByteArray [4];
-                        
-                        for (int row = 0; row < numObs; row++) {
-                            for (int col = 0; col < numObs; col++) {
+                        unsigned char thisByteArray[4];
+
+                        for (int row = 0; row < numObs; row++)
+                        {
+                            for (int col = 0; col < numObs; col++)
+                            {
                                 btSer.readNextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
-                                
+
                                 speedometer->getKalman()->setRElem(row, col, getFloatFromByteArray(thisByteArray, 0)); // Read this new float into the PPrior matrix for the Kalman filter
                             }
                         }
 
-                        for (int row = 0; row < numState; row++) {
-                            for (int col = 0; col < numState; col++) {
+                        for (int row = 0; row < numState; row++)
+                        {
+                            for (int col = 0; col < numState; col++)
+                            {
                                 btSer.readNextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
-                                
+
                                 speedometer->getKalman()->setP0Elem(row, col, getFloatFromByteArray(thisByteArray, 0)); // Read this new float into the PPrior matrix for the Kalman filter
                             }
                         }
@@ -343,56 +511,60 @@ void Bluetooth::mainLoop() {
                     speedometer->getKalman()->resetFilter(); // Reset the Kalman filter
 
                     break;
-                    }
-
-                    case 2:
-                    {
-                        // Brightness scale
-                        {
-                            // Read in the brightness factor from the Message
-                            unsigned char brightnessFactorByteArray[4];
-                            btSer.readNextMessageBytes(brightnessFactorByteArray, 4);
-                            pattern_handler->setBrightnessFactor(getFloatFromByteArray(brightnessFactorByteArray, 0));
-                        }
-                        break;
-                    }
-
-                    case 5:
-                    {
-                        // Power State
-                        {
-                            // Read in the power state from the Message
-                            unsigned char powerStateByte;
-                            btSer.readNextMessageByte(powerStateByte);
-                            bool powerState = getBoolFromByte(powerStateByte, 7);
-                            pattern_handler->setPowerState(powerStateByte);
-                        }
-                    }
                 }
 
-            } else {
+                case 2:
+                {
+                    // Receiving Brightness scale
+                    {
+                        // Read in the brightness factor from the Message
+                        unsigned char brightnessFactorByteArray[4];
+                        btSer.readNextMessageBytes(brightnessFactorByteArray, 4);
+                        pattern_handler->setBrightnessFactor(getFloatFromByteArray(brightnessFactorByteArray, 0));
+                    }
+                    break;
+                }
+
+                case 5:
+                {
+                    // Receiving Power State
+                    {
+                        // Read in the power state from the Message
+                        unsigned char powerStateByte;
+                        btSer.readNextMessageByte(powerStateByte);
+                        bool powerState = getBoolFromByte(powerStateByte, 7);
+                        pattern_handler->setPowerState(powerState);
+                    }
+                }
+                }
+            }
+            else
+            {
                 // This message is a request for information from the Arduino
 
                 // Start sending a message back, starting with the metadata
                 unsigned char content = btSer.getContent();
                 btSer.writeMetadata(false, content);
-                
-                switch (content) {
-                    case 0:
-                    {
-                    // Bike wheel animation
+
+                switch (content)
+                {
+                case 0:
+                {
+                    // Sending Bike wheel animation
                     // Send the firsts byte with the BWA meta-data
-                    btSer.writeNextMessageByte((unsigned char) NUMLEDS);
+                    btSer.writeNextMessageByte((unsigned char)NUMLEDS);
                     btSer.writeNextMessageByte(pattern_handler->getNumColors());
 
                     // Go through each Color_ in the palette, and encode it into the message
-                    for (unsigned char colorNum = 0;colorNum < pattern_handler->getNumColors(); colorNum++) {
+                    for (unsigned char colorNum = 0; colorNum < pattern_handler->getNumColors(); colorNum++)
+                    {
 
                         // First, get the type of color
-                        switch (pattern_handler->getColor(colorNum)->getType) {
+                        switch (pattern_handler->getColor(colorNum)->getType())
+                        {
 
-                            case COLOR_STATIC:
-                            {
+                        case COLOR_STATIC:
+                        {
                             // First, send the color type as an unsigned char
                             {
                                 unsigned char colorNumByte = 0U; // An entire byte of zeros has a 0 in the correct place to denote a Static Color_
@@ -403,10 +575,10 @@ void Bluetooth::mainLoop() {
                             btSer.writeNextMessageBytes(pattern_handler->getColor(colorNum)->getColor().c, 4);
 
                             break;
-                            }
-                            case COLOR_DTIME:
-                            {
-                            const Color_dTime * thisColor_dTime = static_cast<const Color_dTime *> (pattern_handler->getColor(colorNum));
+                        }
+                        case COLOR_DTIME:
+                        {
+                            const Color_dTime *thisColor_dTime = static_cast<const Color_dTime *>(pattern_handler->getColor(colorNum));
 
                             // First, send the color type as an unsigned char
                             {
@@ -419,7 +591,8 @@ void Bluetooth::mainLoop() {
                             btSer.writeNextMessageByte(thisColor_dTime->getNumColors());
 
                             // Go through each colorObj_meta held by this Color_, and send them one at a time
-                            for (unsigned char colorObjNum = 0;colorObjNum < thisColor_dTime->getNumColors();colorObjNum++) {
+                            for (unsigned char colorObjNum = 0; colorObjNum < thisColor_dTime->getNumColors(); colorObjNum++)
+                            {
                                 // For each colorObj_meta held by this Color_, send the data over Bluetooth
 
                                 // First, send the RGBW data
@@ -430,17 +603,17 @@ void Bluetooth::mainLoop() {
 
                                 // Finally, send the T value
                                 {
-                                    unsigned char thisLongCharArray [4]; // A byte array to hold the byte-wise representation of the trigger value
+                                    unsigned char thisLongCharArray[4];                                                  // A byte array to hold the byte-wise representation of the trigger value
                                     putLongToByteArray(thisLongCharArray, thisColor_dTime->getThisTrigger(colorObjNum)); // Assign the trigger value to the byte array
-                                    btSer.writeNextMessageBytes(thisLongCharArray, 4); // Send the byte array over the Bluetooth connection
+                                    btSer.writeNextMessageBytes(thisLongCharArray, 4);                                   // Send the byte array over the Bluetooth connection
                                 }
                             }
 
                             break;
-                            }
-                            case COLOR_DVEL:
-                            {
-                            const Color_dVel * thisColor_dVel = static_cast<const Color_dVel *> (pattern_handler->getColor(colorNum));
+                        }
+                        case COLOR_DVEL:
+                        {
+                            const Color_dVel *thisColor_dVel = static_cast<const Color_dVel *>(pattern_handler->getColor(colorNum));
 
                             // First, send the color type as an unsigned char
                             {
@@ -453,7 +626,8 @@ void Bluetooth::mainLoop() {
                             btSer.writeNextMessageByte(thisColor_dVel->getNumColors());
 
                             // Go through each colorObj_meta held by this Color_, and send them one at a time
-                            for (unsigned char colorObjNum = 0;colorObjNum < thisColor_dVel->getNumColors();colorObjNum++) {
+                            for (unsigned char colorObjNum = 0; colorObjNum < thisColor_dVel->getNumColors(); colorObjNum++)
+                            {
                                 // For each colorObj_meta held by this Color_, send the data over Bluetooth
 
                                 // First, send the RGBW data
@@ -464,14 +638,14 @@ void Bluetooth::mainLoop() {
 
                                 // Finally, send the T value
                                 {
-                                    unsigned char thisFloatCharArray [4]; // A byte array to hold the byte-wise representation of the trigger value
+                                    unsigned char thisFloatCharArray[4];                                                  // A byte array to hold the byte-wise representation of the trigger value
                                     putFloatToByteArray(thisFloatCharArray, thisColor_dVel->getThisTrigger(colorObjNum)); // Assign the trigger value to the byte array
-                                    btSer.writeNextMessageBytes(thisFloatCharArray, 4); // Send the byte array over the Bluetooth connection
+                                    btSer.writeNextMessageBytes(thisFloatCharArray, 4);                                   // Send the byte array over the Bluetooth connection
                                 }
                             }
 
                             break;
-                            }
+                        }
                         }
                     }
 
@@ -490,7 +664,8 @@ void Bluetooth::mainLoop() {
                     btSer.writeNextMessageBytes(pattern_handler->getMainPattern()->getImage(), NUM_BYTES_PER_IMAGE);
 
                     // If there is an idle image, send the idle image information
-                    if (pattern_handler->getMainPattern()->supportIdle()) {
+                    if (pattern_handler->getMainPattern()->supportIdle())
+                    {
                         // First, send the idle image type
                         btSer.writeNextMessageByte(pattern_handler->getIdlePattern()->getImageType());
 
@@ -502,10 +677,10 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
-                    }
-                    case 1:
-                    {
-                    // Kalman Info
+                }
+                case 1:
+                {
+                    // Sending Kalman Info
 
                     {
                         // First, send the number of observation an state variables
@@ -533,11 +708,11 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
-                    }
+                }
 
-                    case 2:
-                    {
-                    // Brightness scale
+                case 2:
+                {
+                    // Sending Brightness scale
 
                     {
                         // Send the brightness scale as an array of bytes, reprenting a single float
@@ -547,33 +722,32 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
-                    }
+                }
 
-                    case 3:
-                    {
-                    // Storage
-                    
+                case 3:
+                {
+                    // Sending Storage
 
                     {
                         // First, send the amount of remaining RAM, recorded before this process started
                         unsigned char remainingRAMLongArray[4];
-                        putLongToByteArray(remainingRAMLongArray, (unsigned long) freeRam);
+                        putLongToByteArray(remainingRAMLongArray, (unsigned long)freeRamNow);
                         btSer.writeNextMessageBytes(remainingRAMLongArray, 4);
                     }
 
                     {
                         // Next, send the total amount of RAM available on the Arduino
                         unsigned char totalRAMLongArray[4];
-                        putLongToByteArray(totalRAMLongArray, (unsigned long) TOTAL_MEMORY);
+                        putLongToByteArray(totalRAMLongArray, (unsigned long)TOTAL_MEMORY);
                         btSer.writeNextMessageBytes(totalRAMLongArray, 4);
                     }
 
                     break;
-                    }
+                }
 
-                    case 4:
-                    {
-                    // Battery
+                case 4:
+                {
+                    // Sending Battery
 
                     {
                         // TODO: ....uhhhhhh.....
@@ -581,18 +755,18 @@ void Bluetooth::mainLoop() {
                     }
 
                     break;
-                    }
+                }
 
-                    case 5:
+                case 5:
+                {
+                    // Sending Power State
+
                     {
-                    {
-                        // Power State
                         unsigned char powerStateByte;
                         putBoolToByte(powerStateByte, pattern_handler->getPowerState(), 7);
                         btSer.writeNextMessageByte(powerStateByte);
                     }
-                    }
-
+                }
                 }
 
                 // Finalize the connection
@@ -605,160 +779,40 @@ void Bluetooth::mainLoop() {
     }
 }
 
-// Bit-wise reading functions
-unsigned char getNUIntFromByte(unsigned char byte, unsigned char intSize, unsigned char firstBitPos) {
-    // Get some n-sized unsigned integer from a byte.
-    // NOTE: intsize MUST be less than 8!!!  No checks will be performed!!!
-    // For example, an unsigned int is defined by the 3 bytes indicated by X in 0boooXXXoo, this function should be called as getNIntFromByte(0boooXXXoo, 3, 2)
-    unsigned char bitMask = (1U << intSize) - 1U; // Bit-mask generation idea from John Gietzan, on Stack Exchange (https://stackoverflow.com/a/1392065)
-    return (byte >> firstBitPos) & bitMask;
-}
+btSerialWrapper::btSerialWrapper(Stream *stream) : stream(stream) {}
 
-signed char getNSIntFromByte(unsigned char byte, unsigned char intSize, unsigned char firstBitPos) {
-    // Get some n-sized signed integer from a byte.
-    // NOTE: intsize MUST be less than 8!!!  No checks will be performed!!!
-    // For example, an unsigned int is defined by the 3 bytes indicated by X in 0boooXXXoo, this function should be called as getUIntFromByte(0boooXXXoo, 3, 2)
-    unsigned char bitMask = (1U << intSize) - 1U; // Bit-mask generation idea from John Gietzan, on Stack Exchange (https://stackoverflow.com/a/1392065)
-    return (byte >> firstBitPos) & bitMask;
-}
-
-bool getBoolFromByte(unsigned char byte, unsigned char bitPos) {
-    // Extract a single bit from a byte, and interpret it as a boolean.
-    // bitPos is the number of the bit (starting with the right-most bit as 0)
-    return (byte >> bitPos) & 1U; // Shift the byte bitPos bits to the right, so the bit of interest is in the least-significant position.  Then, mask it with 1 (0b00000001)
-}
-
-// Byte-wise reading functions
-void putZerosToByte(unsigned char &byteDest, unsigned char clearSize, unsigned char bitLoc) {
-    // Will write all zeros to a defined position in byteDest, to make writing a pattern of bits easier
-    byteDest &= ~(((1U << clearSize) - 1U) << bitLoc);
-}
-
-void putMaskExceptDataToByte(unsigned char byteDest, unsigned char dataSize, unsigned char bitLoc) {
-    // Will write all zeros to all but a defined position in byteDest, to make writing a pattern of bits more robust
-    byteDest &= ((1U << dataSize) - 1U) << bitLoc;
-}
-
-unsigned long getLongFromByteArray(unsigned char * byteArray, unsigned char firstBytePos) {
-    // TODO: CHECK THIS CODE!!!
-    // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to an unsigned long
-    
-    // Create an array to be reinterpretted
-    unsigned char longByteArray[4];
-    // Copy the 4 bytes from byteArray, starting at firstBytePos, to longByteArray    
-    for (int i = 0; i < 4; i++) {
-    // I do not fucking trust the memory copying functions, probably due to my own incompetence, but still I'll do it the stupid way and let the goddamn compiler deal with it.
-        longByteArray[i] = byteArray[i + firstBytePos];
-    }
-
-    // Convert the byteArray to an unsigned long pointer, then dereference the pointer to get an unsigned long
-    return *((unsigned long *) longByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
-}
-
-float getFloatFromByteArray(unsigned char * byteArray, unsigned char firstBytePos) {
-    // TODO: CHECK THIS CODE!!!
-    // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to a float
-    
-    // Create an array to be reinterpretted
-    unsigned char floatByteArray[4];
-    // Copy the 4 bytes from byteArray, starting at firstBytePos, to longByteArray    
-    for (int i = 0; i < 4; i++) {
-    // I do not fucking trust the memory copying functions, probably due to my own incompetence, but still I'll do it the stupid way and let the goddamn compiler deal with it.
-        floatByteArray[i] = byteArray[i + firstBytePos];
-    }
-
-    // Convert the byteArray to a float pointer, then dereference the pointer to get a float
-    return *((float *) floatByteArray);  // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
-}
-
-// Bit-wise writing functions
-void putBoolToByte(unsigned char & byteDest, bool data, unsigned char bitLoc) {
-    // Right-most bit is 0, left-most is 7
-    
-    // Algorithm from Jeremy Ruten on Stack Exchange (https://stackoverflow.com/a/47990)
-    if (data) {
-        // If we are writing a 1 to the bit at bitLoc
-        byteDest |= 1U << bitLoc;
-    } else {
-        // If we are writing a 0 to the bit at bitLoc
-        byteDest &= ~(1U << bitLoc);
-    }
-}
-
-void putDataToByte(unsigned char &byteDest, unsigned char data, unsigned char intSize, unsigned char bitLoc) {
-    // Will write an intSize-bit unsigned integer into the byte referenced by byteDest, at bit location bitLoc
-    // bitLoc indicates the position of the right-most bit in the data, where the right-most bit in the byte is 0.  I.e. making a zero'd byte to look like (0b01111000) would be done by calling putDataToByte(zeroByte, 15, 4, 3)
-
-    putZerosToByte(byteDest, intSize, bitLoc); // First, clear the indicated bits in the destination, so that new data can be placed there
-    putMaskExceptDataToByte(data, intSize, bitLoc); // Second, clear all except the indicated bits in data so that no spare bits interfere with placing the data
-    byteDest |= data; // Data is clear everywhere except the data, and byteDest is clear in the data location, so only the data pattern will be written to byteDest
-}
-
-void putLongToByteArray(unsigned char outputCharArray[4], unsigned long inputLong) {
-    *((unsigned long *) outputCharArray) = inputLong; // TODO: Does this even goddamn work...?
-}
-
-void putFloatToByteArray(unsigned char outputCharArray[4], float inputFloat) {
-    *((float *) outputCharArray) = inputFloat; // TODO: Does this even goddamn work...?
-}
-
-unsigned char * putFloatMatToByteArray(const float ** inputMat) {
-    // Reinterpret the incoming float 2D matric as an unsigned char array, where each group of 4 unsigned chars represents a float
-    // TODO: CHECK THIS FREAKING CODE!!!
-    return reinterpret_cast<unsigned char *>(inputMat);
-}
-
-BLEND_TYPE getBlendTypeFromByte(unsigned char byte) {
-    switch (byte) {
-        case 0:
-            return B_LINEAR;
-        break;
-        case 1:
-            return B_CONSTANT;
-        break;
-    }
-}
-
-unsigned char getByteFromBlendType(BLEND_TYPE blend_type_in) {
-    switch (blend_type_in)
-    {
-    case B_CONSTANT:
-        return 0U;
-        break;
-    
-    case B_LINEAR:
-        return 1U;
-        break;
-    }
-}
-
-btSerialWrapper::btSerialWrapper(Stream * stream): stream(stream) {}
-
-bool btSerialWrapper::initReceiveMessage() {
+bool btSerialWrapper::initReceiveMessage()
+{
     // This function reads the meta-data from the next message, if it exists, and returns if the meta-data was successfully read
 
-    if (nextByteNum == 0) {
+    if (nextByteNum == 0)
+    {
         // We have not yet read the meta-data.  Extract this first
 
-            // Read the first two bytes into a temporary buffer
-            unsigned char tmpStreamBuf[2];
-            stream->readBytes(tmpStreamBuf, 2);
+        // Read the first two bytes into a temporary buffer
+        unsigned char tmpStreamBuf[2];
+        stream->readBytes(tmpStreamBuf, 2);
 
-            // Read the data from this temporary buffer
-            request = getBoolFromByte(tmpStreamBuf[0], 7); // Determine if this is a request for information, or a message containing infromation
-            content = getNUIntFromByte(tmpStreamBuf[0], 3, 4); // Get the type of content that is being requested or sent
-            totalMessages = getNUIntFromByte(tmpStreamBuf[1], 4, 4); // Get the total number of messages
-            unsigned char readMessageNum = getNUIntFromByte(tmpStreamBuf[1], 4, 0); // Get the message number, according to the message
-            
-            // Check the message number
-            if (readMessageNum != curMessageNum) {
-                // Something has gone horribly wrong...
-            }
+        // Read the data from this temporary buffer
+        request = getBoolFromByte(tmpStreamBuf[0], 7);                          // Determine if this is a request for information, or a message containing infromation
+        content = getNUIntFromByte(tmpStreamBuf[0], 3, 4);                      // Get the type of content that is being requested or sent
+        totalMessages = getNUIntFromByte(tmpStreamBuf[1], 4, 4);                // Get the total number of messages
+        unsigned char readMessageNum = getNUIntFromByte(tmpStreamBuf[1], 4, 0); // Get the message number, according to the message
 
-            // Set the byte number so that we are after the meta data
-            nextByteNum = 2;
-    } else {
-        return 0;  // If nextByteNum is not 0, then we are not EXPECTING to be at the beginning of a new message, so skip this function and return an error
+        // Check the message number
+        if (readMessageNum != curMessageNum)
+        {
+            // Something has gone horribly wrong...
+        }
+
+        // Set the byte number so that we are after the meta data
+        nextByteNum = 2;
+
+        return true;
+    }
+    else
+    {
+        return false; // If nextByteNum is not 0, then we are not EXPECTING to be at the beginning of a new message, so skip this function and return an error
     }
 }
 
@@ -809,61 +863,73 @@ bool btSerialWrapper::initReceiveMessage() {
 //     }
 // }
 
-bool btSerialWrapper::readNextMessageByte(unsigned char & byteDestination) {
-    readNextMessageBytes(& byteDestination, 1);
+bool btSerialWrapper::readNextMessageByte(unsigned char &byteDestination)
+{
+    return readNextMessageBytes(&byteDestination, 1);
 }
 
-bool btSerialWrapper::readNextMessageBytes(unsigned char * byteDestinationArray, unsigned char numBytes) {
+bool btSerialWrapper::readNextMessageBytes(unsigned char *byteDestinationArray, unsigned char numBytes)
+{
     // TODO: TEST THIS OUT!!!  If it doesn't work, then just loop through calls to readNextMessageByte
     unsigned char curByteDestInd = 0; // Initialize the current location in the byteDestination array
 
-    while (numBytes > 0) {
+    while (numBytes > 0)
+    {
         // While we are still trying to read data from the bluetooth message
-        if (available() > 0) {
+        if (available() > 0)
+        {
             // We have data available
             // Check if we've already read meta-data from this message
-            if (nextByteNum == 0) {
+            if (nextByteNum == 0)
+            {
                 initReceiveMessage(); // If this message has not been read yet, get the meta-data from this one
             }
-            
+
             // Calculate how many bytes to read from the stream
-            unsigned char numBytesLeftInMessage = MAX_BT_BUFFER_SIZE - nextByteNum; // Calculate the number of bytes that are left in this Bluetooth message
+            unsigned char numBytesLeftInMessage = MAX_BT_BUFFER_SIZE - nextByteNum;  // Calculate the number of bytes that are left in this Bluetooth message
             unsigned char thisNumBytesToRead = min(numBytes, numBytesLeftInMessage); // Calculate the number of bytes to read from this message
-            
+
             // Read a series of bytes from the stream
             stream->readBytes(byteDestinationArray + curByteDestInd, thisNumBytesToRead); // Read this number of bytes from the stream into byteDestination, offset by the number of bytes we have already read in
-            nextByteNum += thisNumBytesToRead; // Update the pointer to the next byte location
+            nextByteNum += thisNumBytesToRead;                                            // Update the pointer to the next byte location
 
             // Prepare for the next loop, if needed
             curByteDestInd += thisNumBytesToRead; // Update our location in byteDestination
-            numBytes -= thisNumBytesToRead; // Update the number of bytes that still need to be read into byteDestination
+            numBytes -= thisNumBytesToRead;       // Update the number of bytes that still need to be read into byteDestination
 
             // Check if we just read the last of the bytes in the most recent message
-            if (MAX_BT_BUFFER_SIZE - nextByteNum <= 0) {
+            if (MAX_BT_BUFFER_SIZE - nextByteNum <= 0)
+            {
                 // Send a quick message to Java to let it know that we finished reading its last message.  It will work on getting the next message to us while we either a) exit this function, or b) swing around to the "else" statement and wait in the while loop for a minute
                 sendConfirmation();
             }
-
-        } else {
+        }
+        else
+        {
             // If there is no data available
 
             // Check if we're expecting more content for this communication
-            if (curMessageNum <= totalMessages) {
+            if (curMessageNum <= totalMessages)
+            {
                 // We are expecting more content from this communication, so try reading the next message from Android (since we already sent a confirmation)
                 // TODO_JAVA: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
-                long startTime = millis();
-                while (available() == 0 & (millis() < (startTime + BLUETOOTH_TIMEOUT_MILLI))) {
+                unsigned long startTime = millis();
+                while ((((unsigned long)available()) == 0) & (millis() < (startTime + BLUETOOTH_TIMEOUT_MILLI)))
+                {
                     // While there is nothing to read, wait for BLUETOOTH_TIMEOUT_MILLI milliseconds
                 }
 
-                if (available() == 0) {
+                if (available() == 0)
+                {
                     // If we timed out of the communication loop, abandon the connection
                     return false;
                 }
 
                 // If we just got a new message, continue in the main while loop, to read the data
                 continue;
-            } else {
+            }
+            else
+            {
                 // We are not expecting any more information from this communication
 
                 // Reset the communication, and return nothing
@@ -874,29 +940,38 @@ bool btSerialWrapper::readNextMessageBytes(unsigned char * byteDestinationArray,
             }
         }
     }
+
+    // If we've gotten to this points, this have gone well
+    return true;
 }
 
-unsigned char btSerialWrapper::getTotalMessages() {
+unsigned char btSerialWrapper::getTotalMessages()
+{
     return totalMessages;
 }
 
-unsigned char btSerialWrapper::getContent() {
+unsigned char btSerialWrapper::getContent()
+{
     return content;
 }
 
-bool btSerialWrapper::isRequest() {
+bool btSerialWrapper::isRequest()
+{
     return request;
 }
 
-unsigned char btSerialWrapper::getCurMessageNum() {
+unsigned char btSerialWrapper::getCurMessageNum()
+{
     return curMessageNum;
 }
 
-int btSerialWrapper::available() {
+int btSerialWrapper::available()
+{
     return stream->available();
 }
 
-bool btSerialWrapper::sendConfirmation() {
+bool btSerialWrapper::sendConfirmation()
+{
     // Create a "header" (with no body) with the meta data of the data currently being received.
     // Request is false, content is given by the member variable, and confirmation is true
     unsigned char firstByte = 0U;
@@ -907,7 +982,7 @@ bool btSerialWrapper::sendConfirmation() {
     unsigned char messageNumByte = 0U;
     putDataToByte(messageNumByte, totalMessages, 4, 4);
     putDataToByte(messageNumByte, curMessageNum, 4, 0);
-    
+
     // Send the two bytes of data
     stream->write(firstByte);
     stream->write(messageNumByte);
@@ -915,56 +990,73 @@ bool btSerialWrapper::sendConfirmation() {
     // Finally, because this represents us being done with the message we were just reading, reset the byte number and iterate the curMessageNum
     nextByteNum = 0;
     curMessageNum++;
+
+    return true; // TODO: Add some kind of error handling, probably from the stream->write() command?
 }
 
-bool btSerialWrapper::writeMetadata(bool thisRequest, unsigned char thisContent) {
+bool btSerialWrapper::writeMetadata(bool thisRequest, unsigned char thisContent)
+{
     // First, reset the communication meta-data
     resetCommunicationData();
 
     // Next, Send the meta-data for this transmission
-    if (nextByteNum == 0) {
+    if (nextByteNum == 0)
+    {
         // If this is the very beginning of the data transmission, then encode some meta-data to the first byte
-        if (stream->availableForWrite()) {
+        if (stream->availableForWrite())
+        {
             unsigned char firstByte = 0U;
             putBoolToByte(firstByte, thisRequest, 7);
             putDataToByte(firstByte, thisContent, 3, 4);
-            
+
             stream->write(firstByte);
 
             return true;
-        } else {
+        }
+        else
+        {
             // The stream is not available for writing for some reason
             return false;
         }
-        
-    } else {
+    }
+    else
+    {
         // We are not at the beginning of the byte
         return false;
     }
 }
 
-bool btSerialWrapper::writeNextMessageByte(unsigned char byteSource) {
-    if (stream->availableForWrite()) {
+bool btSerialWrapper::writeNextMessageByte(unsigned char byteSource)
+{
+    if (stream->availableForWrite())
+    {
         stream->write(byteSource);
         return true;
-    } else {
+    }
+    else
+    {
         return false;
     }
 }
 
-bool btSerialWrapper::writeNextMessageBytes(const unsigned char * byteSourceArray, const unsigned char numBytes) {
+bool btSerialWrapper::writeNextMessageBytes(const unsigned char *byteSourceArray, const unsigned char numBytes)
+{
     // Write a series of bytes to the Bluetooth stream
-    if (stream->availableForWrite()) {
+    if (stream->availableForWrite())
+    {
         stream->write(byteSourceArray, numBytes);
         return true;
-    } else {
+    }
+    else
+    {
         return false;
     }
 }
 
-void btSerialWrapper::resetCommunicationData() {
+void btSerialWrapper::resetCommunicationData()
+{
     totalMessages = 0;
-    content= 0;
+    content = 0;
     request = false;
     curMessageNum = 0;
     nextByteNum = 0;
@@ -974,8 +1066,8 @@ void btSerialWrapper::resetCommunicationData() {
 bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
 {
     // A decode callback for a pb_istream_t built from a Serial stream
-    SoftwareSerial *thisBTSer = (SoftwareSerial *)stream->state; // Get the Bluetooth stream
-    size_t bytesToRead = min((size_t) thisBTSer->available(), count);        // Get the minimum between the size of the buffer (buf) and the number of bytes in the Serial buffer (thisBTSer->available())
+    SoftwareSerial *thisBTSer = (SoftwareSerial *)stream->state;     // Get the Bluetooth stream
+    size_t bytesToRead = min((size_t)thisBTSer->available(), count); // Get the minimum between the size of the buffer (buf) and the number of bytes in the Serial buffer (thisBTSer->available())
 
     for (unsigned int byteNum = 0; byteNum < bytesToRead; byteNum++)
     {
@@ -1032,7 +1124,7 @@ void mainLoop()
             // Let nanopb do the decoding for us...what could possibly go wrong?
             // Similar to http://zakovinko.com/57-how-to-speak-from-arduino-to-python-and-back.html
             // See if we can transfer the information from the Message to the respective Bike_Lights objects without using up too much extra memory
-            
+
             // First, try setting no_unions:true!!!
             // Next, try setting type:FT_POINTER in .options and #define PB_ENABLE_MALLOC=1 in pb.h, see how that changes things, should now be able to use dynamic arrays?
             // Try using https://github.com/nanopb/nanopb/blob/master/examples/using_union_messages/decode.c to figure out which content is there (try setting no_unions:true ?).  Perhaps try this first as a standard C++ program to see what happens if we just decode the thing without setting arg/funcs...may require writing encoding code first

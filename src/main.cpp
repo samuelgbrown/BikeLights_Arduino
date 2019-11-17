@@ -143,7 +143,7 @@ void setup()
       }
 
       // Create a still idle image
-      idlePat = new Still_Image_Idle();
+      // idlePat = new Still_Image_Idle();
 
       if (DEBUGGING_ANY)
       {

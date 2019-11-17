@@ -14,6 +14,52 @@
 #include "SoftwareSerial.h"
 #include <math.h>
 
+// Class that will wrap the Serial connection for ease of use
+class btSerialWrapper
+{
+public:
+    // Construct a stream wrapper object
+    btSerialWrapper(Stream *stream);
+
+    // Functions for receiving messages
+    // Get the next byte(s) in the stream, if available
+    bool initReceiveMessage();                                // Returns true on success
+    bool readNextMessageByte(unsigned char &byteDestination); // Returns true on success
+    bool readNextMessageBytes(unsigned char *byteDestinationArray, unsigned char numBytes);
+
+    // Getters for information about the content of the message
+    unsigned char getTotalMessages();
+    unsigned char getContent();
+    bool isRequest();
+
+    // Getters for information about the communication
+    unsigned char getCurMessageNum();
+    unsigned char getCurByteNum();
+    int available();
+
+    // Functions for sending messages
+    bool writeMetadata(const bool request, const unsigned char content);
+    bool writeNextMessageByte(const unsigned char byteSource);
+    bool writeNextMessageBytes(const unsigned char *byteSourceArray, const unsigned char numBytes);
+
+    // Reset the communication meta-data
+    void resetCommunicationData();
+
+private:
+    // Meta data from the message
+    unsigned char totalMessages = 0;
+    unsigned char content = 0;
+    bool request = false;
+
+    // Information for keeping of where we are in the entire communication
+    unsigned char curMessageNum = 0; // The message that is being read now (or is being waited on being delivered)
+    unsigned char nextByteNum = 0;   // The byte that will be read next
+
+    bool sendConfirmation(); // A function for sending a confirmation to Android that we have received and processed a message
+
+    Stream *stream;
+};
+
 // The Bluetooth class will take care of the bluetooth connection to the Android component of the system.  It will be responsible for maintaining the Bluetooth connection, and communicating with the Android system by generating C++ objects that are sent over the line
 class Bluetooth
 {
@@ -23,7 +69,7 @@ public:
 
     void mainLoop(); // The main loop that is called repeatedly for the Bluetooth class
 
-    #if USE_NANOPB
+#if USE_NANOPB
     // Decode methods (Generate local classes from a protocol buffer stream)
     void processBWA(BWA_BT &message);               // Take a BWA_BT Message, process it, and send it directly to the Pattern_Handler whose pointer is stored
     void processKalman(Kalman_BT &message);         // Take a Kalman_BT Message, process it, and send it directly to the Speedometer whose pointer is stored
@@ -43,61 +89,16 @@ public:
     static ImageType_BT PBFromImageType(Pattern_Handler *pattern_handler_in); // Convert the information in a pattern_handler to an ImageType_BT variable
     static BlendType_BT PBFromBlendType(BLEND_TYPE blendType);                // Convert a BLEND_TYPE Message to a BlendType_BT variable
     static ColorType_BT PBFromColorType(COLOR_TYPE colorType);                // Convert a COLOR_TYPE Message to a ColorType_BT variable
-    #endif
-    
+#endif
+
 private:
-    #if BLUETOOTH_USE_HARDWARESERIAL
+#if BLUETOOTH_USE_HARDWARESERIAL
     btSerialWrapper btSer = btSerialWrapper(&Serial); // Initialize the Serial connection to the bluetooth device (HC06)
-    #else
+#else
     btSerialWrapper btSer = btSerialWrapper(new SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX)); // Initialize the Serial connection to the bluetooth device (HC06)
-    #endif
-    Pattern_Handler *pattern_handler = NULL;                                 // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
-    Speedometer *speedometer = NULL;                                         // A pointer to the speedometer, so we can change it using information sent via Bluetooth
+#endif
+    Pattern_Handler *pattern_handler = NULL; // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
+    Speedometer *speedometer = NULL;         // A pointer to the speedometer, so we can change it using information sent via Bluetooth
 };
-
-// Class that will wrap the Serial connection for ease of use
-    class btSerialWrapper {
-        public:
-        // Construct a stream wrapper object
-        btSerialWrapper(Stream * stream);
-
-        // Functions for receiving messages
-        // Get the next byte(s) in the stream, if available
-        bool initReceiveMessage(); // Returns true on success
-        bool readNextMessageByte(unsigned char & byteDestination); // Returns true on success 
-        bool readNextMessageBytes(unsigned char * byteDestinationArray, unsigned char numBytes);
-
-        // Getters for information about the content of the message
-        unsigned char getTotalMessages();
-        unsigned char getContent();
-        bool isRequest();
-
-        // Getters for information about the communication
-        unsigned char getCurMessageNum();
-        unsigned char getCurByteNum();
-        int available();
-
-        // Functions for sending messages
-        bool writeMetadata(const bool request, const unsigned char content);
-        bool writeNextMessageByte(const unsigned char byteSource);
-        bool writeNextMessageBytes(const unsigned char * byteSourceArray, const unsigned char numBytes);
-
-        // Reset the communication meta-data
-        void resetCommunicationData();
-        
-        private:
-        // Meta data from the message
-        unsigned char totalMessages = 0;
-        unsigned char content = 0;
-        bool request = false;
-
-        // Information for keeping of where we are in the entire communication
-        unsigned char curMessageNum = 0; // The message that is being read now (or is being waited on being delivered)
-        unsigned char nextByteNum = 0; // The byte that will be read next
-
-        bool sendConfirmation(); // A function for sending a confirmation to Android that we have received and processed a message
-        
-        Stream * stream;
-    };
 
 #endif

@@ -875,30 +875,37 @@ void Kalman::setR(float *newR)
   }
 }
 
-void Kalman::setP0Elem(unsigned char row, unsigned char col, float newElem) {
+void Kalman::setP0Elem(unsigned char row, unsigned char col, float newElem)
+{
   // Set a new value for the given element of P0, assuming the row and col are within bounds
-  if (row < N_STA && col < N_STA) {
+  if (row < N_STA && col < N_STA)
+  {
     PPrior[row][col] = newElem;
   }
 }
 
-void Kalman::setRElem(unsigned char row, unsigned char col, float newElem) {
+void Kalman::setRElem(unsigned char row, unsigned char col, float newElem)
+{
   // Set a new value for the given element of R, assuming the row and col are within bounds
-  if (row < N_OBS && col < N_OBS) {
+  if (row < N_OBS && col < N_OBS)
+  {
     R[row][col] = newElem;
   }
 }
 
-float Kalman::getQ() {
+float Kalman::getQ()
+{
   return Q;
 }
 
-const float ** Kalman::getP0() {
-  return (float **) PPrior;
+const float **Kalman::getP0()
+{
+  return (float **)PPrior;
 }
 
-const float ** Kalman::getR() {
-  return (float **) R;
+const float **Kalman::getR()
+{
+  return (float **)R;
 }
 
 void Kalman::ScalarAddF(float *A, float b, unsigned char numRows, unsigned char numCols, float *C)
