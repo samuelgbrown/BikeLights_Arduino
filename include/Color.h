@@ -26,7 +26,7 @@ public:
   //    void addBrightness(int brightnessSubVal); // Add a value to the brightness of this color
 
   // Color values
-  unsigned char c[4]; // Array that contains the value for each color
+  unsigned char c[4] = {0}; // Array that contains the value for each color
                       //    unsigned char R = 0;
                       //    unsigned char G = 0;
                       //    unsigned char B = 0;
@@ -92,7 +92,7 @@ public:
   void cS(colorObj cNew);
 
 private:
-  colorObj c;
+  colorObj c = colorObj();
 };
 
 template <class T>

@@ -38,9 +38,9 @@ public:
   const float **getR();  // Get a pointer to the r matrix
 
   // The current best guess at the LED position, velocity, and acceleration
-  float xTrue;
-  float velTrue;
-  float accTrue;
+  float xTrue = 0.0f;
+  float velTrue = 0.0f;
+  float accTrue = 0.0f;
 
   void resetFilter();     // Reset the filter to its zero state, the next time two measurements come in quick succession, the filter will initialize with that position/velocity
   boolean isReset = true; // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
@@ -115,7 +115,7 @@ private:
   static const unsigned int reedDetectionDiameter = REEDDETECTIONDIAMETER; // The "diameter" around the reed switch (in µm) that the switch can detect the magnet (IF MORE THAN 65mm, THEN CHANGE TO LONG)
 
   // The Kalman filter object held by the speedometer
-  Kalman kalman;
+  Kalman kalman; // Initialized by constructor
 
   //    // Tic detection
   //    static boolean newTic; // Is there a new reed switch signal?

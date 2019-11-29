@@ -42,6 +42,24 @@ void putMaskExceptDataToByte(unsigned char byteDest, unsigned char dataSize, uns
     byteDest &= ((1U << dataSize) - 1U) << bitLoc;
 }
 
+unsigned long reverseBits(unsigned long num)
+{
+    // Taken from https://www.geeksforgeeks.org/reverse-actual-bits-given-number/
+    unsigned long count = sizeof(num) * 8 - 1;
+    unsigned long reverse_num = num;
+
+    num >>= 1;
+    while (num)
+    {
+        reverse_num <<= 1;
+        reverse_num |= num & 1;
+        num >>= 1;
+        count--;
+    }
+    reverse_num <<= count;
+    return reverse_num;
+}
+
 unsigned long getLongFromByteArray(unsigned char *byteArray, unsigned char firstBytePos)
 {
     // TODO: CHECK THIS CODE!!!
@@ -56,26 +74,29 @@ unsigned long getLongFromByteArray(unsigned char *byteArray, unsigned char first
         longByteArray[i] = byteArray[i + firstBytePos];
     }
 
-    // Convert the byteArray to an unsigned long pointer, then dereference the pointer to get an unsigned long
-    return *((unsigned long *)longByteArray); // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
+    // Convert the byteArray to a float pointer, then dereference the pointer to get a float
+    return *((unsigned long *)longByteArray); // Converted to a long, because C++ is stupid and doesn't let me shift bytes (>> or <<) on a float...
+
+    // return *((unsigned long *)longByteArray); // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
 }
 
 float getFloatFromByteArray(unsigned char *byteArray, unsigned char firstBytePos)
 {
-    // TODO: CHECK THIS CODE!!!
     // Convert a series of 4 bytes, located at some point firstBytePos in the array pointed to by byteArray, to a float
 
     // Create an array to be reinterpretted
-    unsigned char floatByteArray[4];
+    unsigned char intByteArray[4];
     // Copy the 4 bytes from byteArray, starting at firstBytePos, to longByteArray
     for (int i = 0; i < 4; i++)
     {
         // I do not fucking trust the memory copying functions, probably due to my own incompetence, but still I'll do it the stupid way and let the goddamn compiler deal with it.
-        floatByteArray[i] = byteArray[i + firstBytePos];
+        intByteArray[i] = byteArray[i + firstBytePos];
     }
 
-    // Convert the byteArray to a float pointer, then dereference the pointer to get a float
-    return *((float *)floatByteArray); // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
+    unsigned long floatInt = reverseBits(*((unsigned long *)intByteArray)); // Converted to a long, because C++ is stupid and doesn't let me shift bytes (>> or <<) on a float...
+
+    return *reinterpret_cast<float *>(&floatInt); // Reinterpret the reversed-bits long to a float and return
+    // return *((float *)intByteArray); // Type conversion idea from imreal, on Stack Exchange (https://stackoverflow.com/a/22029162)
 }
 
 // Bit-wise writing functions
@@ -160,17 +181,29 @@ Bluetooth::Bluetooth(Pattern_Handler *pattern_handler, Speedometer *speedometer)
 
 Bluetooth::~Bluetooth()
 {
+    delete btSer; // Delete the btSer object (always defined, because it is instantiated in the .h file)
 }
 
 void Bluetooth::mainLoop()
 {
     // Check if there is anything on the serial line
-    int count = btSer.available();
+    int count = btSer->available();
     if (count > 0)
     {
+        btSer->resetCommunicationData(); // Initialize btSer for the incoming data (TODO: Make sure this is kosher...)
+
+        if (DEBUGGING_BLUETOOTH)
+        {
+            Serial.println(F("Got data..."));
+        }
+
         if (count > MAX_BT_BUFFER_SIZE)
         {
             // SOMETHING HAS GONE HORRIBLY WRONG!!!
+            if (DEBUGGING_BLUETOOTH)
+            {
+                Serial.println(F("WE'RE ALL GONNA DIE..."));
+            }
         }
         else
         {
@@ -178,25 +211,42 @@ void Bluetooth::mainLoop()
             int freeRamNow = freeRam();
 
             // Read the meta-data from the information that is now in the Bluetooth buffer, to initialize btSer member variables.
-            btSer.initReceiveMessage();
+            btSer->initReceiveMessage();
 
             // while (messageNum < totalNumMessages) {
-            if (!btSer.isRequest())
+            if (!btSer->isRequest())
             {
+                if (DEBUGGING_BLUETOOTH)
+                {
+                    Serial.println(F("Message contains content..."));
+                }
                 // If this message contains content sent by the Android program, then read the message and update the Arduino
-                switch (btSer.getContent())
+                switch (btSer->getContent())
                 {
                 case 0:
                 {
                     // Receiving Bike wheel animation
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Receiving BWA..."));
+                    }
 
                     // First, get the invariate information from the head of the BWA message, the meta-data of the palette and image
 
                     unsigned char incomingNumLEDs;
                     unsigned char totalNumColor_s;
 
-                    btSer.readNextMessageByte(incomingNumLEDs); // Get the number of LEDs that the Android thinks we have
-                    btSer.readNextMessageByte(totalNumColor_s); // Get the number of Color_'s that are in the palette
+                    btSer->readNextMessageByte(incomingNumLEDs); // Get the number of LEDs that the Android thinks we have
+                    btSer->readNextMessageByte(totalNumColor_s); // Get the number of Color_'s that are in the palette
+
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.print(incomingNumLEDs);
+                        Serial.println(F(" LEDs"));
+                        Serial.print(totalNumColor_s);
+                        Serial.println(F(" Color_('s):"));
+                        Serial.println();
+                    }
 
                     pattern_handler->setupPalette(1); // Set up the palette with a single, static Color_, minimizing the RAM requirements
 
@@ -205,9 +255,15 @@ void Bluetooth::mainLoop()
                     // Start saving the palette information
                     for (unsigned char thisColor_Num = 0; thisColor_Num < totalNumColor_s; thisColor_Num++)
                     {
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.print(thisColor_Num);
+                            Serial.print(F(": "));
+                        }
+
                         // First, get this Color_ type
                         unsigned char thisColor_Type;
-                        btSer.readNextMessageByte(thisColor_Type);               // Get the color type from the message
+                        btSer->readNextMessageByte(thisColor_Type);              // Get the color type from the message
                         thisColor_Type = getNUIntFromByte(thisColor_Type, 4, 4); // Save the first nibble to get the color type
 
                         // Depending on the type of Color_ we are expecting for this position in the palette, intepret the data differently
@@ -216,10 +272,19 @@ void Bluetooth::mainLoop()
                         case 0:
                         {
                             // Static Color
-
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.print(F("Static Color: "));
+                            }
                             // Get the RBGW values from the message
                             unsigned char incomingColors[NUMLIGHTSPERLED];
-                            btSer.readNextMessageBytes(incomingColors, NUMLIGHTSPERLED);
+                            btSer->readNextMessageBytes(incomingColors, NUMLIGHTSPERLED);
+
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                serialPrintColor(incomingColors);
+                                Serial.println();
+                            }
 
                             // Create a new Static Color_ object from this array
                             newColor_Array[thisColor_Num] = new Color_Static(incomingColors);
@@ -229,9 +294,14 @@ void Bluetooth::mainLoop()
                         case 1:
                         {
                             // Time-based Color_
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.println(F("Time-based Color"));
+                            }
+
                             // This is a dynamic Color_, so the loading process will be quite similar
                             unsigned char numColorObj_metas;
-                            btSer.readNextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
+                            btSer->readNextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
 
                             // Set up the arrays that will be used to initialize the Color_d
                             colorObj *newColorObjs = new colorObj[numColorObj_metas];
@@ -241,26 +311,56 @@ void Bluetooth::mainLoop()
                             for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++)
                             {
                                 // For every colorObjNum, get all of the information (LED brightnesses, T, and blend types)
+                                if (DEBUGGING_BLUETOOTH)
+                                {
+                                    Serial.print(colorObjNum);
+                                    Serial.print(F(": "));
+                                }
 
                                 {
                                     // Get the colorObj for this index in the Color_d
                                     unsigned char thisColorObjArray[NUMLIGHTSPERLED];
-                                    btSer.readNextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
+                                    btSer->readNextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
                                     newColorObjs[colorObjNum] = colorObj(thisColorObjArray);
+
+                                    if (DEBUGGING_BLUETOOTH)
+                                    {
+                                        serialPrintColor(thisColorObjArray);
+                                    }
                                 }
 
                                 {
                                     // Get the Blend type for this colorObj
                                     unsigned char thisBlendTypeByte;
-                                    btSer.readNextMessageByte(thisBlendTypeByte);
+                                    btSer->readNextMessageByte(thisBlendTypeByte);
                                     newBs[colorObjNum] = getBlendTypeFromByte(thisBlendTypeByte);
+
+                                    if (DEBUGGING_BLUETOOTH)
+                                    {
+                                        Serial.print(F(", B = "));
+                                        switch (newBs[colorObjNum])
+                                        {
+                                        case B_LINEAR:
+                                            Serial.print(F("Lin"));
+                                            break;
+                                        case B_CONSTANT:
+                                            Serial.print(F("Con"));
+                                            break;
+                                        }
+                                    }
                                 }
 
                                 {
                                     // Get the T for this colorObj
                                     unsigned char thisTValArray[4];
-                                    btSer.readNextMessageBytes(thisTValArray, 4);
+                                    btSer->readNextMessageBytes(thisTValArray, 4);
                                     newTimeTs[colorObjNum] = getLongFromByteArray(thisTValArray, 0);
+
+                                    if (DEBUGGING_BLUETOOTH)
+                                    {
+                                        Serial.print(F(", T = "));
+                                        Serial.println(newTimeTs[colorObjNum]);
+                                    }
                                 }
                             }
 
@@ -272,9 +372,14 @@ void Bluetooth::mainLoop()
                         case 2:
                         {
                             // Velocity-based Color_
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.println(F("Time-based Color"));
+                            }
+
                             // This is a dynamic Color_, so the loading process will be quite similar
                             unsigned char numColorObj_metas;
-                            btSer.readNextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
+                            btSer->readNextMessageByte(numColorObj_metas); // Get the number of colorObj_metas that describe this Color_d
 
                             // Set up the arrays that will be used to initialize the Color_d
                             colorObj *newColorObjs = new colorObj[numColorObj_metas];
@@ -284,25 +389,56 @@ void Bluetooth::mainLoop()
                             for (unsigned char colorObjNum = 0; colorObjNum < numColorObj_metas; colorObjNum++)
                             {
                                 // For every colorObjNum, get all of the information (LED brightnesses, T, and blend types)
+                                if (DEBUGGING_BLUETOOTH)
+                                {
+                                    Serial.print(colorObjNum);
+                                    Serial.print(F(": "));
+                                }
+
                                 {
                                     // Get the colorObj for this index in the Color_d
                                     unsigned char thisColorObjArray[NUMLIGHTSPERLED];
-                                    btSer.readNextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
+                                    btSer->readNextMessageBytes(thisColorObjArray, NUMLIGHTSPERLED);
                                     newColorObjs[colorObjNum] = colorObj(thisColorObjArray);
+
+                                    if (DEBUGGING_BLUETOOTH)
+                                    {
+                                        serialPrintColor(thisColorObjArray);
+                                    }
                                 }
 
                                 {
                                     // Get the Blend type for this colorObj
                                     unsigned char thisBlendTypeByte;
-                                    btSer.readNextMessageByte(thisBlendTypeByte);
+                                    btSer->readNextMessageByte(thisBlendTypeByte);
                                     newBs[colorObjNum] = getBlendTypeFromByte(thisBlendTypeByte);
+
+                                    if (DEBUGGING_BLUETOOTH)
+                                    {
+                                        Serial.print(F(", B = "));
+                                        switch (newBs[colorObjNum])
+                                        {
+                                        case B_LINEAR:
+                                            Serial.print(F("Lin"));
+                                            break;
+                                        case B_CONSTANT:
+                                            Serial.print(F("Con"));
+                                            break;
+                                        }
+                                    }
                                 }
 
                                 {
                                     // Get the T for this colorObj
                                     unsigned char thisTValArray[4];
-                                    btSer.readNextMessageBytes(thisTValArray, 4);
+                                    btSer->readNextMessageBytes(thisTValArray, 4);
                                     newVelTs[colorObjNum] = getFloatFromByteArray(thisTValArray, 0);
+
+                                    if (DEBUGGING_BLUETOOTH)
+                                    {
+                                        Serial.print(F(", T = "));
+                                        Serial.println(newVelTs[colorObjNum]);
+                                    }
                                 }
                             }
 
@@ -325,17 +461,30 @@ void Bluetooth::mainLoop()
                     {
                         // Get the supports idle bool, as well as the image type
                         unsigned char supportsIdleImageTypeByte;
-                        btSer.readNextMessageByte(supportsIdleImageTypeByte);
+                        btSer->readNextMessageByte(supportsIdleImageTypeByte);
 
                         supportsIdle = getBoolFromByte(supportsIdleImageTypeByte, 4);
                         mainImageType = getNUIntFromByte(supportsIdleImageTypeByte, 4, 0);
+
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.println(F("Main Image:"));
+                            Serial.print(F("Supports idle: "));
+                            Serial.println(supportsIdle);
+                        }
                     }
 
                     {
                         // Get the parameter for this image type
                         unsigned char imageParamByte;
-                        btSer.readNextMessageByte(imageParamByte);
+                        btSer->readNextMessageByte(imageParamByte);
                         mainImageParam = getNSIntFromByte(imageParamByte, 8, 0);
+
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.print(F("Main Image Param: "));
+                            Serial.println(mainImageParam);
+                        }
                     }
 
                     Image_Helper *main_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
@@ -344,6 +493,10 @@ void Bluetooth::mainLoop()
                     {
                     case 0:
                         // Wheel-relative motion
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.println(F("Wheel-rel"));
+                        }
 
                         groundRel = false; // The motion is relative to the wheel, not the ground
 
@@ -360,6 +513,10 @@ void Bluetooth::mainLoop()
                         break;
                     case 1:
                         // Ground-relative motion
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.println(F("Ground-rel"));
+                        }
 
                         // Create a different Image_Helper depending on whether or not there is motion (if there is no motion, we can save some RAM)
                         if (mainImageParam == 0)
@@ -374,6 +531,10 @@ void Bluetooth::mainLoop()
                         break;
                     case 2:
                         // Spinner wheel
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.println(F("Spinner"));
+                        }
 
                         main_image_helper = new Spinner_Helper(mainImageParam);
                         break;
@@ -381,22 +542,15 @@ void Bluetooth::mainLoop()
                         main_image_helper = new Static_Helper();
                     }
 
-                    Pattern *mainPattern = new Pattern(main_image_helper, groundRel); // Define the new Pattern that will be constructed based on the information from the message, then sent to the Pattern_Handler
+                    Pattern *mainPattern = new Pattern(pattern_handler, main_image_helper, groundRel); // Define the new Pattern that will be constructed based on the information from the message, then sent to the Pattern_Handler
 
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.print(F("Before setting image: curMessageNum = "));
+                        Serial.println(btSer->getCurMessageNum());
+                    }
                     // Read in the main Image (could probably change this into a one-liner by writing the data directly into the image of the Pattern...but whatever)
                     mainPattern->setImageFromBluetooth(btSer);
-
-                    // for (unsigned char curImageByte = 0; curImageByte < NUM_BYTES_PER_IMAGE; curImageByte++) {
-                    //     // Go through each expected byte in the image, and extract it to the color
-
-                    //     // Read the next byte from the message
-                    //     unsigned char thisImageByte;
-                    //     btSer.readNextMessageByte(thisImageByte);
-
-                    //     // Set the newly read byte into the Pattern
-                    //     mainPattern->setImageRawByte(thisImageByte);
-                    // }
-
                     // Save this Pattern to the Pattern_Handler
                     pattern_handler->setMainPattern(mainPattern);
 
@@ -408,19 +562,28 @@ void Bluetooth::mainLoop()
                         signed char idleImageParam;
 
                         // Get the idle image type
-                        btSer.readNextMessageByte(idleImageType);
-
+                        btSer->readNextMessageByte(idleImageType);
                         {
                             // Get the idle image parameter
                             unsigned char idleImageParamByte;
-                            btSer.readNextMessageByte(idleImageParamByte);
+                            btSer->readNextMessageByte(idleImageParamByte);
                             idleImageParam = getNSIntFromByte(idleImageParamByte, 8, 0);
+
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.print(F("Idle Image Param: "));
+                                Serial.println(idleImageParam);
+                            }
                         }
 
                         Image_Helper *idle_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
                         switch (mainImageType)
                         {
                         case 0:
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.println(F("Wheel-rel"));
+                            }
                             // Wheel-relative motion
                             // NOTE: This is the only idle pattern that is defined at the moment
 
@@ -439,23 +602,17 @@ void Bluetooth::mainLoop()
                             idle_image_helper = new Static_Helper();
                         }
 
-                        Pattern *idlePattern = new Pattern(idle_image_helper, false); // Define a Pattern using the Image_Helper we just defined, enforcing that it will be using wheel_relative motion
+                        Pattern *idlePattern = new Pattern(pattern_handler, idle_image_helper, false); // Define a Pattern using the Image_Helper we just defined, enforcing that it will be using wheel_relative motion
 
                         // Read in the idle Image
                         idlePattern->setImageFromBluetooth(btSer);
-
-                        // for (unsigned char curImageByte = 0; curImageByte < NUM_BYTES_PER_IMAGE; curImageByte++) {
-                        //     // Go through each expected byte in the image, and extract it to the color
-
-                        //     // Read the next byte from the message
-                        //     unsigned char thisImageByte;
-                        //     btSer.readNextMessageByte(thisImageByte);
-
-                        //     // Set the newly read byte into the Pattern
-                        //     idlePattern->setImageRawByte(thisImageByte);
-                        // }
+                        pattern_handler->setIdlePattern(idlePattern);
                     }
 
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Resetting Kalman..."));
+                    }
                     speedometer->getKalman()->resetFilter(); // Finally, reset the Kalman filter
 
                     break;
@@ -463,15 +620,28 @@ void Bluetooth::mainLoop()
                 case 1:
                 {
                     // Receiving Kalman Info
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Receiving Kalman..."));
+                    }
+
                     unsigned char numObs;   // Number of observed parameters
                     unsigned char numState; // Number of state parameters
 
                     {
                         // First, get the number of observed and state parameters
                         unsigned char obsStateByte;
-                        btSer.readNextMessageByte(obsStateByte);
+                        btSer->readNextMessageByte(obsStateByte);
                         numObs = getNUIntFromByte(obsStateByte, 4, 4);
                         numState = getNUIntFromByte(obsStateByte, 4, 0);
+
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.print(F("nObs: "));
+                            Serial.println(numObs);
+                            Serial.print(F("nState: "));
+                            Serial.println(numState);
+                        }
 
                         // TODO: Error check if the observation and state variable numbers are the same between Arduino and Android?
                     }
@@ -479,35 +649,85 @@ void Bluetooth::mainLoop()
                     {
                         // Next, read in 4 bytes that will be saved as Q
                         unsigned char qByteArray[4];
-                        btSer.readNextMessageBytes(qByteArray, 4);
+                        btSer->readNextMessageBytes(qByteArray, 4);
                         speedometer->getKalman()->setQ(getFloatFromByteArray(qByteArray, 0)); // Set the Q value in the Kalman filter
+
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.print(F("Q: "));
+                            Serial.println(getFloatFromByteArray(qByteArray, 0));
+                        }
                     }
 
                     {
                         // Finally, read in the series of floats that will become the R and P0 matrices
                         unsigned char thisByteArray[4];
 
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.println(F("R:"));
+                        }
                         for (int row = 0; row < numObs; row++)
                         {
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.print(F("[ "));
+                            }
+
                             for (int col = 0; col < numObs; col++)
                             {
-                                btSer.readNextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
+                                btSer->readNextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
 
                                 speedometer->getKalman()->setRElem(row, col, getFloatFromByteArray(thisByteArray, 0)); // Read this new float into the PPrior matrix for the Kalman filter
+
+                                if (DEBUGGING_BLUETOOTH)
+                                {
+                                    Serial.print(getFloatFromByteArray(thisByteArray, 0));
+                                    Serial.print(F(" "));
+                                }
+                            }
+
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.println(F(" ]"));
                             }
                         }
 
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.println(F("P0:"));
+                        }
                         for (int row = 0; row < numState; row++)
                         {
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.print(F("[ "));
+                            }
+
                             for (int col = 0; col < numState; col++)
                             {
-                                btSer.readNextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
+                                btSer->readNextMessageBytes(thisByteArray, 4); // Get the next float's worth of bytes
 
                                 speedometer->getKalman()->setP0Elem(row, col, getFloatFromByteArray(thisByteArray, 0)); // Read this new float into the PPrior matrix for the Kalman filter
+
+                                if (DEBUGGING_BLUETOOTH)
+                                {
+                                    Serial.print(getFloatFromByteArray(thisByteArray, 0));
+                                    Serial.print(F(" "));
+                                }
+                            }
+
+                            if (DEBUGGING_BLUETOOTH)
+                            {
+                                Serial.println(F(" ]"));
                             }
                         }
                     }
 
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Resetting Kalman..."));
+                    }
                     speedometer->getKalman()->resetFilter(); // Reset the Kalman filter
 
                     break;
@@ -516,11 +736,21 @@ void Bluetooth::mainLoop()
                 case 2:
                 {
                     // Receiving Brightness scale
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Receiving Brightness..."));
+                    }
                     {
                         // Read in the brightness factor from the Message
                         unsigned char brightnessFactorByteArray[4];
-                        btSer.readNextMessageBytes(brightnessFactorByteArray, 4);
+                        btSer->readNextMessageBytes(brightnessFactorByteArray, 4);
                         pattern_handler->setBrightnessFactor(getFloatFromByteArray(brightnessFactorByteArray, 0));
+
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.print(F("Brightness: "));
+                            Serial.println(getFloatFromByteArray(brightnessFactorByteArray, 0));
+                        }
                     }
                     break;
                 }
@@ -528,32 +758,53 @@ void Bluetooth::mainLoop()
                 case 5:
                 {
                     // Receiving Power State
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Receiving Power State..."));
+                    }
                     {
                         // Read in the power state from the Message
                         unsigned char powerStateByte;
-                        btSer.readNextMessageByte(powerStateByte);
+                        btSer->readNextMessageByte(powerStateByte);
                         bool powerState = getBoolFromByte(powerStateByte, 7);
                         pattern_handler->setPowerState(powerState);
+
+                        if (DEBUGGING_BLUETOOTH)
+                        {
+                            Serial.print(F("Power state: "));
+                            Serial.println(powerState);
+                        }
                     }
                 }
                 }
+
+                // Send one last confirmation message, because readNextMessageBytes() doesn't have any way of knowing how many bytes are expected per message, and therefore can't send a confirmation when we're done reading
+                btSer->sendConfirmation();
             }
             else
             {
                 // This message is a request for information from the Arduino
 
+                if (DEBUGGING_BLUETOOTH)
+                {
+                    Serial.println(F("Message contains a request..."));
+                }
                 // Start sending a message back, starting with the metadata
-                unsigned char content = btSer.getContent();
-                btSer.writeMetadata(false, content);
+                unsigned char content = btSer->getContent();
+                btSer->writeMetadata(false, content);
 
                 switch (content)
                 {
                 case 0:
                 {
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Sending BWA..."));
+                    }
                     // Sending Bike wheel animation
                     // Send the firsts byte with the BWA meta-data
-                    btSer.writeNextMessageByte((unsigned char)NUMLEDS);
-                    btSer.writeNextMessageByte(pattern_handler->getNumColors());
+                    btSer->writeNextMessageByte((unsigned char)NUMLEDS);
+                    btSer->writeNextMessageByte(pattern_handler->getNumColors());
 
                     // Go through each Color_ in the palette, and encode it into the message
                     for (unsigned char colorNum = 0; colorNum < pattern_handler->getNumColors(); colorNum++)
@@ -568,11 +819,11 @@ void Bluetooth::mainLoop()
                             // First, send the color type as an unsigned char
                             {
                                 unsigned char colorNumByte = 0U; // An entire byte of zeros has a 0 in the correct place to denote a Static Color_
-                                btSer.writeNextMessageByte(colorNumByte);
+                                btSer->writeNextMessageByte(colorNumByte);
                             }
 
                             // Next and finally, send the RGBW values of the static color as a group of 4 bytes
-                            btSer.writeNextMessageBytes(pattern_handler->getColor(colorNum)->getColor().c, 4);
+                            btSer->writeNextMessageBytes(pattern_handler->getColor(colorNum)->getColor().c, 4);
 
                             break;
                         }
@@ -584,11 +835,11 @@ void Bluetooth::mainLoop()
                             {
                                 unsigned char colorNumByte = 0U;
                                 putDataToByte(colorNumByte, 1U, 4U, 4);
-                                btSer.writeNextMessageByte(colorNumByte);
+                                btSer->writeNextMessageByte(colorNumByte);
                             }
 
                             // Next, send the number of colorObj_meta's that are going to be sent
-                            btSer.writeNextMessageByte(thisColor_dTime->getNumColors());
+                            btSer->writeNextMessageByte(thisColor_dTime->getNumColors());
 
                             // Go through each colorObj_meta held by this Color_, and send them one at a time
                             for (unsigned char colorObjNum = 0; colorObjNum < thisColor_dTime->getNumColors(); colorObjNum++)
@@ -596,16 +847,16 @@ void Bluetooth::mainLoop()
                                 // For each colorObj_meta held by this Color_, send the data over Bluetooth
 
                                 // First, send the RGBW data
-                                btSer.writeNextMessageBytes(thisColor_dTime->getThisColorObj(colorObjNum).c, 4);
+                                btSer->writeNextMessageBytes(thisColor_dTime->getThisColorObj(colorObjNum).c, 4);
 
                                 // Next, send the Blend Type
-                                btSer.writeNextMessageByte(getByteFromBlendType(thisColor_dTime->getThisBlendType(colorObjNum)));
+                                btSer->writeNextMessageByte(getByteFromBlendType(thisColor_dTime->getThisBlendType(colorObjNum)));
 
                                 // Finally, send the T value
                                 {
                                     unsigned char thisLongCharArray[4];                                                  // A byte array to hold the byte-wise representation of the trigger value
                                     putLongToByteArray(thisLongCharArray, thisColor_dTime->getThisTrigger(colorObjNum)); // Assign the trigger value to the byte array
-                                    btSer.writeNextMessageBytes(thisLongCharArray, 4);                                   // Send the byte array over the Bluetooth connection
+                                    btSer->writeNextMessageBytes(thisLongCharArray, 4);                                  // Send the byte array over the Bluetooth connection
                                 }
                             }
 
@@ -619,11 +870,11 @@ void Bluetooth::mainLoop()
                             {
                                 unsigned char colorNumByte = 0U;
                                 putDataToByte(colorNumByte, 2U, 4U, 4);
-                                btSer.writeNextMessageByte(colorNumByte);
+                                btSer->writeNextMessageByte(colorNumByte);
                             }
 
                             // Next, send the number of colorObj_meta's that are going to be sent
-                            btSer.writeNextMessageByte(thisColor_dVel->getNumColors());
+                            btSer->writeNextMessageByte(thisColor_dVel->getNumColors());
 
                             // Go through each colorObj_meta held by this Color_, and send them one at a time
                             for (unsigned char colorObjNum = 0; colorObjNum < thisColor_dVel->getNumColors(); colorObjNum++)
@@ -631,16 +882,16 @@ void Bluetooth::mainLoop()
                                 // For each colorObj_meta held by this Color_, send the data over Bluetooth
 
                                 // First, send the RGBW data
-                                btSer.writeNextMessageBytes(thisColor_dVel->getThisColorObj(colorObjNum).c, 4);
+                                btSer->writeNextMessageBytes(thisColor_dVel->getThisColorObj(colorObjNum).c, 4);
 
                                 // Next, send the Blend Type
-                                btSer.writeNextMessageByte(getByteFromBlendType(thisColor_dVel->getThisBlendType(colorObjNum)));
+                                btSer->writeNextMessageByte(getByteFromBlendType(thisColor_dVel->getThisBlendType(colorObjNum)));
 
                                 // Finally, send the T value
                                 {
                                     unsigned char thisFloatCharArray[4];                                                  // A byte array to hold the byte-wise representation of the trigger value
                                     putFloatToByteArray(thisFloatCharArray, thisColor_dVel->getThisTrigger(colorObjNum)); // Assign the trigger value to the byte array
-                                    btSer.writeNextMessageBytes(thisFloatCharArray, 4);                                   // Send the byte array over the Bluetooth connection
+                                    btSer->writeNextMessageBytes(thisFloatCharArray, 4);                                  // Send the byte array over the Bluetooth connection
                                 }
                             }
 
@@ -654,26 +905,26 @@ void Bluetooth::mainLoop()
                         unsigned char imageMainTypeByte = 0U;
                         putBoolToByte(imageMainTypeByte, pattern_handler->getMainPattern()->supportIdle(), 4);
                         putDataToByte(imageMainTypeByte, pattern_handler->getMainPattern()->getImageType(), 4, 0);
-                        btSer.writeNextMessageByte(imageMainTypeByte);
+                        btSer->writeNextMessageByte(imageMainTypeByte);
                     }
 
                     // Send the parameter for the image type
-                    btSer.writeNextMessageByte(pattern_handler->getMainPattern()->getHelperParameter());
+                    btSer->writeNextMessageByte(pattern_handler->getMainPattern()->getHelperParameter());
 
                     // Finally, send the Main image
-                    btSer.writeNextMessageBytes(pattern_handler->getMainPattern()->getImage(), NUM_BYTES_PER_IMAGE);
+                    btSer->writeNextMessageBytes(pattern_handler->getMainPattern()->getImage(), NUM_BYTES_PER_IMAGE);
 
                     // If there is an idle image, send the idle image information
                     if (pattern_handler->getMainPattern()->supportIdle())
                     {
                         // First, send the idle image type
-                        btSer.writeNextMessageByte(pattern_handler->getIdlePattern()->getImageType());
+                        btSer->writeNextMessageByte(pattern_handler->getIdlePattern()->getImageType());
 
                         // Next, send the idle image parameter
-                        btSer.writeNextMessageByte(pattern_handler->getIdlePattern()->getHelperParameter());
+                        btSer->writeNextMessageByte(pattern_handler->getIdlePattern()->getHelperParameter());
 
                         // Finally, send the idle image itself
-                        btSer.writeNextMessageBytes(pattern_handler->getIdlePattern()->getImage(), NUM_BYTES_PER_IMAGE);
+                        btSer->writeNextMessageBytes(pattern_handler->getIdlePattern()->getImage(), NUM_BYTES_PER_IMAGE);
                     }
 
                     break;
@@ -681,30 +932,34 @@ void Bluetooth::mainLoop()
                 case 1:
                 {
                     // Sending Kalman Info
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Sending Kalman..."));
+                    }
 
                     {
                         // First, send the number of observation an state variables
                         unsigned char numObsStateByte = 0U;
                         putDataToByte(numObsStateByte, N_OBS, 4, 4);
                         putDataToByte(numObsStateByte, N_STA, 4, 0);
-                        btSer.writeNextMessageByte(numObsStateByte);
+                        btSer->writeNextMessageByte(numObsStateByte);
                     }
 
                     {
                         // Next, send Q
                         unsigned char QFloatArray[4];
                         putFloatToByteArray(QFloatArray, speedometer->getKalman()->getQ());
-                        btSer.writeNextMessageBytes(QFloatArray, 4);
+                        btSer->writeNextMessageBytes(QFloatArray, 4);
                     }
 
                     {
                         // Finally, send both R and P0
 
                         // First R
-                        btSer.writeNextMessageBytes(putFloatMatToByteArray(speedometer->getKalman()->getR()), 4 * N_OBS * N_OBS); // An N_OBS x N_OBS matrix in which each element requires 4 bytes
+                        btSer->writeNextMessageBytes(putFloatMatToByteArray(speedometer->getKalman()->getR()), 4 * N_OBS * N_OBS); // An N_OBS x N_OBS matrix in which each element requires 4 bytes
 
                         // Then P0
-                        btSer.writeNextMessageBytes(putFloatMatToByteArray(speedometer->getKalman()->getP0()), 4 * N_STA * N_STA); // An N_STA x N_STA matrix in which each element requires 4 bytes
+                        btSer->writeNextMessageBytes(putFloatMatToByteArray(speedometer->getKalman()->getP0()), 4 * N_STA * N_STA); // An N_STA x N_STA matrix in which each element requires 4 bytes
                     }
 
                     break;
@@ -713,12 +968,16 @@ void Bluetooth::mainLoop()
                 case 2:
                 {
                     // Sending Brightness scale
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Sending Brightness..."));
+                    }
 
                     {
                         // Send the brightness scale as an array of bytes, reprenting a single float
                         unsigned char brightnessFloatArray[4];
                         putFloatToByteArray(brightnessFloatArray, pattern_handler->getBrightnessFactor());
-                        btSer.writeNextMessageBytes(brightnessFloatArray, 4);
+                        btSer->writeNextMessageBytes(brightnessFloatArray, 4);
                     }
 
                     break;
@@ -727,19 +986,23 @@ void Bluetooth::mainLoop()
                 case 3:
                 {
                     // Sending Storage
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Sending Storage info..."));
+                    }
 
                     {
                         // First, send the amount of remaining RAM, recorded before this process started
                         unsigned char remainingRAMLongArray[4];
                         putLongToByteArray(remainingRAMLongArray, (unsigned long)freeRamNow);
-                        btSer.writeNextMessageBytes(remainingRAMLongArray, 4);
+                        btSer->writeNextMessageBytes(remainingRAMLongArray, 4);
                     }
 
                     {
                         // Next, send the total amount of RAM available on the Arduino
                         unsigned char totalRAMLongArray[4];
                         putLongToByteArray(totalRAMLongArray, (unsigned long)TOTAL_MEMORY);
-                        btSer.writeNextMessageBytes(totalRAMLongArray, 4);
+                        btSer->writeNextMessageBytes(totalRAMLongArray, 4);
                     }
 
                     break;
@@ -748,10 +1011,14 @@ void Bluetooth::mainLoop()
                 case 4:
                 {
                     // Sending Battery
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Sending Battery info..."));
+                    }
 
                     {
                         // TODO: ....uhhhhhh.....
-                        btSer.writeNextMessageByte(255U);
+                        btSer->writeNextMessageByte(255U);
                     }
 
                     break;
@@ -760,26 +1027,51 @@ void Bluetooth::mainLoop()
                 case 5:
                 {
                     // Sending Power State
+                    if (DEBUGGING_BLUETOOTH)
+                    {
+                        Serial.println(F("Sending Power State info..."));
+                    }
 
                     {
                         unsigned char powerStateByte;
                         putBoolToByte(powerStateByte, pattern_handler->getPowerState(), 7);
-                        btSer.writeNextMessageByte(powerStateByte);
+                        btSer->writeNextMessageByte(powerStateByte);
                     }
                 }
                 }
-
-                // Finalize the connection
-                btSer.resetCommunicationData();
-
                 // REJOICE
             }
-            // }
+
+            // Finalize the connection
+            btSer->resetCommunicationData();
         }
     }
 }
 
-btSerialWrapper::btSerialWrapper(Stream *stream) : stream(stream) {}
+btSerialWrapper::btSerialWrapper(Stream *stream) : stream(stream)
+{
+#if BLUETOOTH_USE_HARDWARESERIAL
+    ((HardwareSerial *)stream)->begin(BLUETOOTH_BAUD);
+#else
+    ((SoftwareSerial *)stream)->begin(BLUETOOTH_BAUD);
+#endif
+
+    if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+    {
+        Serial.println(F("      Initialize btSerialWrapper..."));
+    }
+}
+
+void btSerialWrapper::setCurMessageNum(int newCurMessageNum)
+{
+    curMessageNum = newCurMessageNum;
+
+    if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+    {
+        // Serial.print(F("***   curMessageNum = "));
+        // Serial.println(getCurMessageNum());
+    }
+}
 
 bool btSerialWrapper::initReceiveMessage()
 {
@@ -789,6 +1081,10 @@ bool btSerialWrapper::initReceiveMessage()
     {
         // We have not yet read the meta-data.  Extract this first
 
+        if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+        {
+            // Serial.println(F("      Initializing message..."));
+        }
         // Read the first two bytes into a temporary buffer
         unsigned char tmpStreamBuf[2];
         stream->readBytes(tmpStreamBuf, 2);
@@ -800,13 +1096,32 @@ bool btSerialWrapper::initReceiveMessage()
         unsigned char readMessageNum = getNUIntFromByte(tmpStreamBuf[1], 4, 0); // Get the message number, according to the message
 
         // Check the message number
-        if (readMessageNum != curMessageNum)
+        if (readMessageNum != getCurMessageNum())
         {
             // Something has gone horribly wrong...
+            if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+            {
+                Serial.print(F("      Mismatch between readMessageNum ("));
+                Serial.print(readMessageNum);
+                Serial.print(F(") and curMessageNum ("));
+                Serial.print(getCurMessageNum());
+                Serial.println(F(")"));
+            }
         }
 
         // Set the byte number so that we are after the meta data
         nextByteNum = 2;
+
+        if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+        {
+            Serial.print(F("      Initialized message: "));
+            Serial.print(readMessageNum + 1);
+            Serial.print(F(" of "));
+            Serial.print(totalMessages);
+            Serial.print(F(" (curMessageNum = "));
+            Serial.print(getCurMessageNum());
+            Serial.println(F(")"));
+        }
 
         return true;
     }
@@ -871,13 +1186,27 @@ bool btSerialWrapper::readNextMessageByte(unsigned char &byteDestination)
 bool btSerialWrapper::readNextMessageBytes(unsigned char *byteDestinationArray, unsigned char numBytes)
 {
     // TODO: TEST THIS OUT!!!  If it doesn't work, then just loop through calls to readNextMessageByte
+    int numBytesRemaining = numBytes;
     unsigned char curByteDestInd = 0; // Initialize the current location in the byteDestination array
 
-    while (numBytes > 0)
+    while (numBytesRemaining > 0)
     {
+        // if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+        // {
+        //     Serial.print(F("    Starting rnmb loop with numBytesRemaining = "));
+        //     Serial.print(numBytesRemaining);
+        //     Serial.print(F(", and curMessageNum = "));
+        //     Serial.println(getCurMessageNum());
+        // }
         // While we are still trying to read data from the bluetooth message
         if (available() > 0)
         {
+            // if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+            // {
+            //     Serial.print(F("    Data is available = "));
+            //     Serial.println(available());
+            // }
+
             // We have data available
             // Check if we've already read meta-data from this message
             if (nextByteNum == 0)
@@ -886,16 +1215,26 @@ bool btSerialWrapper::readNextMessageBytes(unsigned char *byteDestinationArray, 
             }
 
             // Calculate how many bytes to read from the stream
-            unsigned char numBytesLeftInMessage = MAX_BT_BUFFER_SIZE - nextByteNum;  // Calculate the number of bytes that are left in this Bluetooth message
-            unsigned char thisNumBytesToRead = min(numBytes, numBytesLeftInMessage); // Calculate the number of bytes to read from this message
+            unsigned char numBytesLeftInMessage = MAX_BT_BUFFER_SIZE - nextByteNum;           // Calculate the number of bytes that are left in this Bluetooth message
+            unsigned char thisNumBytesToRead = min(numBytesRemaining, numBytesLeftInMessage); // Calculate the number of bytes to read from this message
 
             // Read a series of bytes from the stream
             stream->readBytes(byteDestinationArray + curByteDestInd, thisNumBytesToRead); // Read this number of bytes from the stream into byteDestination, offset by the number of bytes we have already read in
             nextByteNum += thisNumBytesToRead;                                            // Update the pointer to the next byte location
 
             // Prepare for the next loop, if needed
-            curByteDestInd += thisNumBytesToRead; // Update our location in byteDestination
-            numBytes -= thisNumBytesToRead;       // Update the number of bytes that still need to be read into byteDestination
+            curByteDestInd += thisNumBytesToRead;    // Update our location in byteDestination
+            numBytesRemaining -= thisNumBytesToRead; // Update the number of bytes that still need to be read into byteDestination
+
+            // if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+            // {
+            //     Serial.print(F("rnbm  curMessageNum = "));
+            //     Serial.print(getCurMessageNum());
+            //     Serial.print(F(", numBytesRemaining = "));
+            //     Serial.print(numBytesRemaining);
+            //     Serial.print(F(", thisNumBytesToRead = "));
+            //     Serial.println(thisNumBytesToRead);
+            // }
 
             // Check if we just read the last of the bytes in the most recent message
             if (MAX_BT_BUFFER_SIZE - nextByteNum <= 0)
@@ -903,14 +1242,28 @@ bool btSerialWrapper::readNextMessageBytes(unsigned char *byteDestinationArray, 
                 // Send a quick message to Java to let it know that we finished reading its last message.  It will work on getting the next message to us while we either a) exit this function, or b) swing around to the "else" statement and wait in the while loop for a minute
                 sendConfirmation();
             }
+
+            // if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+            // {
+            //     Serial.print(F("rnbm  curMessageNum = "));
+            //     Serial.print(getCurMessageNum());
+            //     Serial.print(F(", numBytesRemaining = "));
+            //     Serial.print(numBytesRemaining);
+            //     Serial.print(F(", thisNumBytesToRead = "));
+            //     Serial.println(thisNumBytesToRead);
+            // }
         }
         else
         {
             // If there is no data available
 
             // Check if we're expecting more content for this communication
-            if (curMessageNum <= totalMessages)
+            if (getCurMessageNum() <= totalMessages)
             {
+                // if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+                // {
+                //     Serial.println(F("      No data available; waiting for next message..."));
+                // }
                 // We are expecting more content from this communication, so try reading the next message from Android (since we already sent a confirmation)
                 // TODO_JAVA: Wait for the new communication (If nothing comes for a bit of time, return a 0 due to timeout, and abandon the entire reading operation)
                 unsigned long startTime = millis();
@@ -922,7 +1275,16 @@ bool btSerialWrapper::readNextMessageBytes(unsigned char *byteDestinationArray, 
                 if (available() == 0)
                 {
                     // If we timed out of the communication loop, abandon the connection
+                    if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+                    {
+                        Serial.println(F("      Did not get new message."));
+                    }
                     return false;
+                }
+
+                if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+                {
+                    Serial.println(F("      Got new message, continuing..."));
                 }
 
                 // If we just got a new message, continue in the main while loop, to read the data
@@ -936,12 +1298,16 @@ bool btSerialWrapper::readNextMessageBytes(unsigned char *byteDestinationArray, 
                 resetCommunicationData(); // Should have been reset by this point already, but may as well just confirm
 
                 byteDestinationArray = 0;
+                // if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+                // {
+                //     Serial.println(F("      Done."));
+                // }
                 return false; // Error, because there was nothing to read
             }
         }
     }
 
-    // If we've gotten to this points, this have gone well
+    // If we've gotten to this point, this has gone well
     return true;
 }
 
@@ -960,7 +1326,7 @@ bool btSerialWrapper::isRequest()
     return request;
 }
 
-unsigned char btSerialWrapper::getCurMessageNum()
+int btSerialWrapper::getCurMessageNum()
 {
     return curMessageNum;
 }
@@ -975,21 +1341,26 @@ bool btSerialWrapper::sendConfirmation()
     // Create a "header" (with no body) with the meta data of the data currently being received.
     // Request is false, content is given by the member variable, and confirmation is true
     unsigned char firstByte = 0U;
-    putDataToByte(firstByte, content, 3, 4);
+    // putDataToByte(firstByte, content, 3, 4);
     putBoolToByte(firstByte, true, 3);
 
     // The current/total message numbers are given by the member variables
-    unsigned char messageNumByte = 0U;
-    putDataToByte(messageNumByte, totalMessages, 4, 4);
-    putDataToByte(messageNumByte, curMessageNum, 4, 0);
+    // unsigned char messageNumByte = 0U;
+    // putDataToByte(messageNumByte, totalMessages, 4, 4);
+    // putDataToByte(messageNumByte, curMessageNum, 4, 0);
 
     // Send the two bytes of data
     stream->write(firstByte);
-    stream->write(messageNumByte);
+    // stream->write(messageNumByte);
+
+    if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+    {
+        Serial.println(F("      Sent confirmation message..."));
+    }
 
     // Finally, because this represents us being done with the message we were just reading, reset the byte number and iterate the curMessageNum
     nextByteNum = 0;
-    curMessageNum++;
+    setCurMessageNum(getCurMessageNum() + 1);
 
     return true; // TODO: Add some kind of error handling, probably from the stream->write() command?
 }
@@ -1055,10 +1426,14 @@ bool btSerialWrapper::writeNextMessageBytes(const unsigned char *byteSourceArray
 
 void btSerialWrapper::resetCommunicationData()
 {
+    if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+    {
+        Serial.println(F("      Resetting communication metadata..."));
+    }
     totalMessages = 0;
     content = 0;
     request = false;
-    curMessageNum = 0;
+    setCurMessageNum(0);
     nextByteNum = 0;
 }
 
@@ -1084,7 +1459,7 @@ bool bluetooth_decode_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
 void mainLoop()
 {
     // Check if there is anything on the serial line
-    int count = btSer.available();
+    int count = btSer->available();
     if (count > 0)
     {
         if (count > MAX_BT_BUFFER_SIZE)
@@ -1101,7 +1476,7 @@ void mainLoop()
             // // Read into a local buffer (horribly inefficient, wonder if there's a way to fix...)
             // for (int bufLoc = 0; bufLoc < count; bufLoc++)
             // {
-            //     buffer[bufLoc] = btSer.read();
+            //     buffer[bufLoc] = btSer->read();
             // }
 
             // Create a protocol buffer stream

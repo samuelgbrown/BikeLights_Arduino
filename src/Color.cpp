@@ -1123,11 +1123,11 @@ unsigned long Color_dTime::getCurVal() const
   return millis() % tA[numColors - 1];
 };
 
-Color_dVel::Color_dVel(Speedometer *speedometer) : speedometer(speedometer), Color_d<float>() {};
+Color_dVel::Color_dVel(Speedometer *speedometer) : Color_d<float>(), speedometer(speedometer) {};
 
-Color_dVel::Color_dVel(Speedometer *Speedometer, unsigned char numColors) : speedometer(speedometer), Color_d<float>(numColors) {};
+Color_dVel::Color_dVel(Speedometer *speedometer, unsigned char numColors) : Color_d<float>(numColors), speedometer(speedometer) {};
 
-Color_dVel::Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors) : speedometer(speedometer), Color_d<float>(cA, tA, bA, numColors) {};
+Color_dVel::Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors) : Color_d<float>(cA, tA, bA, numColors), speedometer(speedometer) {};
 
 Color_dVel::Color_dVel(const Color_dVel &c) : Color_d<float>(c) {};
 

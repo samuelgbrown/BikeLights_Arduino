@@ -34,8 +34,8 @@ class btSerialWrapper;
 class Pattern
 {
 public:
-  Pattern();                                              // Constructor
-  Pattern(Image_Helper *image_helper, boolean groundRel); // Constructor
+  Pattern(Pattern_Handler* parent_handler);                                              // Constructor
+  Pattern(Pattern_Handler* parent_handler, Image_Helper *image_helper, boolean groundRel); // Constructor
 
   // Pattern(Color_ **colorsIn, unsigned char numColorsIn); // Constructor
 
@@ -53,7 +53,7 @@ public:
 
   // Functions to manage the "image", or the LED map which shows which LEDs are showing which Color_
   void setImage(unsigned char *image);               // Set an image to the pattern
-  void setImageFromBluetooth(btSerialWrapper btSer); // Set the image to the Pattern, by reading data directly from the bluetooth data stream
+  void setImageFromBluetooth(btSerialWrapper * btSer); // Set the image to the Pattern, by reading data directly from the bluetooth data stream
   // void setImageValInPos(unsigned char LEDNum); // Set an image value in a specific LED location
   // void setImage(uint32_t *image);      // Set an image to the pattern
   // void setImageColorInd(unsigned char colorInd); // Set the image as all references to a single color
@@ -72,7 +72,7 @@ public:
 
 private:
   bool groundRel = true;                          // Should the Pattern be calculated relative to the ground, or relative to the wheel (i.e. if ground-relative, a non-moving image will appear still from a person standing on the street.  If wheel-relative, a non-moving image will appear to rotate at the same rate as the wheel)
-  Pattern_Handler *parent_handler;                // A pointer to the parent pattern_handler, used to get access to the color palette
+  Pattern_Handler *parent_handler = NULL;                // A pointer to the parent pattern_handler, used to get access to the color palette
   unsigned char image[NUM_BYTES_PER_IMAGE] = {0}; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's)
   Image_Helper *image_helper = NULL;              // The Image_Helper for this Pattern, which defines how the image moves
 
@@ -111,7 +111,7 @@ public:
 
   void setColor(Color_ *newColor, unsigned char colorNum); // Set a Color_ in the specified location
   const Color_ *getColor(unsigned char colorNum);          // Get a pointer to the Color_ at the specified location
-  unsigned char numColors;                                 // The number of palette is defaulted to 0 (Max of 16 Color_'s)
+  unsigned char numColors = 0;                                 // The number of palette is defaulted to 0 (Max of 16 Color_'s)
 
   void setBrightnessFactor(float newBrightnessFactor); // Set the brightnessFactor
   float getBrightnessFactor();                         // Get the brightness factor
@@ -197,7 +197,7 @@ protected:
 #endif
 
 private:
-  signed char rotateSpeed;                // Speed of image rotation (in LEDs/second)
+  signed char rotateSpeed = 10;                // Speed of image rotation (in LEDs/second)
   float imageMovementPos = 0;                  // Current image reference position around the wheel
   unsigned long lastLEDAdvanceTime = micros(); // The time at which imageMovementPos was last updated
 

@@ -24,6 +24,7 @@ C (3uint) - A numerical representation of the type of information contained in t
     2 - Brightness scale value
     3 - Storage information
     4 - Battery information
+    5 - Power state information
 CF (bool) - 1 if the message is a confirmation of a previously sent message, sent when the Arduino is ready for the next message; only first 2 bytes are sent (only used in Arduino->Android communication, to confirm that a 64-byte message was just received).  If CF = true, then the next byte will be the last byte of the message (2 bytes total) [NOTE: Not yet implemented in Arduino)
 X - Unused
 The second byte will be sent iff the message is a confirmation (CF = true) OR the message is being sent from Android to Arduino

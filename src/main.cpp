@@ -326,3 +326,27 @@ void valToSecondNibble(unsigned char valToSet, unsigned char &fullByte)
   // Mask out to get only the first nibble, then set the second nibble to valToSet (by bit-wise or-ing with a bit-shifted valToSet)
   fullByte = (unsigned char)((FIRST_NIBBLE_MASK & fullByte) | valToSet << 4);
 }
+
+void serialPrintColor(unsigned char color[NUMLIGHTSPERLED])
+{
+    Serial.print(F("[ "));
+    for (int i = 0; i < NUMLIGHTSPERLED; i++)
+    {
+        Serial.print(color[i]);
+        Serial.print(F(" "));
+    }
+    Serial.print(F("]"));
+}
+
+void printByte(unsigned char byteToPrint)
+{
+  Serial.print(F("[ "));
+
+  for (int i = 7; i >= 0; i--)
+  {
+    Serial.print((byteToPrint >> i) & 1);
+    Serial.print(" ");
+  }
+
+  Serial.println(F("]"));
+}

@@ -6,13 +6,16 @@
 #include "Color.h"
 #include "Speedometer.h"
 #include "Pattern.h"
+#include "SoftwareSerial.h"
+#include <math.h>
+
+#if USE_NANOPB
 #include "bluetooth.pb.h"
 #include "pb.h"
 #include "pb_common.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
-#include "SoftwareSerial.h"
-#include <math.h>
+#endif
 
 // Class that will wrap the Serial connection for ease of use
 class btSerialWrapper
@@ -33,7 +36,8 @@ public:
     bool isRequest();
 
     // Getters for information about the communication
-    unsigned char getCurMessageNum();
+    int getCurMessageNum();
+    void setCurMessageNum(int newCurMessageNum);
     unsigned char getCurByteNum();
     int available();
 
@@ -45,6 +49,9 @@ public:
     // Reset the communication meta-data
     void resetCommunicationData();
 
+    // Send a confirmation message back to Android
+    bool sendConfirmation(); // A function for sending a confirmation to Android that we have received and processed a message
+
 private:
     // Meta data from the message
     unsigned char totalMessages = 0;
@@ -52,12 +59,10 @@ private:
     bool request = false;
 
     // Information for keeping of where we are in the entire communication
-    unsigned char curMessageNum = 0; // The message that is being read now (or is being waited on being delivered)
+    int curMessageNum = 0; // The message that is being read now (or is being waited on being delivered)
     unsigned char nextByteNum = 0;   // The byte that will be read next
 
-    bool sendConfirmation(); // A function for sending a confirmation to Android that we have received and processed a message
-
-    Stream *stream;
+    Stream *stream; // Required by only constructor
 };
 
 // The Bluetooth class will take care of the bluetooth connection to the Android component of the system.  It will be responsible for maintaining the Bluetooth connection, and communicating with the Android system by generating C++ objects that are sent over the line
@@ -95,10 +100,11 @@ private:
 #if BLUETOOTH_USE_HARDWARESERIAL
     btSerialWrapper btSer = btSerialWrapper(&Serial); // Initialize the Serial connection to the bluetooth device (HC06)
 #else
-    btSerialWrapper btSer = btSerialWrapper(new SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX)); // Initialize the Serial connection to the bluetooth device (HC06)
+    btSerialWrapper * btSer = new btSerialWrapper(new SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX)); // Initialize the Serial connection to the bluetooth device (HC06)
 #endif
     Pattern_Handler *pattern_handler = NULL; // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
     Speedometer *speedometer = NULL;         // A pointer to the speedometer, so we can change it using information sent via Bluetooth
+
 };
 
 #endif

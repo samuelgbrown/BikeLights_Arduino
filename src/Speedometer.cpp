@@ -900,12 +900,12 @@ float Kalman::getQ()
 
 const float **Kalman::getP0()
 {
-  return (float **)PPrior;
+  return (const float **)PPrior;
 }
 
 const float **Kalman::getR()
 {
-  return (float **)R;
+  return (const float **)R;
 }
 
 void Kalman::ScalarAddF(float *A, float b, unsigned char numRows, unsigned char numCols, float *C)

@@ -4,7 +4,7 @@
 #include "Color.h"
 #include "Pattern.h"
 
-Pattern::Pattern() : Pattern(new Static_Helper(), true)
+Pattern::Pattern(Pattern_Handler *parent_handler) : Pattern(parent_handler, new Static_Helper(), true)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -25,7 +25,7 @@ Pattern::Pattern() : Pattern(new Static_Helper(), true)
   //  setupColors(1);
 };
 
-Pattern::Pattern(Image_Helper *image_helper, bool groundRel) : groundRel(groundRel)
+Pattern::Pattern(Pattern_Handler *parent_handler, Image_Helper *image_helper, bool groundRel) : groundRel(groundRel)
 {
   setImageHelper(image_helper);
 }
@@ -74,7 +74,13 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
 
   // TODO: MEMORY
   Color_ **newColorArray = new Color_ *[numColorsIn]; // Deleted at the end of this function
-  unsigned char brightness = 50;
+
+  for (unsigned char i = 0; i < numColorsIn; i++)
+  {
+    newColorArray[i] = new Color_Static();
+  }
+
+  // unsigned char brightness = 50;
 
   //  if (DEBUGGING_PATTERN) {
   //    // Serial.flush();
@@ -85,7 +91,7 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
   //  }
 
   // Determine how many of the old colors should be preserved
-  unsigned char numOldColorsToPreserve = min(numColorsIn, numColors);
+  // unsigned char numOldColorsToPreserve = min(numColorsIn, numColors);
 
   //  if (DEBUGGING_PATTERN) {
   //    // Serial.flush();
@@ -97,26 +103,26 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
   //    Serial.println(F(" colors exist now."));
   //  }
 
-  for (unsigned char i = 0; i < numOldColorsToPreserve; i++)
-  {
-    if (DEBUGGING_PATTERN)
-    {
-      // Serial.flush();
-      Serial.print(F("Cloning color "));
-      Serial.println(i);
-      // delay(1000);
-      Serial.print(F("R = "));
-      Serial.print(palette[i]->getColor().r());
-      Serial.print(F(", G = "));
-      Serial.print(palette[i]->getColor().g());
-      Serial.print(F(", B = "));
-      Serial.print(palette[i]->getColor().b());
-      Serial.print(F(", W = "));
-      Serial.println(palette[i]->getColor().w());
-      // delay(1000);
-    }
-    newColorArray[i] = palette[i]->clone();
-  }
+  // for (unsigned char i = 0; i < numOldColorsToPreserve; i++)
+  // {
+  //   if (DEBUGGING_PATTERN)
+  //   {
+  //     // Serial.flush();
+  //     Serial.print(F("Cloning color "));
+  //     Serial.println(i);
+  //     // delay(1000);
+  //     Serial.print(F("R = "));
+  //     Serial.print(palette[i]->getColor().r());
+  //     Serial.print(F(", G = "));
+  //     Serial.print(palette[i]->getColor().g());
+  //     Serial.print(F(", B = "));
+  //     Serial.print(palette[i]->getColor().b());
+  //     Serial.print(F(", W = "));
+  //     Serial.println(palette[i]->getColor().w());
+  //     // delay(1000);
+  //   }
+  //   newColorArray[i] = palette[i]->clone();
+  // }
 
   //  if (DEBUGGING_PATTERN) {
   //    // Serial.flush();
@@ -130,37 +136,37 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
   //  }
 
   // Fill in the rest of the array with static default colors
-  for (unsigned char i = numOldColorsToPreserve; i < numColorsIn; i++)
-  {
-    //    if (DEBUGGING_PATTERN) {
-    //    // Serial.flush();
-    //    Serial.print(F("Adding color number "));
-    //    Serial.println(i);
-    //    delay(500);
-    //    //      Serial.println(numOldColorsToPreserve);
-    //    //      Serial.println(numColorsIn);
-    //  }
-    if (i == 0)
-    {
-      newColorArray[i] = new Color_Static();
-    }
-    else if ((i % 4) == 1)
-    {
-      newColorArray[i] = new Color_Static(0, 0, 0, brightness);
-    }
-    else if ((i % 4) == 2)
-    {
-      newColorArray[i] = new Color_Static(brightness, 0, 0, 0);
-    }
-    else if ((i % 4) == 3)
-    {
-      newColorArray[i] = new Color_Static(0, brightness, 0, 0);
-    }
-    else if ((i % 4) == 0)
-    {
-      newColorArray[i] = new Color_Static(0, 0, brightness, 0);
-    }
-  }
+  // for (unsigned char i = numOldColorsToPreserve; i < numColorsIn; i++)
+  // {
+  //    if (DEBUGGING_PATTERN) {
+  //    // Serial.flush();
+  //    Serial.print(F("Adding color number "));
+  //    Serial.println(i);
+  //    delay(500);
+  //    //      Serial.println(numOldColorsToPreserve);
+  //    //      Serial.println(numColorsIn);
+  //  }
+  // if (i == 0)
+  // {
+  // newColorArray[i] = new Color_Static();
+  // }
+  // else if ((i % 4) == 1)
+  // {
+  //   newColorArray[i] = new Color_Static(0, 0, 0, brightness);
+  // }
+  // else if ((i % 4) == 2)
+  // {
+  //   newColorArray[i] = new Color_Static(brightness, 0, 0, 0);
+  // }
+  // else if ((i % 4) == 3)
+  // {
+  //   newColorArray[i] = new Color_Static(0, brightness, 0, 0);
+  // }
+  // else if ((i % 4) == 0)
+  // {
+  //   newColorArray[i] = new Color_Static(0, 0, brightness, 0);
+  // }
+  // }
 
   //  if (DEBUGGING_PATTERN) {
   //    // Serial.flush();
@@ -187,7 +193,23 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
 
 void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColorsIn)
 {
+  if (DEBUGGING_PATTERN)
+  {
+    Serial.println(F("Deleting old color array..."));
+    Serial.print(F("Current memory: "));
+    Serial.println(freeRam());
+    delay(200);
+  }
+
   deleteColorArray(); // Always delete the old arrays when new ones are being created
+
+  if (DEBUGGING_PATTERN)
+  {
+    Serial.println(F("Deleted old color array."));
+    Serial.print(F("Current memory: "));
+    Serial.println(freeRam());
+    delay(200);
+  }
   // TODO: Change this function so that it takes ownership of the incoming array, so that it does not need to be deleted
 
   //  if (DEBUGGING_PATTERN) {
@@ -570,11 +592,11 @@ void Pattern::setImage(unsigned char *imageIn)
   // setupColors(numColorsInArray);
 };
 
-void Pattern::setImageFromBluetooth(btSerialWrapper btSer)
+void Pattern::setImageFromBluetooth(btSerialWrapper * btSer)
 {
   // Read data in directly from the Bluetooth device, and set it as the image.
   // NOTE: This function assumes that the Bluetooth Serial line is queued up such that the next NUM_BYTES_PER_IMAGE bytes are meant to define an image for a Pattern.  No error-checking can or will be performed.
-  btSer.readNextMessageBytes(image, NUM_BYTES_PER_IMAGE);
+  btSer->readNextMessageBytes(image, NUM_BYTES_PER_IMAGE);
 }
 
 void Pattern::setImageHelper(Image_Helper *image_helper_in)
@@ -1329,37 +1351,46 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer) : speedometer(speedom
     Serial.print(F("Current memory: "));
     Serial.println(freeRam());
     Serial.println();
+    delay(200);
   }
   // Perform 1-time led setup
   controller::ledsetup();
 
+  if (DEBUGGING_PATTERN)
+  {
+    // Serial.flush();
+    Serial.println(F("Setting up Palette..."));
+    Serial.println();
+    delay(200);
+  }
   // Set up the palette
   setupPalette(1);
 
   //   Set initial main and idle animations
   if (DEBUGGING_PATTERN)
   {
-    // Serial.flush();
-    //    Serial.println(F("Setting up initial main pattern..."));
-    //    Serial.print(F("Current memory: "));
-    //    Serial.println(freeRam());
+    Serial.flush();
+    Serial.println(F("Setting up initial main pattern..."));
+    Serial.print(F("Current memory: "));
+    Serial.println(freeRam());
     Serial.println();
+    delay(200);
   }
-  setMainPattern(new Pattern());
+  setMainPattern(new Pattern(this));
 
   if (DEBUGGING_PATTERN)
   {
-    // Serial.flush();
-    //    Serial.println(F("***"));
-    //    Serial.println(F("Setting up initial idle pattern..."));
-    //    Serial.println(F("***"));
-    //    Serial.print(F("Current memory: "));
-    //    Serial.println(freeRam());
+    Serial.flush();
+    Serial.println(F("***"));
+    Serial.println(F("Setting up initial idle pattern..."));
+    Serial.println(F("***"));
+    Serial.print(F("Current memory: "));
+    Serial.println(freeRam());
     Serial.println();
-    delay(1000);
+    delay(200);
   }
   //  setIdlePattern(I_MOVING);
-  setIdlePattern(new Pattern());
+  setIdlePattern(new Pattern(this));
 
   if (DEBUGGING_PATTERN)
   {
@@ -1370,10 +1401,11 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer) : speedometer(speedom
     Serial.print(F("Current memory: "));
     Serial.println(freeRam());
     Serial.println();
+    delay(200);
   }
 };
 
-Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, unsigned char numColorsIn) : Pattern_Handler(speedometer)
+Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, unsigned char numColorsIn) : speedometer(speedometer)
 {
   if (DEBUGGING_PATTERN)
   {
@@ -1384,10 +1416,18 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
     Serial.print(F("Current memory: "));
     Serial.println(freeRam());
     Serial.println();
+    delay(200);
   }
   // Perform 1-time led setup
   controller::ledsetup();
 
+  if (DEBUGGING_PATTERN)
+  {
+    // Serial.flush();
+    Serial.println(F("Setting up Palette..."));
+    Serial.println();
+    delay(200);
+  }
   // Set up the palette
   setupPalette(colorsIn, numColorsIn);
 
@@ -1400,7 +1440,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
     //    Serial.println(freeRam());
     Serial.println();
   }
-  setMainPattern(new Pattern());
+  setMainPattern(new Pattern(this));
 
   if (DEBUGGING_PATTERN)
   {
@@ -1414,7 +1454,7 @@ Pattern_Handler::Pattern_Handler(Speedometer *speedometer, Color_ **colorsIn, un
     delay(1000);
   }
   //  setIdlePattern(I_MOVING);
-  setIdlePattern(new Pattern());
+  setIdlePattern(new Pattern(this));
 
   if (DEBUGGING_PATTERN)
   {
@@ -1529,7 +1569,7 @@ void Pattern_Handler::setMainPattern(Pattern *newMainPattern)
   if (mainPattern->supportIdle())
   {
     // If the Pattern supports an idle animation, create a new placeholder, in case a new one is not added
-    idlePattern = new Pattern();
+    idlePattern = new Pattern(this);
   }
   else
   {
@@ -1577,7 +1617,7 @@ void Pattern_Handler::setIdlePattern(Pattern *newIdlePattern)
   {
     // If the incoming Pattern does not support an idle, then it cannot be used as an idle.
     // Create a simple Pattern as a place-holder
-    idlePattern = new Pattern();
+    idlePattern = new Pattern(this);
     return;
   }
 

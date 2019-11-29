@@ -1,8 +1,6 @@
 #ifndef Definitions_h
 #define Definitions_h
 
-#include "bluetooth.pb.h"
-
 /*
 
   Track all of the definitions in this project, useful for defining the sizes and configurations for hardware and the like.
@@ -24,16 +22,17 @@
 #define NO_BLUETOOTH false         // Try compiling without any Bluetooth code...just cuz
 
 // Debugging
-#define DEBUGGING_GENERAL true      // Breakdown every step that the software takes
-#define DEBUGGING_PATTERN true      // Debug the pattern processing
+#define DEBUGGING_GENERAL false      // Breakdown every step that the software takes
+#define DEBUGGING_PATTERN false      // Debug the pattern processing
 #define DEBUGGING_MOVINGIMAGE false // Debug the moving image functions
-#define DEBUGGING_DYNAMICCOLOR true // Debug the dynamic color main functions
+#define DEBUGGING_DYNAMICCOLOR false // Debug the dynamic color main functions
 #define DEBUGGING_SPEEDOMETER false // Debug the speedometer
 #define DEBUGGING_KALMAN false      // Debug the kalman filter
 #define DEBUGGING_Q false           // Experiment with different Q's
-#define DEBUGGING_TIC true          // See when the Arduino sees a tic
+#define DEBUGGING_TIC false          // See when the Arduino sees a tic
 #define DEBUGGING_SPEED false       // See what speed the arduino thinks the wheel is going
-#define DEBUGGING_BLUETOOTH false   // Debug the bluetooth connection
+#define DEBUGGING_BLUETOOTH true   // Debug the bluetooth connection
+#define DEBUGGING_BLUETOOTH_LOWLEVEL false   // Debug the bluetooth connection
 #define DEBUGGING_ANY (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_TIC || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
 
 // These are the only two interrupt pins that can be used for an external interrupt request
@@ -41,16 +40,17 @@
 #define TICKPIN 2
 #define RTICKPIN 3
 #define POWERPIN 5
-#define BLUETOOTHPIN_TX 8
-#define BLUETOOTHPIN_RX 9
+#define BLUETOOTHPIN_TX 9
+#define BLUETOOTHPIN_RX 8
 #define NUMSWITCHES 3
 
 #define NUMLEDS 120
 #define NUM_BYTES_PER_IMAGE NUMLEDS / 2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)
 #define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
-#define MAX_BT_BUFFER_SIZE 64        // The number of bytes available to read from the Serial buffer
+#define MAX_BT_BUFFER_SIZE 32        // The number of bytes available to read from the Serial buffer
 #define BLUETOOTH_TIMEOUT_MILLI 5000 // The timeout period in which we will wait for a bluetooth message that we requested
+#define BLUETOOTH_BAUD 9600 // The baud rate for communicating to the bluetooth module
 
 #define MAXPULSELENGTH 50000
 #define MAXTIMEBEWTEENTICS 1500
@@ -141,6 +141,11 @@ unsigned char valFromSecondNibble(unsigned char fullByte);
 unsigned char valToFirstNibble(unsigned char valToSet, unsigned char fullByte);
 
 unsigned char valToSecondNibble(unsigned char valToSet, unsigned char fullByte);
+
+void serialPrintColor(unsigned char color[NUMLIGHTSPERLED]);
+
+void printByte(unsigned char byteToPrint);
+
 int freeRam();
 
 // Common array functions
@@ -217,6 +222,8 @@ T maxInArrayPerNibble(T *arrayIn, int arraySize)
 }
 
 #if USE_NANO_PB
+#include "bluetooth.pb.h"
+
 // Define some values to make using the protocol buffer much less verbose
 #define Message_BT bluetooth_BluetoothMessage
 #define BWA_BT bluetooth_BluetoothMessage_BikeWheelAnim
