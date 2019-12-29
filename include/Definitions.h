@@ -49,6 +49,7 @@
 #define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
 #define MAX_BT_BUFFER_SIZE 32        // The number of bytes available to read from the Serial buffer
+#define BLUETOOTH_COMPLETION_SIGNAL_SIZE 10 // The size in bytes of the completion signal to be sent to Android to let it know that we're done transmitting
 #define BLUETOOTH_TIMEOUT_MILLI 5000 // The timeout period in which we will wait for a bluetooth message that we requested
 #define BLUETOOTH_BAUD 9600 // The baud rate for communicating to the bluetooth module
 
@@ -145,6 +146,8 @@ unsigned char valToSecondNibble(unsigned char valToSet, unsigned char fullByte);
 void serialPrintColor(unsigned char color[NUMLIGHTSPERLED]);
 
 void printByte(unsigned char byteToPrint);
+
+void printColorBytes(unsigned char * colorBytes);
 
 int freeRam();
 

@@ -855,12 +855,12 @@ void Color_d<T>::setupArrays(colorObj *cAIn, T *tAIn, BLEND_TYPE *bAIn, unsigned
   //  *cA = *cAIn;
   //  *tA = *tAIn;
   //  *bA = *bAIn;
-  numColors = numColorsIn;
   #else
   // Take ownership of the incoming arrays
   cA = cAIn;
   tA = tAIn;
   bA = bAIn;
+  numColors = numColorsIn;
   #endif
 
   sortAllArrays();

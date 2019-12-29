@@ -340,13 +340,29 @@ void serialPrintColor(unsigned char color[NUMLIGHTSPERLED])
 
 void printByte(unsigned char byteToPrint)
 {
-  Serial.print(F("[ "));
+  if (DEBUGGING_ANY) {
+    Serial.print(F("[ "));
 
-  for (int i = 7; i >= 0; i--)
-  {
-    Serial.print((byteToPrint >> i) & 1);
-    Serial.print(" ");
+    for (int i = 7; i >= 0; i--)
+    {
+      Serial.print((byteToPrint >> i) & 1);
+      Serial.print(" ");
+    }
+
+    Serial.println(F("]"));
   }
-
-  Serial.println(F("]"));
 }
+
+void printColorBytes(unsigned char * colorBytes) {
+  if (DEBUGGING_ANY) {
+    Serial.print(F("RGBW: ["));
+    Serial.print(colorBytes[0]);
+    Serial.print(F(", "));
+    Serial.print(colorBytes[1]);
+    Serial.print(F(", "));
+    Serial.print(colorBytes[2]);
+    Serial.print(F(", "));
+    Serial.print(colorBytes[3]);
+    Serial.print(F("]"));
+  }
+  }
