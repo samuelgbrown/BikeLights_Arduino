@@ -101,7 +101,7 @@ private:
 #if BLUETOOTH_USE_HARDWARESERIAL
     btSerialWrapper * btSer = new btSerialWrapper(&Serial); // Initialize the Serial connection to the bluetooth device (HC06)
 #else
-    btSerialWrapper * btSer = new btSerialWrapper(new SoftwareSerial(BLUETOOTHPIN_RX, BLUETOOTHPIN_TX)); // Initialize the Serial connection to the bluetooth device (HC06)
+    btSerialWrapper * btSer = new btSerialWrapper(new SoftwareSerial(BLUETOOTHPIN_RX_TO_BT_TX, BLUETOOTHPIN_TX_TO_BT_RX)); // Initialize the Serial connection to the bluetooth device (HC06)
 #endif
     Pattern_Handler *pattern_handler = NULL; // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
     Speedometer *speedometer = NULL;         // A pointer to the speedometer, so we can change it using information sent via Bluetooth

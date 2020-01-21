@@ -31,7 +31,7 @@
 #define DEBUGGING_Q false           // Experiment with different Q's
 #define DEBUGGING_TIC false          // See when the Arduino sees a tic
 #define DEBUGGING_SPEED false       // See what speed the arduino thinks the wheel is going
-#define DEBUGGING_BLUETOOTH true   // Debug the bluetooth connection
+#define DEBUGGING_BLUETOOTH false   // Debug the bluetooth connection
 #define DEBUGGING_BLUETOOTH_LOWLEVEL false   // Debug the bluetooth connection
 #define DEBUGGING_ANY (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_TIC || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
 
@@ -40,8 +40,8 @@
 #define TICKPIN 2
 #define RTICKPIN 3
 #define POWERPIN 5
-#define BLUETOOTHPIN_TX 9
-#define BLUETOOTHPIN_RX 8
+#define BLUETOOTHPIN_TX_TO_BT_RX 9
+#define BLUETOOTHPIN_RX_TO_BT_TX 8
 #define NUMSWITCHES 3
 
 #define NUMLEDS 120
