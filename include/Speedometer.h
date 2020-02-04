@@ -94,8 +94,8 @@ public:
 
   void mainLoop(); // Main function that the speedometer executes every loop
 
-  static void tic();  // Interrupt function called when ticPin is set to HIGH
-  static void rTic(); // Interrupt function called when rticPin is set to HIGH
+  // static void tic();  // Interrupt function called when ticPin is set to HIGH
+  // static void rTic(); // Interrupt function called when rticPin is set to HIGH
 
   // Get information from the underlying Kalman filter
   float getPos();     // Position
@@ -108,8 +108,8 @@ public:
 
 private:
   unsigned char numSwitches = NUMSWITCHES; // Number of reed switches that are on the bike wheel (including the reference switch)
-  int ticPin = TICKPIN;                    // Pin that the reed switches sets HIGH, stored as a PHYSICAL PIN, not an interupt pin
-  int rticPin = RTICKPIN;                  // Pin that the reference reed switch sets HIGH, stored as a PHYSICAL PIN, not an interupt pin
+  // int ticPin = TICKPIN;                    // Pin that the reed switches sets HIGH, stored as a PHYSICAL PIN, not an interupt pin
+  // int rticPin = RTICKPIN;                  // Pin that the reference reed switch sets HIGH, stored as a PHYSICAL PIN, not an interupt pin
 
   // Hardware dimensions
   static const unsigned int reedDetectionDiameter = REEDDETECTIONDIAMETER; // The "diameter" around the reed switch (in µm) that the switch can detect the magnet (IF MORE THAN 65mm, THEN CHANGE TO LONG)
@@ -124,7 +124,7 @@ private:
   // Tic pulse measurement
   boolean ticOn = false; // Is a reed switch currently activated?
   //    boolean referenceOn = false; // Is the reference reed switch currently activated?
-  unsigned long timeAtTicOn = 0;                // The time in microseconds that the last tic turned on (only updated while ticOn, used to estimate rotation at low speeds)
+  // unsigned long timeAtTicOn = 0;                // The time in microseconds that the last tic turned on (only updated while ticOn, used to estimate rotation at low speeds)
   unsigned int maxPulseLength = MAXPULSELENGTH; // The maximum length between on and off that will be accepted (waiting any longer than this between the reed switch's HIGH and LOW pulse will make the Arduino assume that the LOW pulse was simply missed)
 
   // Rotation and orientation estimation

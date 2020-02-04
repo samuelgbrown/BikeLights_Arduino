@@ -15,6 +15,7 @@
 #define USE_NANOPB false                   // Should we use the nanoPB library (currently unusable due to severe FRAM limitations, ~10KB over the 32KB limit)
 #define BLUETOOTH_USE_HARDWARESERIAL false // Should the HardwareSerial connection on the Arduino be used for communicating with the Bluetooth connection (should be used when not debugging, if possible)
 #define COLORD_COPY_ARRAYS false           // Should the Color_d<T>::setupArrays() function copy input arrays (takes more memory), or take ownership of new arrays that come in (arrays CANNOT be deleted by calling function)
+#define TIC_USE_LATCH true             // Should the "tics" (position switches) be attached via an SR latch (alternative: they are attached via interrupts)
 
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
@@ -39,12 +40,13 @@
 // Process can be sped up by using pin change interrupt and attaching interrupt by hand, using pins from different batches: https://arduino.stackexchange.com/questions/1784/how-many-interrupt-pins-can-an-uno-handle
 #define TICKPIN 2
 #define RTICKPIN 3
+#define RESETTICKPIN 4 // Used with SR latch - common reset signal to both latches
 #define POWERPIN 5
 #define BLUETOOTHPIN_TX_TO_BT_RX 9
 #define BLUETOOTHPIN_RX_TO_BT_TX 8
 #define NUMSWITCHES 3
 
-#define NUMLEDS 120
+#define NUMLEDS 120 // Must be an even number!!!
 #define NUM_BYTES_PER_IMAGE NUMLEDS / 2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)
 #define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
@@ -84,6 +86,7 @@
 // Set up some class declarations that are needed before they're defined
 class Color_;
 class Pattern_Handler;
+class colorObj;
 
 // Define enums used for different animations
 // enum MAIN_ANIM
@@ -148,6 +151,10 @@ void serialPrintColor(unsigned char color[NUMLIGHTSPERLED]);
 void printByte(unsigned char byteToPrint);
 
 void printColorBytes(unsigned char * colorBytes);
+
+void printColorObj(colorObj color);
+
+int posMod(int k, int n);
 
 int freeRam();
 

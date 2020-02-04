@@ -180,6 +180,7 @@ unsigned char getByteFromBlendType(BLEND_TYPE blend_type_in)
 
 Bluetooth::Bluetooth(Pattern_Handler *pattern_handler, Speedometer *speedometer) : pattern_handler(pattern_handler), speedometer(speedometer)
 {
+    totalMemory = freeRam();
 }
 
 Bluetooth::~Bluetooth()
@@ -1146,12 +1147,12 @@ void Bluetooth::mainLoop()
                         if (DEBUGGING_BLUETOOTH)
                         {
                             Serial.print(F("Total = "));
-                            Serial.println(TOTAL_MEMORY);
+                            Serial.println(totalMemory);
                             Serial.println();
                         }
 
                         unsigned char totalRAMLongArray[4];
-                        putLongToByteArray(totalRAMLongArray, (unsigned long)TOTAL_MEMORY);
+                        putLongToByteArray(totalRAMLongArray, (unsigned long)totalMemory);
                         btSer->writeNextMessageBytes(totalRAMLongArray, 4);
                     }
 

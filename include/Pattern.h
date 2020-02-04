@@ -231,9 +231,11 @@ public:
 private:
   signed char inertia = 10;                    // The inertia that the Spinner has
   float imageMovementPos = 0;                  // Current image reference position around the wheel
+  float imageMovementVel = 0;                  // Current image reference velocity around the wheel
   unsigned long lastLEDAdvanceTime = micros(); // The time at which imageMovementPos was last updated
+  int lastTrueXPosition = 0;                   // The last x position of the wheel (used to calculate the wheel's current true speed)
 
-  void advanceLEDPos(); // Advance the current location of the image reference position around the wheel
+  void advanceLEDPos(int xTrueRounded); // Advance the current location of the image reference position around the wheel
 };
 
 // // A main animation that features an image that appears to not rotate relative to the ground

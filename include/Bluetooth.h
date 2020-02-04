@@ -106,6 +106,8 @@ private:
     Pattern_Handler *pattern_handler = NULL; // A pointer to the pattern handler, so we can change it using information sent via Bluetooth
     Speedometer *speedometer = NULL;         // A pointer to the speedometer, so we can change it using information sent via Bluetooth
 
+    // Keeping track of how much total memory is available (after required objects are initialized)
+    unsigned long totalMemory = 0;
 };
 
 #endif

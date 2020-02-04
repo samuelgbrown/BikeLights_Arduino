@@ -4,14 +4,15 @@
 
 boolean newTic = false;
 boolean newReference = false;
-unsigned long lastIntTime = 0;           // The time since the last interrupt was triggered (used in debugging)
-static unsigned long debounceTime = 200; // Use a 200 ms debouncing time
+static unsigned long debounceTime = 100; // Use a debouncing time
+unsigned long lastTicTime = 0;           // The time since the last interrupt was triggered (used in debugging)
 
+#if !TIC_USE_LATCH
 //void Speedometer::tic() {
 void ticISR()
 {
   unsigned long newIntTime = millis();
-  if ((newIntTime - lastIntTime) > debounceTime)
+  if ((newIntTime - lastTicTime) > debounceTime)
   {
     newTic = true; // Set the newTic flag for the main loop
     if (DEBUGGING_TIC)
@@ -19,7 +20,7 @@ void ticISR()
       // Serial.flush();
       Serial.println(F("tic"));
     }
-    lastIntTime = newIntTime;
+    lastTicTime = newIntTime;
   }
 }
 
@@ -27,7 +28,7 @@ void ticISR()
 void rTicISR()
 {
   unsigned long newIntTime = millis();
-  if ((newIntTime - lastIntTime) > debounceTime)
+  if ((newIntTime - lastTicTime) > debounceTime)
   {
     newTic = true;       // Set the newTic flag for the main loop
     newReference = true; // Set the newReference flag for the main loop
@@ -35,31 +36,39 @@ void rTicISR()
     {
       // Serial.flush();
       Serial.println(F("rTic"));
-      delay(100);
+      // delay(100);
     }
-    lastIntTime = newIntTime;
+    lastTicTime = newIntTime;
   }
 }
+#endif
 
 //Speedometer::Speedometer(void (*ticISR)(), void (*rticISR)()): ticPin(TICKPIN), rticPin(RTICKPIN) {
 Speedometer::Speedometer()
 {
-  // Set local variables
-  ticPin = TICKPIN;
-  rticPin = RTICKPIN;
-
   //  Serial.println(F("Setting up Speedometer..."));
-  // Set the reference pin as input
-  pinMode(rticPin, INPUT_PULLUP);
+
+  #if TIC_USE_LATCH
+  pinMode(RTICKPIN, INPUT); // Set the reference pin as input
+  pinMode(RESETTICKPIN, OUTPUT); // Set up the output reset pin, so that we can reset the SR latch
+  digitalWrite(RESETTICKPIN, HIGH); // Logic is active-low, so set the reset to be off (high)
+  #else
+  // Set the reference pin as input (pullup, because the reed switch floats when not connected)
+  pinMode(RTICKPIN, INPUT_PULLUP);
 
   // Set up the interrupt functions for rticPin
-  attachInterrupt(digitalPinToInterrupt(rticPin), rTicISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(RTICKPIN), rTicISR, FALLING);
+  #endif
 
   if (numSwitches > 1)
   {
     // If there is more than 1 switch, then use the remaining switches to determine the speed
-    pinMode(ticPin, INPUT_PULLUP);                                   // Set the tic pin as input
-    attachInterrupt(digitalPinToInterrupt(ticPin), ticISR, FALLING); // Set up the interrupt functions for rticPin
+    #if TIC_USE_LATCH
+    pinMode(TICKPIN, INPUT); // Set the tic pin as input
+    #else
+    pinMode(TICKPIN, INPUT_PULLUP);                                   // Set the tic pin as input (pullup, because the reed switch floats when not connected)
+    attachInterrupt(digitalPinToInterrupt(TICKPIN), ticISR, FALLING); // Set up the interrupt functions for TICKPIN
+    #endif
   }
 
   // Create the Kalman object
@@ -81,10 +90,6 @@ void Speedometer::mainLoop()
   // The loop the Speedometer executes every time loop() is called
   //
 
-  //
-  // Evaluate any new tics that just came in
-  //
-
   if (DEBUGGING_SPEEDOMETER)
   {
     // Serial.flush();
@@ -92,18 +97,79 @@ void Speedometer::mainLoop()
     //    delay(500);
   }
 
+  //
+  // Evaluate any new tics that just came in
+  //
+
+  #if TIC_USE_LATCH
+  //  If we are using an SR latch, we must first detect if a tic has occurred
+  
+  // Record the raw inputs from the latch (still subject to debouncing)
+  int tic = digitalRead(TICKPIN);
+  int rTic = digitalRead(RTICKPIN);
+
+  // if (DEBUGGING_TIC) {
+  //   Serial.print(F("Pin is: "));
+  //   Serial.println(digitalRead(RTICKPIN));
+  //   Serial.print(F("rTic is: "));
+  //   Serial.println(rTic == HIGH);
+  //   Serial.print(F("tic is: "));
+  //   Serial.println(tic == HIGH);
+  //   Serial.print(F("both is: "));
+  //   Serial.println((tic == HIGH) || (rTic == HIGH));
+  // }
+
+  if ((tic == HIGH) || (rTic == HIGH)) {
+    // TODO: Debounce the input (probably not needed...)
+    // if (DEBUGGING_TIC) {
+    //   Serial.println(F("Got Tic"));
+    // }
+
+    timeAtThisTic = millis();
+
+    if ((timeAtThisTic - lastTicTime) > debounceTime)
+    {
+      // if (DEBUGGING_TIC) {
+      //   Serial.println(F("Tic Debounced"));
+      // }
+      // If there has been any tic, then record it and its time
+      newTic = true; // Set the newTic flag for the main loop
+      newReference = rTic; // Set the newReference flag for the main loop
+      lastTicTime = timeAtThisTic;
+
+      // Finally, reset the SR latch, so we can catch the next tic (using active-low)
+      digitalWrite(RESETTICKPIN, HIGH);
+      digitalWrite(RESETTICKPIN, LOW);
+      digitalWrite(RESETTICKPIN, HIGH);
+
+      if (DEBUGGING_TIC)
+      {
+        // Serial.flush();
+        if (tic) {
+          Serial.println(F("tic"));
+        } 
+        
+        if (rTic) {
+          Serial.println(F("rTic"));
+        }
+      }
+    }
+  }
+  
+  #else
   if (newTic)
   {
-    ticOn = true; // Indicate that a new tic pulse has just started
+    // ticOn = true; // Indicate that a new tic pulse has just started
     //    if (newReference) {
     //      referenceOn = true; // Indicate that a new reference pulse has just started
     //
     //      //    timeAtLastReference = millis(); // Record the current time in milliseconds, for timing between pulses
     //    }
 
-    timeAtTicOn = micros();   // Record the current time in microseconds, for timing the pulse
+    // timeAtTicOn = micros();   // Record the current time in microseconds, for timing the pulse
     timeAtThisTic = millis(); // Record the current time in milliseconds, for timing between pulses
   }
+  #endif
 
   //
   // See if the tic pins are still active
@@ -133,13 +199,8 @@ void Speedometer::mainLoop()
 
   if (newTic)
   {
-    // Using a second "if" statement so that the pulse calculation can occur as quickly as possible after an interrupt
-
     // Add this measurement to the Kalman filter
     kalman.addMeasurement(newReference, timeAtThisTic);
-
-    //    // Save the tic time to be used next time there is a tic
-    //    timeAtLastTic = timeAtThisTic;
 
     newTic = false;       // Reset the newTic flag
     newReference = false; // Reset the newReference flag

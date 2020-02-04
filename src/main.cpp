@@ -1,6 +1,7 @@
 #include "Speedometer.h"
 #include "Pattern.h"
 #include "Definitions.h"
+#include "Color.h"
 #if !NO_BLUETOOTH
 #include "Bluetooth.h"
 #endif
@@ -211,6 +212,7 @@ void loop()
       }
       // Execute the Pattern' main loop
       pattern_handler->mainLoop();
+      
 
 #if !NO_BLUETOOTH
       if (DEBUGGING_GENERAL)
@@ -365,4 +367,22 @@ void printColorBytes(unsigned char * colorBytes) {
     Serial.print(colorBytes[3]);
     Serial.print(F("]"));
   }
+}
+
+void printColorObj(colorObj color) {
+  if (DEBUGGING_ANY) {
+    Serial.print(F("RGBW: ["));
+    Serial.print(color.r());
+    Serial.print(F(", "));
+    Serial.print(color.g());
+    Serial.print(F(", "));
+    Serial.print(color.b());
+    Serial.print(F(", "));
+    Serial.print(color.w());
+    Serial.print(F("]"));
   }
+}
+
+int posMod(int k, int n) {
+  return ((k%=n) < 0) ? (k + n) : k;
+}

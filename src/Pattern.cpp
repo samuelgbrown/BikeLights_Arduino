@@ -25,7 +25,7 @@ Pattern::Pattern(Pattern_Handler *parent_handler) : Pattern(parent_handler, new 
   //  setupColors(1);
 };
 
-Pattern::Pattern(Pattern_Handler *parent_handler, Image_Helper *image_helper, bool groundRel) : groundRel(groundRel)
+Pattern::Pattern(Pattern_Handler *parent_handler, Image_Helper *image_helper, bool groundRel) : parent_handler(parent_handler), groundRel(groundRel)
 {
   setImageHelper(image_helper);
 }
@@ -47,10 +47,24 @@ void Pattern::sendLEDsWithOffset(int offset)
   for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
   {
     // Find the image index to use by adding the offset to the LED number, and using modulus to stay within NUMLEDS
-    unsigned char imagePos = (unsigned char)((LEDNum + offset) % (int)NUMLEDS);
+    unsigned char imagePos = (unsigned char) posMod(LEDNum + offset, NUMLEDS);
+
+    if (DEBUGGING_PATTERN) {
+      if (LEDNum == 0) {
+        Serial.print(F("LED: "));
+        Serial.print(LEDNum);
+        Serial.print(F(", offset: "));
+        Serial.print(offset);
+        Serial.print(F(", NumLEDs: "));
+        Serial.print(NUMLEDS);
+        Serial.print(F(", IP: "));
+        Serial.println(imagePos);
+        }
+    }
 
     // Send the color at the specified location to the LED strip
     controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)));
+    // controller::sendPixel(255, 0, 0, 0);
   }
 }
 
@@ -314,7 +328,7 @@ colorObj Pattern_Handler::getPreCalculatedColorInPos(unsigned char colorNum)
   }
   else
   {
-    return preCalculatedColors[numColors];
+    return preCalculatedColors[numColors - 1];
   }
 };
 
@@ -901,15 +915,25 @@ unsigned char Spinner_Helper::getInertia()
 
 int Spinner_Helper::getHelperOffset(int xTrueRounded)
 {
-  advanceLEDPos();                               // Advance the LED position, based on the current time
+  advanceLEDPos(xTrueRounded);                               // Advance the LED position, based on the current time
   return (unsigned char)round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
 }
 
-void Spinner_Helper::advanceLEDPos()
+void Spinner_Helper::advanceLEDPos(int xTrueRounded)
 {
   // TODO: Write the Spinner image type!!!
+  // First, calculate the change in time since the last update
+  unsigned long thisLEDAdvanceTime = micros();
+  unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
+
+  // Next, calculate the wheel's true velocity, using the last recorded true X position
+  int trueVelocity = xTrueRounded - lastTrueXPosition; // Also known as V_set, or the set velocity
+
+  // Next, calculate the new velocity, using the difference equation dv/dt = (V_set - V_cur)/I
+  imageMovementVel = imageMovementVel + (((float)trueVelocity - imageMovementVel)/((float)inertia))*((float)dt / 1000000.0);
+
   // Calculate the next position based on the physical model
-  imageMovementPos++;
+  imageMovementPos = imageMovementPos + imageMovementVel*((float)dt / 1000000.0);
 };
 
 signed char Spinner_Helper::getHelperParameter()
@@ -1477,6 +1501,10 @@ void Pattern_Handler::mainLoop()
 {
   if (powerState)
   {
+    // If the power is on, then we are displaying something to the wheel.  First, precalculate all of our Color_'s
+    preCalculateAllColor_();
+
+    // Then, run the correct animation
     if (speedometer->isSlow() && mainPattern->supportIdle())
     {
       // Wheel is moving slowly (and the main Pattern supports an idle function), do idle animation
@@ -1502,12 +1530,6 @@ void Pattern_Handler::mainLoop()
         delay(500);
       }
       mainPattern->anim((int)roundf(speedometer->getPos()));
-    }
-
-    if (DEBUGGING_PATTERN)
-    {
-      // Serial.flush();
-      Serial.println(F("Finished Pattern Handler loop..."));
     }
 
     // Display the image
