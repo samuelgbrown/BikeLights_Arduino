@@ -17,6 +17,15 @@
 #define COLORD_COPY_ARRAYS false           // Should the Color_d<T>::setupArrays() function copy input arrays (takes more memory), or take ownership of new arrays that come in (arrays CANNOT be deleted by calling function)
 #define TIC_USE_LATCH true             // Should the "tics" (position switches) be attached via an SR latch (alternative: they are attached via interrupts)
 
+// Schematic of the latch:
+//
+// Reed Switch (through high-pass)-- S        Q ---- Tic
+//                                    \      /
+//                                     FlipFlop
+//                                    /      \ 
+// Reset (output from Arduino)------ R        ~Q --- 
+
+
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
 #define LIBRARY_TEST false         // Should a single script be run instead of the normal function (to test singular parts of the library)?

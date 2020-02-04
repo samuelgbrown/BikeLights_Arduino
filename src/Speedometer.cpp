@@ -127,6 +127,11 @@ void Speedometer::mainLoop()
 
     timeAtThisTic = millis();
 
+    // Reset the SR latch, so we can catch the next tic (using active-low).  This is done even if the tic is still debouncing, because if we don't clear it now, this SAME tic will still be read again once the debounce timer is done (by nature of the SR latch)
+    digitalWrite(RESETTICKPIN, HIGH);
+    digitalWrite(RESETTICKPIN, LOW);
+    digitalWrite(RESETTICKPIN, HIGH);
+
     if ((timeAtThisTic - lastTicTime) > debounceTime)
     {
       // if (DEBUGGING_TIC) {
@@ -136,11 +141,6 @@ void Speedometer::mainLoop()
       newTic = true; // Set the newTic flag for the main loop
       newReference = rTic; // Set the newReference flag for the main loop
       lastTicTime = timeAtThisTic;
-
-      // Finally, reset the SR latch, so we can catch the next tic (using active-low)
-      digitalWrite(RESETTICKPIN, HIGH);
-      digitalWrite(RESETTICKPIN, LOW);
-      digitalWrite(RESETTICKPIN, HIGH);
 
       if (DEBUGGING_TIC)
       {
