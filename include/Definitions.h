@@ -17,6 +17,11 @@
 #define COLORD_COPY_ARRAYS false           // Should the Color_d<T>::setupArrays() function copy input arrays (takes more memory), or take ownership of new arrays that come in (arrays CANNOT be deleted by calling function)
 #define TIC_USE_LATCH true             // Should the "tics" (position switches) be attached via an SR latch (alternative: they are attached via interrupts)
 
+// Optional code differences based on software
+#define USE_LOWERROR_PPOST true  // Should PPost be calculated in such a way as to reduce rounding errors (will use more RAM during the calculation, should be 4*(3*3 + 2*(2*3)) = 84 bytes)
+#define USE_THREE_STATE_KALMAN true // Should the Kalman filter track three states (position + velocity + acceleration) instead of two (- acceleration)?
+#define USE_VEL_MEASUREMENT false // Should the Kalman filter accept velocities as measurements from the switches, or only positions?
+
 // Schematic of the latch:
 //
 // Reed Switch (through high-pass)-- S        Q ---- Tic
@@ -39,9 +44,10 @@
 #define DEBUGGING_SPEEDOMETER false // Debug the speedometer
 #define DEBUGGING_KALMAN false      // Debug the kalman filter
 #define DEBUGGING_Q false           // Experiment with different Q's
-#define DEBUGGING_TIC false          // See when the Arduino sees a tic
-#define DEBUGGING_SPEED false       // See what speed the arduino thinks the wheel is going
+#define DEBUGGING_TIC true          // See when the Arduino sees a tic
+#define DEBUGGING_SPEED true       // See what speed the arduino thinks the wheel is going
 #define DEBUGGING_BLUETOOTH false   // Debug the bluetooth connection
+#define DEBUGGING_PATTERN_SIZE false // Debug the memory allocation of the pattern object
 #define DEBUGGING_BLUETOOTH_LOWLEVEL false   // Debug the bluetooth connection
 #define DEBUGGING_ANY (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_TIC || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
 
@@ -70,8 +76,16 @@
 #define TOTAL_MEMORY 2048
 
 // For Kalman filtering
+#if USE_THREE_STATE_KALMAN
 #define N_STA 3 // Tracking posiiton, velocity, and acceleration
+#else
+#define N_STA 2 // Tracking posiiton and velocity
+#endif
+#if USE_VEL_MEASUREMENT
 #define N_OBS 2 // Measuring position and velocity (acceleration introduces too much error)
+#else
+#define N_OBS 1 // Measuring position
+#endif
 
 // For bit banging LED control signal
 #define T0H 300 // Width of a 0 bit in ns

@@ -34,6 +34,7 @@ Pattern::~Pattern()
 {
   // Delete the Image_Helper that is owned by this Pattern
   delete image_helper;
+  // delete [] image;
 }
 
 void Pattern::anim(int xTrueRounded)
@@ -49,18 +50,18 @@ void Pattern::sendLEDsWithOffset(int offset)
     // Find the image index to use by adding the offset to the LED number, and using modulus to stay within NUMLEDS
     unsigned char imagePos = (unsigned char) posMod(LEDNum + offset, NUMLEDS);
 
-    if (DEBUGGING_PATTERN) {
-      if (LEDNum == 0) {
-        Serial.print(F("LED: "));
-        Serial.print(LEDNum);
-        Serial.print(F(", offset: "));
-        Serial.print(offset);
-        Serial.print(F(", NumLEDs: "));
-        Serial.print(NUMLEDS);
-        Serial.print(F(", IP: "));
-        Serial.println(imagePos);
-        }
-    }
+    // if (DEBUGGING_PATTERN) {
+    //   if (LEDNum == 0) {
+    //     Serial.print(F("LED: "));
+    //     Serial.print(LEDNum);
+    //     Serial.print(F(", offset: "));
+    //     Serial.print(offset);
+    //     Serial.print(F(", NumLEDs: "));
+    //     Serial.print(NUMLEDS);
+    //     Serial.print(F(", IP: "));
+    //     Serial.println(imagePos);
+    //     }
+    // }
 
     // Send the color at the specified location to the LED strip
     controller::sendPixel(parent_handler->getPreCalculatedColorInPos(getImageValInPos(imagePos)));
@@ -1509,11 +1510,11 @@ void Pattern_Handler::mainLoop()
     {
       // Wheel is moving slowly (and the main Pattern supports an idle function), do idle animation
 
-      if (DEBUGGING_PATTERN)
-      {
-        // Serial.flush();
-        Serial.println(F("Idle animation..."));
-      }
+      // if (DEBUGGING_PATTERN)
+      // {
+      //   // Serial.flush();
+      //   Serial.println(F("Idle animation..."));
+      // }
 
       idlePattern->anim();
     }
@@ -1521,14 +1522,14 @@ void Pattern_Handler::mainLoop()
     {
       // Wheel is moving at pace, do main animation
 
-      if (DEBUGGING_PATTERN)
-      {
-        //      // Serial.flush();
-        Serial.println(F("Main animation..."));
-        //      Serial.print(F("allowIdle set to "));
-        //      Serial.println(mainPattern->allowIdle);
-        delay(500);
-      }
+      // if (DEBUGGING_PATTERN)
+      // {
+      //   //      // Serial.flush();
+      //   Serial.println(F("Main animation..."));
+      //   //      Serial.print(F("allowIdle set to "));
+      //   //      Serial.println(mainPattern->allowIdle);
+      //   delay(500);
+      // }
       mainPattern->anim((int)roundf(speedometer->getPos()));
     }
 
@@ -1639,6 +1640,7 @@ void Pattern_Handler::setIdlePattern(Pattern *newIdlePattern)
   {
     // If the incoming Pattern does not support an idle, then it cannot be used as an idle.
     // Create a simple Pattern as a place-holder
+    delete idlePattern; // Because this function now has control over the incoming Pattern, we must delete it if we are not using it.
     idlePattern = new Pattern(this);
     return;
   }
@@ -1668,6 +1670,15 @@ void Pattern_Handler::setIdlePattern(Pattern *newIdlePattern)
     Serial.println(F(""));
   }
 };
+
+void Pattern_Handler::deletePatterns() {
+  // Delete both patterns (will always either be NULL or a real Pattern object, so no error checking necessary)
+  delete mainPattern;
+  delete idlePattern;
+
+  mainPattern = NULL;
+  idlePattern = NULL;
+}
 
 Pattern_Handler::~Pattern_Handler()
 {

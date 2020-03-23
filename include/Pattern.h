@@ -74,6 +74,7 @@ private:
   bool groundRel = true;                          // Should the Pattern be calculated relative to the ground, or relative to the wheel (i.e. if ground-relative, a non-moving image will appear still from a person standing on the street.  If wheel-relative, a non-moving image will appear to rotate at the same rate as the wheel)
   Pattern_Handler *parent_handler = NULL;                // A pointer to the parent pattern_handler, used to get access to the color palette
   unsigned char image[NUM_BYTES_PER_IMAGE] = {0}; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's)
+  // unsigned char * image = new unsigned char [NUM_BYTES_PER_IMAGE]; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's)
   Image_Helper *image_helper = NULL;              // The Image_Helper for this Pattern, which defines how the image moves
 
   void sendLEDsWithOffset(int offset);                // Function to send the image to the LED strip, using some LED offset calculated by the Image_Helper (and the wheel position, if displaying the image relative to the ground)
@@ -93,6 +94,8 @@ public:
   void setMainPattern(Pattern *newMainPattern); // Set the main pattern
   void setIdlePattern(Pattern *newIdlePattern); // Set the idle pattern
 
+  void deletePatterns(); // Delete the image patterns that this handler is currently holding onto
+  
   void setPowerState(bool newPowerState); // Set the power state of the wheel
   bool getPowerState();                   // Get the power state of the wheel
 

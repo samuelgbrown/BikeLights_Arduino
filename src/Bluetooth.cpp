@@ -263,11 +263,23 @@ void Bluetooth::mainLoop()
 
                     pattern_handler->setupPalette(1); // Set up the palette with a single, static Color_, minimizing the RAM requirements
 
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F("**********BT: Allocating Color_ Array: "));
+                        Serial.print(freeRam());
+                    }
                     Color_ **newColor_Array = new Color_ *[totalNumColor_s]; // Create an array of pointers to Color_ objects that will be creaforted soon.  This array will be *copied*.
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F(" -> "));
+                        Serial.println(freeRam());
+                    }
 
                     // Start saving the palette information
                     for (unsigned char thisColor_Num = 0; thisColor_Num < totalNumColor_s; thisColor_Num++)
                     {
+                        if (DEBUGGING_PATTERN_SIZE) {
+                            Serial.print(F("**********BT: Creating Color: "));
+                            Serial.print(freeRam());
+                        }
                         if (DEBUGGING_BLUETOOTH)
                         {
                             Serial.print(thisColor_Num);
@@ -460,13 +472,42 @@ void Bluetooth::mainLoop()
                             break;
                         }
                         }
+
+                        if (DEBUGGING_PATTERN_SIZE) {
+                            Serial.print(F(" -> "));
+                            Serial.println(freeRam());
+                        }
                     }
 
                     // Now that we have a complete array of Color_'s, assign it to the Pattern_Handler
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F("**********BT: Setting up palette: "));
+                        Serial.print(freeRam());
+                    }
                     pattern_handler->setupPalette(newColor_Array, totalNumColor_s);
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F(" -> "));
+                        Serial.println(freeRam());
+                    }
 
                     // Next, start saving the Pattern information
+                    // Delete the current patterns from the pattern_handler
+                    // TODO: There IS a memory leak in here somewhere, but it was mitigated by the pattern_handler->deletePatterns() line.  It appears to be manageable (not exapanding beyond a certain size), so for now it is low priority
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F("**********BT: Deleting Patterns: "));
+                        Serial.print(freeRam());
+                    }
+                    pattern_handler->deletePatterns();
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F(" -> "));
+                        Serial.println(freeRam());
+                    }
+
                     // First, get the palette-specific meta-data
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F("**********BT: Reading Image meta-data: "));
+                        Serial.println(freeRam());
+                    }
                     bool supportsIdle;
                     unsigned char mainImageType;
                     signed char mainImageParam; // The parameter for the image type (signed to allow for negative rotation rates, etc.)
@@ -499,7 +540,15 @@ void Bluetooth::mainLoop()
                             Serial.println(mainImageParam);
                         }
                     }
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F(" -> "));
+                        Serial.println(freeRam());
+                    }
 
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F("**********BT: Preparing Image Helper: "));
+                        Serial.println(freeRam());
+                    }
                     Image_Helper *main_image_helper; // Declare the image helper that will be defined below and used to create the Pattern
                     bool groundRel = true;           // Is the Pattern's motion defined relative to the wheel, or relative to the ground?
                     switch (mainImageType)
@@ -555,17 +604,40 @@ void Bluetooth::mainLoop()
                         main_image_helper = new Static_Helper();
                     }
 
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F(" -> "));
+                        Serial.println(freeRam());
+                    }
+
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F("**********BT: Creating Main Pattern: "));
+                        Serial.println(freeRam());
+                    }
                     Pattern *mainPattern = new Pattern(pattern_handler, main_image_helper, groundRel); // Define the new Pattern that will be constructed based on the information from the message, then sent to the Pattern_Handler
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F(" -> "));
+                        Serial.print(freeRam());
+                    }
 
                     if (DEBUGGING_BLUETOOTH)
                     {
                         Serial.print(F("Before setting image: curMessageNum = "));
                         Serial.println(btSer->getCurMessageNum());
                     }
+                    
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F("**********BT: Setting Main Pattern: "));
+                        Serial.print(freeRam());
+                    }
                     // Read in the main Image (could probably change this into a one-liner by writing the data directly into the image of the Pattern...but whatever)
                     mainPattern->setImageFromBluetooth(btSer);
                     // Save this Pattern to the Pattern_Handler
                     pattern_handler->setMainPattern(mainPattern);
+
+                    if (DEBUGGING_PATTERN_SIZE) {
+                        Serial.print(F(" -> "));
+                        Serial.println(freeRam());
+                    }
 
                     // If this pattern supports an idle image, read the data from the message about the idle image
                     if (supportsIdle)
@@ -618,7 +690,16 @@ void Bluetooth::mainLoop()
                             idle_image_helper = new Static_Helper();
                         }
 
+                        if (DEBUGGING_PATTERN_SIZE) {
+                            Serial.print(F("**********BT: Creating Idle Pattern: "));
+                            Serial.print(freeRam());
+                        }
                         Pattern *idlePattern = new Pattern(pattern_handler, idle_image_helper, false); // Define a Pattern using the Image_Helper we just defined, enforcing that it will be using wheel_relative motion
+                        if (DEBUGGING_PATTERN_SIZE) {
+                            Serial.print(F(" -> "));
+                            Serial.println(freeRam());
+                        }
+
                         if (DEBUGGING_BLUETOOTH)
                         {
                             Serial.print(F("Idle Image Param: "));
@@ -629,9 +710,19 @@ void Bluetooth::mainLoop()
                             // Serial.println(idlePattern->getHelperParameter());
                         }
 
+                        if (DEBUGGING_PATTERN_SIZE) {
+                            Serial.print(F("**********BT: Setting Idle Pattern: "));
+                            Serial.print(freeRam());
+                        }
+                        
                         // Read in the idle Image
                         idlePattern->setImageFromBluetooth(btSer);
                         pattern_handler->setIdlePattern(idlePattern);
+
+                        if (DEBUGGING_PATTERN_SIZE) {
+                            Serial.print(F(" -> "));
+                            Serial.println(freeRam());
+                        }
                     }
 
                     if (DEBUGGING_BLUETOOTH)
@@ -675,7 +766,7 @@ void Bluetooth::mainLoop()
                         // Next, read in 4 bytes that will be saved as Q
                         unsigned char qByteArray[4];
                         btSer->readNextMessageBytes(qByteArray, 4);
-                        speedometer->getKalman()->setQ(getFloatFromByteArray(qByteArray, 0)); // Set the Q value in the Kalman filter
+                        speedometer->getKalman()->setPhi(getFloatFromByteArray(qByteArray, 0)); // Set the Q value in the Kalman filter
 
                         if (DEBUGGING_BLUETOOTH)
                         {
@@ -1025,10 +1116,10 @@ void Bluetooth::mainLoop()
                     {
                         Serial.print(F("Main Parameter: "));
                         Serial.println(pattern_handler->getMainPattern()->getHelperParameter());
-                        Serial.print(F("Main Image: "));
-                        for (int i = 0; i < NUM_BYTES_PER_IMAGE;i++) {
-                            printByte(pattern_handler->getMainPattern()->getImage()[i]);
-                        }
+                        // Serial.print(F("Main Image: "));
+                        // for (int i = 0; i < NUM_BYTES_PER_IMAGE;i++) {
+                        //     printByte(pattern_handler->getMainPattern()->getImage()[i]);
+                        // }
                     }
 
                     // If there is an idle image, send the idle image information
@@ -1057,10 +1148,10 @@ void Bluetooth::mainLoop()
                     {
                         Serial.print(F("Idle Parameter: "));
                         Serial.println(pattern_handler->getIdlePattern()->getHelperParameter());
-                        Serial.print(F("Idle Image: "));
-                        for (int i = 0; i < NUM_BYTES_PER_IMAGE;i++) {
-                            printByte(pattern_handler->getIdlePattern()->getImage()[i]);
-                        }
+                        // Serial.print(F("Idle Image: "));
+                        // for (int i = 0; i < NUM_BYTES_PER_IMAGE;i++) {
+                        //     printByte(pattern_handler->getIdlePattern()->getImage()[i]);
+                        // }
                     }
                     }
 
@@ -1085,7 +1176,7 @@ void Bluetooth::mainLoop()
                     {
                         // Next, send Q
                         unsigned char QFloatArray[4];
-                        putFloatToByteArray(QFloatArray, speedometer->getKalman()->getQ());
+                        putFloatToByteArray(QFloatArray, speedometer->getKalman()->getPhi());
                         btSer->writeNextMessageBytes(QFloatArray, 4);
                     }
 
@@ -1947,7 +2038,7 @@ void Bluetooth::processKalman(Kalman_BT &message)
     if (message.q != 0)
     {
         // A new value for Q was just added!
-        speedometer->getKalman()->setQ(message.q);
+        speedometer->getKalman()->setPhi(message.q);
     }
 
     // Check if there's a new R
@@ -2193,7 +2284,7 @@ Kalman_BT Bluetooth::PBFromKalman()
     // Fill in the scalar values
     kalman_bt.n_obs = N_OBS;
     kalman_bt.n_sta = N_STA;
-    kalman_bt.q = speedometer->getKalman()->getQ();
+    kalman_bt.q = speedometer->getKalman()->getPhi();
 
     // Set the sizes of the matrix parameters
     kalman_bt.p0_count = N_STA * N_STA;

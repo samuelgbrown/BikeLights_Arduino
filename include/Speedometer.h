@@ -26,14 +26,14 @@ public:
   {
     return nLEDs;
   };                        // REMOVE AFTER TESTING
-  void setQ(float newQ);    // Set a new value for Q
+  void setPhi(float newPhi);    // Set a new value for Q
   void setP0(float *newP0); // Set a new P0 matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_states)
   void setR(float *newR);   // Set a new R matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_observed)
 
   void setP0Elem(unsigned char row, unsigned char col, float newElem); // Set a new value for an element in P0
   void setRElem(unsigned char row, unsigned char col, float newElem); // Set a new value for an element in R
 
-  float getQ();          // Get the value of Q
+  float getPhi();          // Get the value of Q
   const float **getP0(); // Get a pointer to the p0 matrix
   const float **getR();  // Get a pointer to the r matrix
 
@@ -55,7 +55,8 @@ private:
   float H[N_OBS][N_STA];  // H - matrix, size = observed x state (2x3)
   float Ht[N_STA][N_OBS]; //H(transpose) - matrix, size = state x observed (3 x 2)
   float R[N_OBS][N_OBS];  // R - matrix, size = observed x observed (2x2, [00001, 0;0 .1])
-  float Q;                // Q - scalar (10000)
+  float Q[N_STA][N_STA];                // Q - scalar (10000)
+  float phi;              // Process white noise spectral density used to calculated Q)
 
   // If more space is needed, priori/posteriori can be combined
   float xPrior[N_STA];        // x Priori - vector, size = state x 1 (3x1)
