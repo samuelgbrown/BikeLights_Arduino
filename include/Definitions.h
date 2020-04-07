@@ -20,7 +20,7 @@
 // Optional code differences based on software
 #define USE_LOWERROR_PPOST true  // Should PPost be calculated in such a way as to reduce rounding errors (will use more RAM during the calculation, should be 4*(3*3 + 2*(2*3)) = 84 bytes)
 #define USE_THREE_STATE_KALMAN true // Should the Kalman filter track three states (position + velocity + acceleration) instead of two (- acceleration)?
-#define USE_VEL_MEASUREMENT false // Should the Kalman filter accept velocities as measurements from the switches, or only positions?
+#define USE_VEL_MEASUREMENT true // Should the Kalman filter accept velocities as measurements from the switches, or only positions?
 
 // Schematic of the latch:
 //

@@ -304,7 +304,8 @@ Kalman::Kalman()
   #if USE_VEL_MEASUREMENT
   H[1][1] = 1;
   #endif
-  Transpose((float *)H, N_OBS, N_STA, (float *)Ht); // Transpose H to get Ht
+  // TODO: Eliminate Ht if H is always an only diagonal matrix?
+  // Transpose((float *)H, N_OBS, N_STA, (float *)Ht); // Transpose H to get Ht
 
   // R
   #if USE_VEL_MEASUREMENT
@@ -493,6 +494,8 @@ void Kalman::initializeFilter(unsigned long dt, boolean isReference)
   xPost[2] = 0;              // Acceleration in LEDs per ms^2
   #endif
   isReset = false;           // Turn off the reset settings
+  
+  timeAtLastPredict = millis(); // Initialize the timeAtLastPredict to the current time to prepare for the prediction step
 
   if (DEBUGGING_SPEED)
   {
@@ -773,7 +776,8 @@ void Kalman::mainLoop()
     {
     float STemp[N_OBS][N_STA];
     Matrix.Multiply((float *)H, (float *)PPrior, N_OBS, N_STA, N_STA, (float *)STemp); // STemp = H*PPrior
-    Matrix.Multiply((float *)STemp, (float *)Ht, N_OBS, N_STA, N_OBS, (float *)S);     // S = H*PPrior*H'
+    Matrix.Multiply((float *)STemp, (float *)H, N_OBS, N_STA, N_OBS, (float *)S);     // S = H*PPrior*H'
+    // Matrix.Multiply((float *)STemp, (float *)Ht, N_OBS, N_STA, N_OBS, (float *)S);     // S = H*PPrior*H'
     Matrix.Add((float *)S, (float *)R, N_OBS, N_OBS, (float *)S);                      //S = H*PPrior*H' + R
     }
 
@@ -805,7 +809,8 @@ void Kalman::mainLoop()
       S[1][1] = 2.25e8;
       #endif
     }
-    Matrix.Multiply((float *)PPrior, (float *)Ht, N_STA, N_STA, N_OBS, (float *)KTemp); // KTemp = PPrior*H'
+    Matrix.Multiply((float *)PPrior, (float *)H, N_STA, N_STA, N_OBS, (float *)KTemp); // KTemp = PPrior*H'
+    // Matrix.Multiply((float *)PPrior, (float *)Ht, N_STA, N_STA, N_OBS, (float *)KTemp); // KTemp = PPrior*H'
     Matrix.Multiply((float *)KTemp, (float *)S, N_STA, N_OBS, N_OBS, (float *)K);       // K = (PPrior*H')/S
     }
 
