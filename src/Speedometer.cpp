@@ -321,7 +321,7 @@ Kalman::Kalman()
 
   // Q
   // setPhi(.1);
-  setPhi(.001);
+  setPhi(.01);
   // Q = 1; // 10000;
 
   // F (partial, F is fully built when needed, as it depends on dt).  Make the diagonal ones, because each component is added to itself plus a linear sum of the others
@@ -335,7 +335,7 @@ Kalman::Kalman()
   nTicLEDs = (float)NUMLEDS / (float)NUMSWITCHES;
 
   // Set the location of the first measurement to be the length of a segment
-  nextMeasurePos = nTicLEDs;
+  nextMeasurePos = 0;
 
   // Set the current best guess for X as 0
   xTrue = 0;
@@ -345,7 +345,7 @@ void Kalman::resetFilter()
 {
   // Reset the matrices in the filter to their initial conditions
   isReset = true;
-  nextMeasurePos = nTicLEDs;
+  nextMeasurePos = 0;
 
   if (DEBUGGING_SPEED || DEBUGGING_KALMAN)
   {
@@ -355,7 +355,7 @@ void Kalman::resetFilter()
 
   // Set PPrior
   #if USE_THREE_STATE_KALMAN
-  float p0[N_STA * N_STA] = {.1, 0, 0, 0, .1, 0, 0, 0, 2}; // Set an array for the initial PPrior
+  float p0[N_STA * N_STA] = {.01, 0, 0, 0, 5, 0, 0, 0, 5}; // Set an array for the initial PPrior
   #else
   float p0[N_STA * N_STA] = {.1, 0, 0, .1}; // Set an array for the initial PPrior
   #endif
@@ -415,7 +415,7 @@ void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasure
   dt = timeAtThisMeasurement - timeAtLastMeasurement;
   if (isReference)
   {
-    nextMeasurePos += fmod(nextMeasurePos, nLEDs); // A reference signal was just received, so snap the nextMeasurePos to the next highest multiple of nLEDs (nextMeasurePos should be the same before and after this line, but this is just a failsafe)
+    nextMeasurePos += (nLEDs - fmod(nextMeasurePos, nLEDs)); // A reference signal was just received, so snap the nextMeasurePos to the next highest multiple of nLEDs (nextMeasurePos should be the same before and after this line, but this is just a failsafe)
   }
 
   if (!isReset)
