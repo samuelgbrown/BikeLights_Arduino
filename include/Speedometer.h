@@ -22,6 +22,12 @@ public:
   Kalman();                                                                      // Constructor
   void mainLoop();                                                               // Main function that the Kalman class
   void addMeasurement(boolean isReference, unsigned long timeAtThisMeasurement); // Add a measurement to the filter
+
+  // Getter functions for position, velocity, and acceleration
+  float getPos(); // LED
+  float getVel(); // LED/s
+  float getAcc(); // LED/(s^2)
+
   float checkNumLEDs()
   {
     return nLEDs;
@@ -37,15 +43,16 @@ public:
   const float **getP0(); // Get a pointer to the p0 matrix
   const float **getR();  // Get a pointer to the r matrix
 
+  void resetFilter();     // Reset the filter to its zero state, the next time two measurements come in quick succession, the filter will initialize with that position/velocity
+  boolean isReset = true; // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
+
+private:
+
   // The current best guess at the LED position, velocity, and acceleration
   float xTrue = 0.0f;
   float velTrue = 0.0f;
   float accTrue = 0.0f;
 
-  void resetFilter();     // Reset the filter to its zero state, the next time two measurements come in quick succession, the filter will initialize with that position/velocity
-  boolean isReset = true; // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
-
-private:
   //  Create custom matrix function
   void ScalarAddF(float *A, float b, unsigned char numRows, unsigned char numCols, float *C); // Add scalar (float) b to matrix (float) A, and output to matrix C
   void Transpose(float *A, unsigned char numRows, unsigned char numCols, float *B);           // Transpose matrix A, and output to matrix C

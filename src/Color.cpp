@@ -120,12 +120,10 @@ Color_Static::Color_Static(unsigned char r, unsigned char g, unsigned char b, un
 
 Color_Static::Color_Static(colorObj c) : c(c){};
 
-Color_Static::Color_Static(unsigned char * cA): c(cA) {};
+Color_Static::Color_Static(unsigned char *cA) : c(cA){};
 
-
-Color_Static::Color_Static()
-{
-  // isEmpty = true;
+Color_Static::Color_Static(){
+    // isEmpty = true;
 };
 
 Color_Static::Color_Static(const Color_Static &c)
@@ -345,11 +343,11 @@ Color_d<T>::Color_d(const Color_d &c)
     }
   }
 
-  #if COLORD_COPY_ARRAYS
+#if COLORD_COPY_ARRAYS
   delete[] newColorArray;
   delete[] newTArray;
   delete[] newBlendArray;
-  #endif
+#endif
 }
 
 template <class T>
@@ -390,12 +388,15 @@ colorObj Color_d<T>::getColor() const
       {
         // First value in tA is always 0, so if blendVal is less than the next value, the blend point must have been found
         blendLoc = i - 1;
-        if (DEBUGGING_PATTERN)
+        if (DEBUGGING_DYNAMICCOLOR)
         {
-          //          Serial.print(F("Found blendLoc = "));
-          //          Serial.print((int)blendLoc);
-          //          Serial.println(F("..."));
-          //          delay(100);
+          Serial.print(F("Found blendLoc = "));
+          Serial.print((int)blendLoc);
+          Serial.print(F(", so we will blend between "));
+          Serial.print(tA[blendLoc]);
+          Serial.print(F(" and "));
+          Serial.println(tA[blendLoc + 1]);
+          delay(100);
         }
         break;
       }
@@ -403,12 +404,12 @@ colorObj Color_d<T>::getColor() const
 
     // Determine the type of blending
     float ratio;
-    if (DEBUGGING_DYNAMICCOLOR)
-    {
-      Serial.print(F("This bA value is: "));
-      Serial.println(bA[blendLoc]);
-      //      delay(100);
-    }
+    // if (DEBUGGING_DYNAMICCOLOR)
+    // {
+    //   Serial.print(F("This bA value is: "));
+    //   Serial.println(bA[blendLoc]);
+    //   //      delay(100);
+    // }
     switch (bA[blendLoc])
     {
     case B_LINEAR:
@@ -461,37 +462,37 @@ colorObj Color_d<T>::getColor() const
 template <class T>
 colorObj Color_d<T>::blendColors(colorObj c1, colorObj c2, float ratio) const
 {
-  if (DEBUGGING_DYNAMICCOLOR)
-  {
-    Serial.println(F("Calculated blend:"));
-    Serial.print(F("1: r = "));
-    Serial.print(c1.c[0]);
-    Serial.print(F(", g = "));
-    Serial.print(c1.c[1]);
-    Serial.print(F(", b = "));
-    Serial.print(c1.c[2]);
-    Serial.print(F(", w = "));
-    Serial.println(c1.c[3]);
+  // if (DEBUGGING_DYNAMICCOLOR)
+  // {
+  //   Serial.println(F("Calculated blend:"));
+  //   Serial.print(F("1: r = "));
+  //   Serial.print(c1.c[0]);
+  //   Serial.print(F(", g = "));
+  //   Serial.print(c1.c[1]);
+  //   Serial.print(F(", b = "));
+  //   Serial.print(c1.c[2]);
+  //   Serial.print(F(", w = "));
+  //   Serial.println(c1.c[3]);
 
-    Serial.print(F("2: r = "));
-    Serial.print(c2.c[0]);
-    Serial.print(F(", g = "));
-    Serial.print(c2.c[1]);
-    Serial.print(F(", b = "));
-    Serial.print(c2.c[2]);
-    Serial.print(F(", w = "));
-    Serial.println(c2.c[3]);
-    Serial.println(F(""));
-    //
-    Serial.print(F("new: r = "));
-    Serial.print(blendChars(c1.c[0], c2.c[0], ratio));
-    Serial.print(F(", g = "));
-    Serial.print(blendChars(c1.c[1], c2.c[1], ratio));
-    Serial.print(F(", b = "));
-    Serial.print(blendChars(c1.c[2], c2.c[2], ratio));
-    Serial.print(F(", w = "));
-    Serial.println(blendChars(c1.c[3], c2.c[3], ratio));
-  }
+  //   Serial.print(F("2: r = "));
+  //   Serial.print(c2.c[0]);
+  //   Serial.print(F(", g = "));
+  //   Serial.print(c2.c[1]);
+  //   Serial.print(F(", b = "));
+  //   Serial.print(c2.c[2]);
+  //   Serial.print(F(", w = "));
+  //   Serial.println(c2.c[3]);
+  //   Serial.println(F(""));
+  //   //
+  //   Serial.print(F("new: r = "));
+  //   Serial.print(blendChars(c1.c[0], c2.c[0], ratio));
+  //   Serial.print(F(", g = "));
+  //   Serial.print(blendChars(c1.c[1], c2.c[1], ratio));
+  //   Serial.print(F(", b = "));
+  //   Serial.print(blendChars(c1.c[2], c2.c[2], ratio));
+  //   Serial.print(F(", w = "));
+  //   Serial.println(blendChars(c1.c[3], c2.c[3], ratio));
+  // }
   return colorObj(blendChars(c1.c[0], c2.c[0], ratio), blendChars(c1.c[1], c2.c[1], ratio), blendChars(c1.c[2], c2.c[2], ratio), blendChars(c1.c[3], c2.c[3], ratio));
 };
 
@@ -555,15 +556,19 @@ void Color_d<T>::setThisTrigger(T tNew, unsigned char numInArray)
 }
 
 template <class T>
-void Color_d<T>::setThisColorObj(colorObj colorObjNew, unsigned char numInArray) {
-  if (numInArray < numColors) {
+void Color_d<T>::setThisColorObj(colorObj colorObjNew, unsigned char numInArray)
+{
+  if (numInArray < numColors)
+  {
     cA[numInArray] = colorObjNew;
   }
 }
 
 template <class T>
-void Color_d<T>::setThisBlendType(BLEND_TYPE blendTypeNew, unsigned char numInArray) {
-  if (numInArray < numColors) {
+void Color_d<T>::setThisBlendType(BLEND_TYPE blendTypeNew, unsigned char numInArray)
+{
+  if (numInArray < numColors)
+  {
     bA[numInArray] = blendTypeNew;
   }
 }
@@ -700,12 +705,12 @@ void Color_d<T>::setupArrays(unsigned char numColorsIn)
 
   setupArrays(newColorArray, newTriggerArray, newBlendArray, numColorsIn);
 
-  #if COLORD_COPY_ARRAYS
+#if COLORD_COPY_ARRAYS
   // Delete newColorArray, newTriggerArray, and newBlendArray
   delete[] newColorArray;
   delete[] newTriggerArray;
   delete[] newBlendArray;
-  #endif
+#endif
 
   if (DEBUGGING_PATTERN)
   {
@@ -735,7 +740,7 @@ void Color_d<T>::setupArrays(unsigned char numColorsIn)
 template <class T>
 void Color_d<T>::setupArrays(colorObj *cAIn, T *tAIn, BLEND_TYPE *bAIn, unsigned char numColorsIn)
 {
-  // This function will take ownership of any input arrays; THEY SHOULD NOT BE DELETED BY THE CALLING FUNCTION.  
+  // This function will take ownership of any input arrays; THEY SHOULD NOT BE DELETED BY THE CALLING FUNCTION.
 
   deleteAllArrays(); // Always delete the old array when a new one is being created
 
@@ -849,19 +854,19 @@ void Color_d<T>::setupArrays(colorObj *cAIn, T *tAIn, BLEND_TYPE *bAIn, unsigned
     //    }
   }
 
-  //  copyArray<colorObj>(cAIn, cA, numColorsIn);
-  //  copyArray<T>(tAIn, tA, numColorsIn);
-  //  copyArray<BLEND_TYPE>(bAIn, bA, numColorsIn);
-  //  *cA = *cAIn;
-  //  *tA = *tAIn;
-  //  *bA = *bAIn;
-  #else
+//  copyArray<colorObj>(cAIn, cA, numColorsIn);
+//  copyArray<T>(tAIn, tA, numColorsIn);
+//  copyArray<BLEND_TYPE>(bAIn, bA, numColorsIn);
+//  *cA = *cAIn;
+//  *tA = *tAIn;
+//  *bA = *bAIn;
+#else
   // Take ownership of the incoming arrays
   cA = cAIn;
   tA = tAIn;
   bA = bAIn;
   numColors = numColorsIn;
-  #endif
+#endif
 
   sortAllArrays();
 };
@@ -1054,7 +1059,7 @@ Color_dTime::Color_dTime(const Color_dTime &c) : Color_d<unsigned long>(c) {}
 //   }
 // };
 
-Color_dTime::~Color_dTime() {};
+Color_dTime::~Color_dTime(){};
 
 Color_dTime *Color_dTime::clone() const
 {
@@ -1123,15 +1128,15 @@ unsigned long Color_dTime::getCurVal() const
   return millis() % tA[numColors - 1];
 };
 
-Color_dVel::Color_dVel(Speedometer *speedometer) : Color_d<float>(), speedometer(speedometer) {};
+Color_dVel::Color_dVel(Speedometer *speedometer) : Color_d<float>(), speedometer(speedometer){};
 
-Color_dVel::Color_dVel(Speedometer *speedometer, unsigned char numColors) : Color_d<float>(numColors), speedometer(speedometer) {};
+Color_dVel::Color_dVel(Speedometer *speedometer, unsigned char numColors) : Color_d<float>(numColors), speedometer(speedometer){};
 
-Color_dVel::Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors) : Color_d<float>(cA, tA, bA, numColors), speedometer(speedometer) {};
+Color_dVel::Color_dVel(Speedometer *speedometer, colorObj *cA, float *tA, BLEND_TYPE *bA, unsigned char numColors) : Color_d<float>(cA, tA, bA, numColors), speedometer(speedometer){};
 
-Color_dVel::Color_dVel(const Color_dVel &c) : Color_d<float>(c) {};
+Color_dVel::Color_dVel(const Color_dVel &c) : Color_d<float>(c){};
 
-Color_dVel::~Color_dVel() {};
+Color_dVel::~Color_dVel(){};
 
 Color_dVel *Color_dVel::clone() const
 {

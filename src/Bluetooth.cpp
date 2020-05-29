@@ -598,6 +598,7 @@ void Bluetooth::mainLoop()
                             Serial.println(F("Spinner"));
                         }
 
+                        groundRel = false; // The motion is relative to the wheel, not the ground
                         main_image_helper = new Spinner_Helper(mainImageParam);
                         break;
                     default:

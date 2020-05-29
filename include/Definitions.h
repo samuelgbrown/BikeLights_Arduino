@@ -9,18 +9,24 @@
   July 16 2017
 
 */
+//
+//// Code differences based on hardware
+//
+// SHOULD BE TRUE
+#define BLUETOOTH_USE_HARDWARESERIAL true // Should the HardwareSerial connection on the Arduino be used for communicating with the Bluetooth connection (should be used when not debugging, if possible)
+#define TIC_USE_LATCH true                 // Should the "tics" (position switches) be attached via an SR latch (alternative: they are attached via interrupts)
 
-// Code differences based on hardware
+// FALSE UNTIL FURTHER NOTICE
 #define SRAM_ATTACHED false                // Is SRAM attached to this unit?  If so, then certain memory intensive computations, such as blurring, can be done
 #define USE_NANOPB false                   // Should we use the nanoPB library (currently unusable due to severe FRAM limitations, ~10KB over the 32KB limit)
-#define BLUETOOTH_USE_HARDWARESERIAL false // Should the HardwareSerial connection on the Arduino be used for communicating with the Bluetooth connection (should be used when not debugging, if possible)
 #define COLORD_COPY_ARRAYS false           // Should the Color_d<T>::setupArrays() function copy input arrays (takes more memory), or take ownership of new arrays that come in (arrays CANNOT be deleted by calling function)
-#define TIC_USE_LATCH true             // Should the "tics" (position switches) be attached via an SR latch (alternative: they are attached via interrupts)
+
 
 // Optional code differences based on software
-#define USE_LOWERROR_PPOST true  // Should PPost be calculated in such a way as to reduce rounding errors (will use more RAM during the calculation, should be 4*(3*3 + 2*(2*3)) = 84 bytes)
+// SHOULD BE TRUE
+#define USE_LOWERROR_PPOST true     // Should PPost be calculated in such a way as to reduce rounding errors (will use more RAM during the calculation, should be 4*(3*3 + 2*(2*3)) = 84 bytes)
 #define USE_THREE_STATE_KALMAN true // Should the Kalman filter track three states (position + velocity + acceleration) instead of two (- acceleration)?
-#define USE_VEL_MEASUREMENT true // Should the Kalman filter accept velocities as measurements from the switches, or only positions?
+#define USE_VEL_MEASUREMENT true    // Should the Kalman filter accept velocities as measurements from the switches, or only positions?
 
 // Schematic of the latch:
 //
@@ -28,8 +34,7 @@
 //                                    \      /
 //                                     FlipFlop
 //                                    /      \ 
-// Reset (output from Arduino)------ R        ~Q --- 
-
+// Reset (output from Arduino)------ R        ~Q ---
 
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
@@ -37,19 +42,21 @@
 #define NO_BLUETOOTH false         // Try compiling without any Bluetooth code...just cuz
 
 // Debugging
-#define DEBUGGING_GENERAL false      // Breakdown every step that the software takes
-#define DEBUGGING_PATTERN false      // Debug the pattern processing
-#define DEBUGGING_MOVINGIMAGE false // Debug the moving image functions
-#define DEBUGGING_DYNAMICCOLOR false // Debug the dynamic color main functions
-#define DEBUGGING_SPEEDOMETER false // Debug the speedometer
-#define DEBUGGING_KALMAN false      // Debug the kalman filter
-#define DEBUGGING_Q false           // Experiment with different Q's
-#define DEBUGGING_TIC true          // See when the Arduino sees a tic
-#define DEBUGGING_SPEED true       // See what speed the arduino thinks the wheel is going
-#define DEBUGGING_BLUETOOTH false   // Debug the bluetooth connection
-#define DEBUGGING_PATTERN_SIZE false // Debug the memory allocation of the pattern object
-#define DEBUGGING_BLUETOOTH_LOWLEVEL false   // Debug the bluetooth connection
-#define DEBUGGING_ANY (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_TIC || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
+#define DEBUGGING_GENERAL false            // Breakdown every step that the software takes
+#define DEBUGGING_PATTERN false            // Debug the pattern processing
+#define DEBUGGING_MOVINGIMAGE false        // Debug the moving image functions
+#define DEBUGGING_DYNAMICCOLOR false       // Debug the dynamic color main functions
+#define DEBUGGING_SPINNER false             // Debug the spinner pattern
+#define DEBUGGING_SPEEDOMETER false        // Debug the speedometer
+#define DEBUGGING_KALMAN false             // Debug the kalman filter
+#define DEBUGGING_Q false                  // Experiment with different Q's
+#define DEBUGGING_TIC false                 // See when the Arduino sees a tic
+#define DEBUGGING_MEASUREMENT false         // See what measurements the arduino recieves
+#define DEBUGGING_SPEED false              // See what speed the arduino thinks the wheel is going
+#define DEBUGGING_BLUETOOTH false          // Debug the bluetooth connection
+#define DEBUGGING_PATTERN_SIZE false       // Debug the memory allocation of the pattern object
+#define DEBUGGING_BLUETOOTH_LOWLEVEL false // Debug the bluetooth connection
+#define DEBUGGING_ANY !BLUETOOTH_USE_HARDWARESERIAL && (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_DYNAMICCOLOR || DEBUGGING_TIC || DEBUGGING_MEASUREMENT || DEBUGGING_SPINNER || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
 
 // These are the only two interrupt pins that can be used for an external interrupt request
 // Process can be sped up by using pin change interrupt and attaching interrupt by hand, using pins from different batches: https://arduino.stackexchange.com/questions/1784/how-many-interrupt-pins-can-an-uno-handle
@@ -61,14 +68,14 @@
 #define BLUETOOTHPIN_RX_TO_BT_TX 8
 #define NUMSWITCHES 3
 
-#define NUMLEDS 120 // Must be an even number!!!
+#define NUMLEDS 120                     // Must be an even number!!!
 #define NUM_BYTES_PER_IMAGE NUMLEDS / 2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)
 #define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1
-#define MAX_BT_BUFFER_SIZE 32        // The number of bytes available to read from the Serial buffer
+#define MAX_BT_BUFFER_SIZE 32               // The number of bytes available to read from the Serial buffer
 #define BLUETOOTH_COMPLETION_SIGNAL_SIZE 10 // The size in bytes of the completion signal to be sent to Android to let it know that we're done transmitting
-#define BLUETOOTH_TIMEOUT_MILLI 5000 // The timeout period in which we will wait for a bluetooth message that we requested
-#define BLUETOOTH_BAUD 9600 // The baud rate for communicating to the bluetooth module
+#define BLUETOOTH_TIMEOUT_MILLI 5000        // The timeout period in which we will wait for a bluetooth message that we requested
+#define BLUETOOTH_BAUD 9600                 // The baud rate for communicating to the bluetooth module
 
 #define MAXPULSELENGTH 50000
 #define MAXTIMEBEWTEENTICS 1500
@@ -173,7 +180,7 @@ void serialPrintColor(unsigned char color[NUMLIGHTSPERLED]);
 
 void printByte(unsigned char byteToPrint);
 
-void printColorBytes(unsigned char * colorBytes);
+void printColorBytes(unsigned char *colorBytes);
 
 void printColorObj(colorObj color);
 

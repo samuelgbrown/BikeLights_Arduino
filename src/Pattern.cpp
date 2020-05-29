@@ -48,7 +48,7 @@ void Pattern::sendLEDsWithOffset(int offset)
   for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
   {
     // Find the image index to use by adding the offset to the LED number, and using modulus to stay within NUMLEDS
-    unsigned char imagePos = (unsigned char) posMod(LEDNum + offset, NUMLEDS);
+    unsigned char imagePos = (unsigned char)posMod(LEDNum + offset, NUMLEDS);
 
     // if (DEBUGGING_PATTERN) {
     //   if (LEDNum == 0) {
@@ -607,7 +607,7 @@ void Pattern::setImage(unsigned char *imageIn)
   // setupColors(numColorsInArray);
 };
 
-void Pattern::setImageFromBluetooth(btSerialWrapper * btSer)
+void Pattern::setImageFromBluetooth(btSerialWrapper *btSer)
 {
   // Read data in directly from the Bluetooth device, and set it as the image.
   // NOTE: This function assumes that the Bluetooth Serial line is queued up such that the next NUM_BYTES_PER_IMAGE bytes are meant to define an image for a Pattern.  No error-checking can or will be performed.
@@ -916,7 +916,7 @@ unsigned char Spinner_Helper::getInertia()
 
 int Spinner_Helper::getHelperOffset(int xTrueRounded)
 {
-  advanceLEDPos(xTrueRounded);                               // Advance the LED position, based on the current time
+  advanceLEDPos(xTrueRounded);                   // Advance the LED position, based on the current time
   return (unsigned char)round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
 }
 
@@ -924,17 +924,50 @@ void Spinner_Helper::advanceLEDPos(int xTrueRounded)
 {
   // TODO: Write the Spinner image type!!!
   // First, calculate the change in time since the last update
-  unsigned long thisLEDAdvanceTime = micros();
-  unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
+  unsigned long thisLEDAdvanceTime = millis();
+  unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated? (ms)
 
   // Next, calculate the wheel's true velocity, using the last recorded true X position
-  int trueVelocity = xTrueRounded - lastTrueXPosition; // Also known as V_set, or the set velocity
+  if (xTrueRounded < lastTrueXPosition)
+  {
+    // If the new x position is less than the old position, assume that we have wrapped around the wheel back to the beginning.  Assume further that we are not moving more than the distance of a full wheel rotation in one program tick
+    lastTrueXPosition -= NUMLEDS; // Remove NUMLEDS from the value, so we get a positive velocity
+  }
+  float trueVel = ((float)(xTrueRounded - lastTrueXPosition)) / ((float)dt); // Also known as V_set, or the set velocity (LED/ms)
 
-  // Next, calculate the new velocity, using the difference equation dv/dt = (V_set - V_cur)/I
-  imageMovementVel = imageMovementVel + (((float)trueVelocity - imageMovementVel)/((float)inertia))*((float)dt / 1000000.0);
+  // if (DEBUGGING_SPINNER)
+  // {
+  //   Serial.print(F("diff = "));
+  //   Serial.println((float)(xTrueRounded - lastTrueXPosition));
+  //   Serial.print(F("floatDT = "));
+  //   Serial.println((float)(dt));
+  // }
 
-  // Calculate the next position based on the physical model
-  imageMovementPos = imageMovementPos + imageMovementVel*((float)dt / 1000000.0);
+  // Next, calculate the new velocity, using the difference equation dV_cur/dt = (V_set - V_cur)/I
+  imageMovementVel += ((trueVel - imageMovementVel) / ((float)inertia)); // (LED/ms)
+
+  // Calculate the next position based on the physical model, and mod it to be within NUMLEDS
+  imageMovementPos = fmodf(imageMovementPos + imageMovementVel * ((float)dt), (float) NUMLEDS); // (LEDs)
+
+  // Remember the last true x position and calculation timestamp for next time
+  lastTrueXPosition = xTrueRounded;
+  lastLEDAdvanceTime = thisLEDAdvanceTime;               
+
+  if (DEBUGGING_SPINNER)
+  {
+    Serial.print(F("xTrueRounded = "));
+    Serial.println(xTrueRounded);
+    Serial.print(F("imageMovementPos = "));
+    Serial.println(imageMovementPos);
+    // Serial.print(F("ImageVel = "));
+    // Serial.println(imageMovementVel);
+    // Serial.print(F("TrueVel = "));
+    // Serial.println(trueVel);
+    // Serial.print(F("xTrueRounded = "));
+    // Serial.println(xTrueRounded);
+    Serial.println();
+    Serial.println();
+  }
 };
 
 signed char Spinner_Helper::getHelperParameter()
@@ -1264,9 +1297,9 @@ void controller::sendBit(bool bitVal)
         "nop \n\t"
         ".endr \n\t" ::
             [port] "I"(_SFR_IO_ADDR(PIXEL_PORT)),
-        [bit] "I"(PIXEL_BIT),
-        [onCycles] "I"(NS_TO_CYCLES(T1H) - 2), // 1-bit width less overhead  for the actual bit setting, note that this delay could be longer and everything would still work
-        [offCycles] "I"(NS_TO_CYCLES(T1L) - 2) // Minimum interbit delay. Note that we probably don't need this at all since the loop overhead will be enough, but here for correctness
+        [ bit ] "I"(PIXEL_BIT),
+        [ onCycles ] "I"(NS_TO_CYCLES(T1H) - 2), // 1-bit width less overhead  for the actual bit setting, note that this delay could be longer and everything would still work
+        [ offCycles ] "I"(NS_TO_CYCLES(T1L) - 2) // Minimum interbit delay. Note that we probably don't need this at all since the loop overhead will be enough, but here for correctness
 
     );
   }
@@ -1287,9 +1320,9 @@ void controller::sendBit(bool bitVal)
         "nop \n\t"
         ".endr \n\t" ::
             [port] "I"(_SFR_IO_ADDR(PIXEL_PORT)),
-        [bit] "I"(PIXEL_BIT),
-        [onCycles] "I"(NS_TO_CYCLES(T0H) - 2),
-        [offCycles] "I"(NS_TO_CYCLES(T0L) - 2)
+        [ bit ] "I"(PIXEL_BIT),
+        [ onCycles ] "I"(NS_TO_CYCLES(T0H) - 2),
+        [ offCycles ] "I"(NS_TO_CYCLES(T0L) - 2)
 
     );
   }
@@ -1671,7 +1704,8 @@ void Pattern_Handler::setIdlePattern(Pattern *newIdlePattern)
   }
 };
 
-void Pattern_Handler::deletePatterns() {
+void Pattern_Handler::deletePatterns()
+{
   // Delete both patterns (will always either be NULL or a real Pattern object, so no error checking necessary)
   delete mainPattern;
   delete idlePattern;

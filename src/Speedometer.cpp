@@ -48,27 +48,27 @@ Speedometer::Speedometer()
 {
   //  Serial.println(F("Setting up Speedometer..."));
 
-  #if TIC_USE_LATCH
-  pinMode(RTICKPIN, INPUT); // Set the reference pin as input
-  pinMode(RESETTICKPIN, OUTPUT); // Set up the output reset pin, so that we can reset the SR latch
+#if TIC_USE_LATCH
+  pinMode(RTICKPIN, INPUT);         // Set the reference pin as input
+  pinMode(RESETTICKPIN, OUTPUT);    // Set up the output reset pin, so that we can reset the SR latch
   digitalWrite(RESETTICKPIN, HIGH); // Logic is active-low, so set the reset to be off (high)
-  #else
+#else
   // Set the reference pin as input (pullup, because the reed switch floats when not connected)
   pinMode(RTICKPIN, INPUT_PULLUP);
 
   // Set up the interrupt functions for rticPin
   attachInterrupt(digitalPinToInterrupt(RTICKPIN), rTicISR, FALLING);
-  #endif
+#endif
 
   if (numSwitches > 1)
   {
-    // If there is more than 1 switch, then use the remaining switches to determine the speed
-    #if TIC_USE_LATCH
+// If there is more than 1 switch, then use the remaining switches to determine the speed
+#if TIC_USE_LATCH
     pinMode(TICKPIN, INPUT); // Set the tic pin as input
-    #else
+#else
     pinMode(TICKPIN, INPUT_PULLUP);                                   // Set the tic pin as input (pullup, because the reed switch floats when not connected)
     attachInterrupt(digitalPinToInterrupt(TICKPIN), ticISR, FALLING); // Set up the interrupt functions for TICKPIN
-    #endif
+#endif
   }
 
   // Create the Kalman object
@@ -101,9 +101,9 @@ void Speedometer::mainLoop()
   // Evaluate any new tics that just came in
   //
 
-  #if TIC_USE_LATCH
+#if TIC_USE_LATCH
   //  If we are using an SR latch, we must first detect if a tic has occurred
-  
+
   // Record the raw inputs from the latch (still subject to debouncing)
   int tic = digitalRead(TICKPIN);
   int rTic = digitalRead(RTICKPIN);
@@ -119,7 +119,8 @@ void Speedometer::mainLoop()
   //   Serial.println((tic == HIGH) || (rTic == HIGH));
   // }
 
-  if ((tic == HIGH) || (rTic == HIGH)) {
+  if ((tic == HIGH) || (rTic == HIGH))
+  {
     // TODO: Debounce the input (probably not needed...)
     // if (DEBUGGING_TIC) {
     //   Serial.println(F("Got Tic"));
@@ -138,25 +139,27 @@ void Speedometer::mainLoop()
       //   Serial.println(F("Tic Debounced"));
       // }
       // If there has been any tic, then record it and its time
-      newTic = true; // Set the newTic flag for the main loop
+      newTic = true;       // Set the newTic flag for the main loop
       newReference = rTic; // Set the newReference flag for the main loop
       lastTicTime = timeAtThisTic;
 
       if (DEBUGGING_TIC)
       {
         // Serial.flush();
-        if (tic) {
+        if (tic)
+        {
           Serial.println(F("tic"));
-        } 
-        
-        if (rTic) {
+        }
+
+        if (rTic)
+        {
           Serial.println(F("rTic"));
         }
       }
     }
   }
-  
-  #else
+
+#else
   if (newTic)
   {
     // ticOn = true; // Indicate that a new tic pulse has just started
@@ -169,7 +172,7 @@ void Speedometer::mainLoop()
     // timeAtTicOn = micros();   // Record the current time in microseconds, for timing the pulse
     timeAtThisTic = millis(); // Record the current time in milliseconds, for timing between pulses
   }
-  #endif
+#endif
 
   //
   // See if the tic pins are still active
@@ -234,17 +237,17 @@ Kalman *Speedometer::getKalman()
 
 float Speedometer::getPos()
 {
-  return kalman.xTrue;
+  return kalman.getPos();
 }
 
 float Speedometer::getVel()
 {
-  return kalman.velTrue;
+  return kalman.getVel();
 }
 
 float Speedometer::getAcc()
 {
-  return kalman.accTrue;
+  return kalman.getAcc();
 }
 
 boolean Speedometer::isSlow()
@@ -301,20 +304,20 @@ Kalman::Kalman()
 
   // H
   H[0][0] = 1;
-  #if USE_VEL_MEASUREMENT
+#if USE_VEL_MEASUREMENT
   H[1][1] = 1;
-  #endif
-  // TODO: Eliminate Ht if H is always an only diagonal matrix?
-  // Transpose((float *)H, N_OBS, N_STA, (float *)Ht); // Transpose H to get Ht
+#endif
+// TODO: Eliminate Ht if H is always an only diagonal matrix?
+// Transpose((float *)H, N_OBS, N_STA, (float *)Ht); // Transpose H to get Ht
 
-  // R
-  #if USE_VEL_MEASUREMENT
+// R
+#if USE_VEL_MEASUREMENT
   // float r[N_OBS * N_OBS] = {.00001, 0, 0, .01};
   // float r[N_OBS * N_OBS] = {.10, 0, 0, .01};
   float r[N_OBS * N_OBS] = {10, 0, 0, 5};
-  #else
+#else
   float r[N_OBS] = {1};
-  #endif
+#endif
   setR(r);
   // R[0][0] = .00001; // .00001
   // R[1][1] = .01;    // .1
@@ -327,18 +330,15 @@ Kalman::Kalman()
   // F (partial, F is fully built when needed, as it depends on dt).  Make the diagonal ones, because each component is added to itself plus a linear sum of the others
   F[0][0] = 1;
   F[1][1] = 1;
-  #if USE_THREE_STATE_KALMAN
+#if USE_THREE_STATE_KALMAN
   F[2][2] = 1;
-  #endif
+#endif
 
   // Calculate the number of LEDs per segment
   nTicLEDs = (float)NUMLEDS / (float)NUMSWITCHES;
 
   // Set the location of the first measurement to be the length of a segment
   nextMeasurePos = 0;
-
-  // Set the current best guess for X as 0
-  xTrue = 0;
 }
 
 void Kalman::resetFilter()
@@ -353,43 +353,47 @@ void Kalman::resetFilter()
     Serial.println(F("Resetting Filter..."));
   }
 
-  // Set PPrior
-  #if USE_THREE_STATE_KALMAN
+// Set PPrior
+#if USE_THREE_STATE_KALMAN
   float p0[N_STA * N_STA] = {.01, 0, 0, 0, 5, 0, 0, 0, 5}; // Set an array for the initial PPrior
-  #else
+#else
   float p0[N_STA * N_STA] = {.1, 0, 0, .1}; // Set an array for the initial PPrior
-  #endif
+#endif
   setP0(p0);
 
-  for (unsigned char s = 0; s < N_STA; s++)
-  {
-    // Go through all state variable slots
-    xPost[s] = 0; // xPost - System starts at 0
+  // Set the velocity and acceleration to 0, but keep the position where it is (mostly just for Spinner patterns.)
+  xPost[1] = 0;
+  xPost[2] = 0;
 
-    // for (unsigned char s2 = 0; s2 < N_STA; s2++)
-    // {
-    //   // Go through all state variable slots (again)
-    //   if (s == s2)
-    //   {
-    //     if (s == 0)
-    //     {
-    //       PPost[s][s2] = 0; // PPost - Completely certain about position
-    //     }
-    //     else if (s == 1)
-    //     {
-    //       PPost[s][s2] = 1; // PPost - Somewhat certain about velocity
-    //     }
-    //     else if (s == 2)
-    //     {
-    //       PPost[s][s2] = 10; // PPost - Somewhat uncertain about acceleration
-    //     }
-    //   }
-    //   else
-    //   {
-    //     PPost[s][s2] = 0; // PPost - Completely certain in initial parameters
-    //   }
-    // }
-  }
+  // for (unsigned char s = 0; s < N_STA; s++)
+  // {
+  //   // Go through all state variable slots
+  //   xPost[s] = 0; // xPost - System starts at 0
+
+  //   // for (unsigned char s2 = 0; s2 < N_STA; s2++)
+  //   // {
+  //   //   // Go through all state variable slots (again)
+  //   //   if (s == s2)
+  //   //   {
+  //   //     if (s == 0)
+  //   //     {
+  //   //       PPost[s][s2] = 0; // PPost - Completely certain about position
+  //   //     }
+  //   //     else if (s == 1)
+  //   //     {
+  //   //       PPost[s][s2] = 1; // PPost - Somewhat certain about velocity
+  //   //     }
+  //   //     else if (s == 2)
+  //   //     {
+  //   //       PPost[s][s2] = 10; // PPost - Somewhat uncertain about acceleration
+  //   //     }
+  //   //   }
+  //   //   else
+  //   //   {
+  //   //     PPost[s][s2] = 0; // PPost - Completely certain in initial parameters
+  //   //   }
+  //   // }
+  // }
 
   if (DEBUGGING_KALMAN)
   {
@@ -413,33 +417,38 @@ void Kalman::resetFilter()
 void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasurement)
 {
   dt = timeAtThisMeasurement - timeAtLastMeasurement;
+  // Update the value of the next measurement
   if (isReference)
   {
     nextMeasurePos += (nLEDs - fmod(nextMeasurePos, nLEDs)); // A reference signal was just received, so snap the nextMeasurePos to the next highest multiple of nLEDs (nextMeasurePos should be the same before and after this line, but this is just a failsafe)
+  }
+  else
+  {
+    nextMeasurePos += nTicLEDs; // A normal tic was recieved, add the tic number of LEDs to the measurement
   }
 
   if (!isReset)
   {
     // Add a measurement to the Kalman filter
     z[0] = nextMeasurePos; // Position, in LEDs
-    #if USE_VEL_MEASUREMENT
-    z[1] = nTicLEDs / dt;  // Velocity, in LEDs per ms
-    #endif
+#if USE_VEL_MEASUREMENT
+    z[1] = nTicLEDs / dt; // Velocity, in LEDs per ms
+#endif
     //  z[2] = (sq(newVell) - sq(xPost[1])) / (2 * nTicLEDs); // LEDs per ms^2 (a = ((vf)^2  - (vi)^2)/(2*d) ) [ACCELERATION NOT MEASURED, TOO UNSTABLE]
 
     // Set the newMeasurement flag
     newMeasurement = true;
 
-    if (DEBUGGING_SPEED)
+    if (DEBUGGING_MEASUREMENT)
     {
       // Serial.flush();
       Serial.println(F("New measurement:"));
       Serial.print(F("x = "));
       Serial.println(z[0]);
-      #if USE_VEL_MEASUREMENT
+#if USE_VEL_MEASUREMENT
       Serial.print(F("v = "));
       Serial.println(z[1]);
-      #endif
+#endif
       Serial.println();
     }
   }
@@ -450,8 +459,7 @@ void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasure
   }
 
   // Do these every time, even if the filter is currently reset and more than maxTimeBetweenMeasurements has passed since the last measurement
-  timeAtLastMeasurement = timeAtThisMeasurement; // Update the timeAtLastMeasurement
-  nextMeasurePos += nTicLEDs;                    // Update the nextMeasurePos, for the next measurement
+  timeAtLastMeasurement = timeAtThisMeasurement; // Update the timeAtLastMeasurementk
 }
 
 void Kalman::initializeFilter(unsigned long dt, boolean isReference)
@@ -490,11 +498,11 @@ void Kalman::initializeFilter(unsigned long dt, boolean isReference)
   // If the filter has not just it has been less than maxTimeBetweenMeasurements
   xPost[0] = nextMeasurePos; // Position, in LEDs
   xPost[1] = nTicLEDs / dt;  // Velocity, in LEDs per ms
-  #if USE_THREE_STATE_KALMAN
-  xPost[2] = 0;              // Acceleration in LEDs per ms^2
-  #endif
-  isReset = false;           // Turn off the reset settings
-  
+#if USE_THREE_STATE_KALMAN
+  xPost[2] = 0; // Acceleration in LEDs per ms^2
+#endif
+  isReset = false; // Turn off the reset settings
+
   timeAtLastPredict = millis(); // Initialize the timeAtLastPredict to the current time to prepare for the prediction step
 
   if (DEBUGGING_SPEED)
@@ -513,7 +521,7 @@ void Kalman::mainLoop()
 
   if (isReset)
   {
-    // If the filter is currently in a reset state, then do not calculate the filter 
+    // If the filter is currently in a reset state, then do not calculate the filter
     if (DEBUGGING_SPEEDOMETER)
     {
       // Serial.flush();
@@ -569,10 +577,10 @@ void Kalman::mainLoop()
   // Build F (only modify the parts that depend on dt)
   F[0][1] = float(dt); // Position depends on v*dt
 
-  #if USE_THREE_STATE_KALMAN
-  F[0][2] = .5*float(sq(dt)); // Position depends on 1/2*a*(dt^2) component
-  F[1][2] = float(dt); // Velocity depends on a*dt
-  #endif
+#if USE_THREE_STATE_KALMAN
+  F[0][2] = .5 * float(sq(dt)); // Position depends on 1/2*a*(dt^2) component
+  F[1][2] = float(dt);          // Velocity depends on a*dt
+#endif
 
   // if (DEBUGGING_KALMAN && newMeasurement)
   // {
@@ -634,27 +642,31 @@ void Kalman::mainLoop()
     // Serial.print(F("Current memory: "));
     // Serial.println(freeRam());
     // Serial.flush();
-       for (int i = 0; i < N_STA; i++) {
-         for (int j = 0; j < N_STA; j++) {
-           Serial.print(F("(Old) PPost["));
-           Serial.print(i);
-           Serial.print(F("]["));
-           Serial.print(j);
-           Serial.print(F("] = "));
-           Serial.println(PPost[i][j]);
-         }
-       }
+    for (int i = 0; i < N_STA; i++)
+    {
+      for (int j = 0; j < N_STA; j++)
+      {
+        Serial.print(F("(Old) PPost["));
+        Serial.print(i);
+        Serial.print(F("]["));
+        Serial.print(j);
+        Serial.print(F("] = "));
+        Serial.println(PPost[i][j]);
+      }
+    }
 
-       for (int i = 0; i < N_STA; i++) {
-         for (int j = 0; j < N_STA; j++) {
-           Serial.print(F("F["));
-           Serial.print(i);
-           Serial.print(F("]["));
-           Serial.print(j);
-           Serial.print(F("] = "));
-           Serial.println(F[i][j]);
-         }
-       }
+    for (int i = 0; i < N_STA; i++)
+    {
+      for (int j = 0; j < N_STA; j++)
+      {
+        Serial.print(F("F["));
+        Serial.print(i);
+        Serial.print(F("]["));
+        Serial.print(j);
+        Serial.print(F("] = "));
+        Serial.println(F[i][j]);
+      }
+    }
     Serial.println();
   }
   // Calculate P a priori
@@ -662,36 +674,36 @@ void Kalman::mainLoop()
     // Generate the first part of the PPrior calculation
     float Ft[N_STA][N_STA];
     float PTemp[N_STA][N_STA];
-    Transpose((float *)F, N_STA, N_STA, (float *)Ft); // Calculate F transpose
-    Matrix.Multiply((float *)F, (float *)PPost, N_STA, N_STA, N_STA, (float *)PTemp); // PTemp = F*PPost
+    Transpose((float *)F, N_STA, N_STA, (float *)Ft);                                   // Calculate F transpose
+    Matrix.Multiply((float *)F, (float *)PPost, N_STA, N_STA, N_STA, (float *)PTemp);   // PTemp = F*PPost
     Matrix.Multiply((float *)PTemp, (float *)Ft, N_STA, N_STA, N_STA, (float *)PPrior); // PPrior = F*PPost*F'
   }
   {
-    // Generate the Q matrix
-    // Continuous White Noise Model (https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb)
-    #if USE_THREE_STATE_KALMAN
-    Q[0][0] = (pow(dt, 5)/20)*phi;
-    
-    Q[0][1] = (pow(dt, 4)/8)*phi;
-    Q[1][0] = (pow(dt, 4)/8)*phi;
+// Generate the Q matrix
+// Continuous White Noise Model (https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb)
+#if USE_THREE_STATE_KALMAN
+    Q[0][0] = (pow(dt, 5) / 20) * phi;
 
-    Q[0][2] = (pow(dt, 3)/6)*phi;
-    Q[2][0] = (pow(dt, 3)/6)*phi;
+    Q[0][1] = (pow(dt, 4) / 8) * phi;
+    Q[1][0] = (pow(dt, 4) / 8) * phi;
 
-    Q[1][1] = (pow(dt, 3)/3)*phi;
+    Q[0][2] = (pow(dt, 3) / 6) * phi;
+    Q[2][0] = (pow(dt, 3) / 6) * phi;
 
-    Q[1][2] = (sq(dt)/2)*phi;
-    Q[2][1] = (sq(dt)/2)*phi;
-    
-    Q[2][2] = dt*phi;
-    #else
-    Q[0][0] = (pow(dt, 3)/3)*phi;
+    Q[1][1] = (pow(dt, 3) / 3) * phi;
 
-    Q[1][0] = (sq(dt)/2)*phi;
-    Q[0][1] = (sq(dt)/2)*phi;
+    Q[1][2] = (sq(dt) / 2) * phi;
+    Q[2][1] = (sq(dt) / 2) * phi;
 
-    Q[1][1] = dt*phi;
-    #endif
+    Q[2][2] = dt * phi;
+#else
+    Q[0][0] = (pow(dt, 3) / 3) * phi;
+
+    Q[1][0] = (sq(dt) / 2) * phi;
+    Q[0][1] = (sq(dt) / 2) * phi;
+
+    Q[1][1] = dt * phi;
+#endif
   }
 
   Matrix.Add((float *)PPrior, (float *)Q, N_STA, N_STA, (float *)PPrior); // PPrior = F*PPost*F' + Q = N_STA*N_STA
@@ -702,26 +714,28 @@ void Kalman::mainLoop()
     Serial.println(F("Finished P A Priori..."));
     // Serial.print(F("Current memory: "));
     // Serial.println(freeRam());
-      //  for (int i = 0; i < N_STA; i++) {
-      //    for (int j = 0; j < N_STA; j++) {
-      //      Serial.print(F("PPost["));
-      //      Serial.print(i);
-      //      Serial.print(F("]["));
-      //      Serial.print(j);
-      //      Serial.print(F("] = "));
-      //      Serial.println(PPost[i][j]);
-      //    }
-      //  }
-       for (int i = 0; i < N_STA; i++) {
-         for (int j = 0; j < N_STA; j++) {
-           Serial.print(F("(New) PPrior["));
-           Serial.print(i);
-           Serial.print(F("]["));
-           Serial.print(j);
-           Serial.print(F("] = "));
-           Serial.println(PPrior[i][j]);
-         }
-       }
+    //  for (int i = 0; i < N_STA; i++) {
+    //    for (int j = 0; j < N_STA; j++) {
+    //      Serial.print(F("PPost["));
+    //      Serial.print(i);
+    //      Serial.print(F("]["));
+    //      Serial.print(j);
+    //      Serial.print(F("] = "));
+    //      Serial.println(PPost[i][j]);
+    //    }
+    //  }
+    for (int i = 0; i < N_STA; i++)
+    {
+      for (int j = 0; j < N_STA; j++)
+      {
+        Serial.print(F("(New) PPrior["));
+        Serial.print(i);
+        Serial.print(F("]["));
+        Serial.print(j);
+        Serial.print(F("] = "));
+        Serial.println(PPrior[i][j]);
+      }
+    }
     //    Serial.println();
     // delay(100);
   }
@@ -742,158 +756,164 @@ void Kalman::mainLoop()
     // Calculate the residual y
     {
       float yTemp[N_OBS];
-    Matrix.Multiply((float *)H, (float *)xPrior, N_OBS, N_STA, 1, (float *)yTemp); // y = H * xPriori
-    Subtract((float *)z, (float *)yTemp, N_OBS, 1, (float *)y);                    // y = z - H*xPriori
+      Matrix.Multiply((float *)H, (float *)xPrior, N_OBS, N_STA, 1, (float *)yTemp); // y = H * xPriori
+      Subtract((float *)z, (float *)yTemp, N_OBS, 1, (float *)y);                    // y = z - H*xPriori
 
-    if (DEBUGGING_KALMAN && (xPrior[1] < 0))
-    {
-      // Serial.flush();
-      Serial.print(F("z[0] = "));
-      Serial.println(z[0]);
-      #if USE_VEL_MEASUREMENT
-      Serial.print(F("z[1] = "));
-      Serial.println(z[1]);
-      #endif
+      if (DEBUGGING_KALMAN && (xPrior[1] < 0))
+      {
+        // Serial.flush();
+        Serial.print(F("z[0] = "));
+        Serial.println(z[0]);
+#if USE_VEL_MEASUREMENT
+        Serial.print(F("z[1] = "));
+        Serial.println(z[1]);
+#endif
 
-      Serial.print(F("procErr[0] = "));
-      Serial.println(yTemp[0]);
-      #if USE_VEL_MEASUREMENT
-      Serial.print(F("procErr[1] = "));
-      Serial.println(yTemp[1]);
-      #endif
-      
-      Serial.print(F("y[0] = "));
-      Serial.println(y[0]);
-      #if USE_VEL_MEASUREMENT
-      Serial.print(F("y[1] = "));
-      Serial.println(y[1]);
-      #endif
-      delay(100);
-    }
+        Serial.print(F("procErr[0] = "));
+        Serial.println(yTemp[0]);
+#if USE_VEL_MEASUREMENT
+        Serial.print(F("procErr[1] = "));
+        Serial.println(yTemp[1]);
+#endif
+
+        Serial.print(F("y[0] = "));
+        Serial.println(y[0]);
+#if USE_VEL_MEASUREMENT
+        Serial.print(F("y[1] = "));
+        Serial.println(y[1]);
+#endif
+        delay(100);
+      }
     }
 
     // Calculate S
     {
-    float STemp[N_OBS][N_STA];
-    Matrix.Multiply((float *)H, (float *)PPrior, N_OBS, N_STA, N_STA, (float *)STemp); // STemp = H*PPrior
-    Matrix.Multiply((float *)STemp, (float *)H, N_OBS, N_STA, N_OBS, (float *)S);     // S = H*PPrior*H'
-    // Matrix.Multiply((float *)STemp, (float *)Ht, N_OBS, N_STA, N_OBS, (float *)S);     // S = H*PPrior*H'
-    Matrix.Add((float *)S, (float *)R, N_OBS, N_OBS, (float *)S);                      //S = H*PPrior*H' + R
+      float STemp[N_OBS][N_STA];
+      Matrix.Multiply((float *)H, (float *)PPrior, N_OBS, N_STA, N_STA, (float *)STemp); // STemp = H*PPrior
+      Matrix.Multiply((float *)STemp, (float *)H, N_OBS, N_STA, N_OBS, (float *)S);      // S = H*PPrior*H'
+      // Matrix.Multiply((float *)STemp, (float *)Ht, N_OBS, N_STA, N_OBS, (float *)S);     // S = H*PPrior*H'
+      Matrix.Add((float *)S, (float *)R, N_OBS, N_OBS, (float *)S); //S = H*PPrior*H' + R
     }
 
     if (DEBUGGING_KALMAN && (xPrior[1] < 0))
     {
       // Serial.flush();
-      for (int r = 0;r < N_OBS;r++) {
-        for (int c = 0;c < N_OBS;c++) {
+      for (int r = 0; r < N_OBS; r++)
+      {
+        for (int c = 0; c < N_OBS; c++)
+        {
           Serial.print(F("S["));
-           Serial.print(r);
-           Serial.print(F("]["));
-           Serial.print(c);
-           Serial.print(F("] = "));
-           Serial.println(S[r][c]);
+          Serial.print(r);
+          Serial.print(F("]["));
+          Serial.print(c);
+          Serial.print(F("] = "));
+          Serial.println(S[r][c]);
         }
       }
     }
 
     // Calculate K
     {
-    float KTemp[N_STA][N_OBS];
-    int success = Matrix.Invert((float *)S, N_OBS);                                                   // Invert S (done in place, variable S is now equal to S^-1) TIME CONSUMING most likely...
-    if (success == 0) {
-      // If the matrix inversion failed, then seed the calculation with SOMETHING that it can use to continue
-      S[0][0] = 2e15;
-      #if USE_VEL_MEASUREMENT
-      S[1][0] = 6.77e11;
-      S[0][1] = 6.77e11;
-      S[1][1] = 2.25e8;
-      #endif
-    }
-    Matrix.Multiply((float *)PPrior, (float *)H, N_STA, N_STA, N_OBS, (float *)KTemp); // KTemp = PPrior*H'
-    // Matrix.Multiply((float *)PPrior, (float *)Ht, N_STA, N_STA, N_OBS, (float *)KTemp); // KTemp = PPrior*H'
-    Matrix.Multiply((float *)KTemp, (float *)S, N_STA, N_OBS, N_OBS, (float *)K);       // K = (PPrior*H')/S
+      float KTemp[N_STA][N_OBS];
+      int success = Matrix.Invert((float *)S, N_OBS); // Invert S (done in place, variable S is now equal to S^-1) TIME CONSUMING most likely...
+      if (success == 0)
+      {
+        // If the matrix inversion failed, then seed the calculation with SOMETHING that it can use to continue
+        S[0][0] = 2e15;
+#if USE_VEL_MEASUREMENT
+        S[1][0] = 6.77e11;
+        S[0][1] = 6.77e11;
+        S[1][1] = 2.25e8;
+#endif
+      }
+      Matrix.Multiply((float *)PPrior, (float *)H, N_STA, N_STA, N_OBS, (float *)KTemp); // KTemp = PPrior*H'
+      // Matrix.Multiply((float *)PPrior, (float *)Ht, N_STA, N_STA, N_OBS, (float *)KTemp); // KTemp = PPrior*H'
+      Matrix.Multiply((float *)KTemp, (float *)S, N_STA, N_OBS, N_OBS, (float *)K); // K = (PPrior*H')/S
     }
 
     if (DEBUGGING_KALMAN && (xPrior[1] < 0))
     {
       // Serial.flush();
-      for (int r = 0;r < N_STA;r++) {
-        for (int c = 0;c < N_OBS;c++) {
+      for (int r = 0; r < N_STA; r++)
+      {
+        for (int c = 0; c < N_OBS; c++)
+        {
           Serial.print(F("K["));
-           Serial.print(r);
-           Serial.print(F("]["));
-           Serial.print(c);
-           Serial.print(F("] = "));
-           Serial.println(K[r][c]);
+          Serial.print(r);
+          Serial.print(F("]["));
+          Serial.print(c);
+          Serial.print(F("] = "));
+          Serial.println(K[r][c]);
         }
       }
     }
 
     // Calculate xPost
     {
-    float xPostTemp[N_STA];
-    Matrix.Multiply((float *)K, (float *)y, N_STA, N_OBS, 1, (float *)xPostTemp); // xPostTemp = K*y
-    Matrix.Add((float *)xPrior, (float *)xPostTemp, N_STA, 1, (float *)xPost);    // xPost = xPrior + K*y
-    
+      float xPostTemp[N_STA];
+      Matrix.Multiply((float *)K, (float *)y, N_STA, N_OBS, 1, (float *)xPostTemp); // xPostTemp = K*y
+      Matrix.Add((float *)xPrior, (float *)xPostTemp, N_STA, 1, (float *)xPost);    // xPost = xPrior + K*y
 
-    if (DEBUGGING_KALMAN && ((xPrior[1] < 0) || (xPost[1] < 0)))
-    {
-      Serial.print(F("xUpdate[0] = "));
-      Serial.println(xPostTemp[0]);
-      Serial.print(F("xUpdate[1] = "));
-      Serial.println(xPostTemp[1]);
-      #if USE_THREE_STATE_KALMAN
-      Serial.print(F("xUpdate[2] = "));
-      Serial.println(xPostTemp[2]);
-      #endif
+      if (DEBUGGING_KALMAN && ((xPrior[1] < 0) || (xPost[1] < 0)))
+      {
+        Serial.print(F("xUpdate[0] = "));
+        Serial.println(xPostTemp[0]);
+        Serial.print(F("xUpdate[1] = "));
+        Serial.println(xPostTemp[1]);
+#if USE_THREE_STATE_KALMAN
+        Serial.print(F("xUpdate[2] = "));
+        Serial.println(xPostTemp[2]);
+#endif
 
-      Serial.print(F("xPost[0] = "));
-      Serial.println(xPost[0]);
-      Serial.print(F("xPost[1] = "));
-      Serial.println(xPost[1]);
-      #if USE_THREE_STATE_KALMAN
-      Serial.print(F("xPost[2] = "));
-      Serial.println(xPost[2]);
-      #endif
-    }
+        Serial.print(F("xPost[0] = "));
+        Serial.println(xPost[0]);
+        Serial.print(F("xPost[1] = "));
+        Serial.println(xPost[1]);
+#if USE_THREE_STATE_KALMAN
+        Serial.print(F("xPost[2] = "));
+        Serial.println(xPost[2]);
+#endif
+      }
     }
 
     // Calculate PPost
     {
-    float PPostTemp[N_STA][N_STA];
-    Matrix.Multiply((float *)K, (float *)H, N_STA, N_OBS, N_STA, (float *)PPostTemp);          // PPostTemp = K*H = N_STA*N_STA
-    Subtract((float *)I, (float *)PPostTemp, N_STA, N_STA, (float *)PPostTemp);                // PPostTemp = I - K*H = N_STA*N_STA
-    Matrix.Multiply((float *)PPostTemp, (float *)PPrior, N_STA, N_STA, N_STA, (float *)PPost); // PPost = (I - K*H)*PPrior = N_STA*N_STA
+      float PPostTemp[N_STA][N_STA];
+      Matrix.Multiply((float *)K, (float *)H, N_STA, N_OBS, N_STA, (float *)PPostTemp);          // PPostTemp = K*H = N_STA*N_STA
+      Subtract((float *)I, (float *)PPostTemp, N_STA, N_STA, (float *)PPostTemp);                // PPostTemp = I - K*H = N_STA*N_STA
+      Matrix.Multiply((float *)PPostTemp, (float *)PPrior, N_STA, N_STA, N_STA, (float *)PPost); // PPost = (I - K*H)*PPrior = N_STA*N_STA
 
-    // For original PPost calculation, stop here.  For rounding error compensation method, use below lines
-    #if USE_LOWERROR_PPOST
-    // TODO: Include check to see if we have enough RAM to do this...?
-    float PPostTemp2[N_STA][N_STA];
-    Transpose((float *)PPostTemp, N_STA, N_STA, (float *)PPostTemp2); // PPostTemp2 = PPostTemp = (I - K*H)' = N_STA*N_STA
-    Matrix.Multiply((float *) PPost, (float *)PPostTemp2, N_STA, N_STA, N_STA, (float *)PPostTemp); // PPostTemp = PPost*PPostTemp2 = (I - K*H)*PPrior*(I - K*H)' = N_STA*N_STA
-    
-    float KR[N_STA][N_OBS];
-    float KT[N_OBS][N_STA];
-    Matrix.Multiply((float *)K, (float *)R, N_STA, N_OBS, N_OBS, (float *)KR); // KR = K*R = N_STA*N_OBS
-    Transpose((float *)K, N_STA, N_OBS, (float *)KT); // KT = K' = N_OBS*N_STA
-    Matrix.Multiply((float *)KR, (float *) KT, N_STA, N_OBS, N_STA, (float *) PPostTemp2); // PPostTemp2 = K*R*K' = N_STA*N_STA
-    Matrix.Add((float *)PPostTemp, (float *)PPostTemp2, N_STA, N_STA, (float *) PPost); // PPost = PPostTemp + PPostTemp2 = (I - K*H)*PPrior*(I - K*H)' + K*R*K' = N_STA*N_STA
-    #endif
+// For original PPost calculation, stop here.  For rounding error compensation method, use below lines
+#if USE_LOWERROR_PPOST
+      // TODO: Include check to see if we have enough RAM to do this...?
+      float PPostTemp2[N_STA][N_STA];
+      Transpose((float *)PPostTemp, N_STA, N_STA, (float *)PPostTemp2);                              // PPostTemp2 = PPostTemp = (I - K*H)' = N_STA*N_STA
+      Matrix.Multiply((float *)PPost, (float *)PPostTemp2, N_STA, N_STA, N_STA, (float *)PPostTemp); // PPostTemp = PPost*PPostTemp2 = (I - K*H)*PPrior*(I - K*H)' = N_STA*N_STA
+
+      float KR[N_STA][N_OBS];
+      float KT[N_OBS][N_STA];
+      Matrix.Multiply((float *)K, (float *)R, N_STA, N_OBS, N_OBS, (float *)KR);           // KR = K*R = N_STA*N_OBS
+      Transpose((float *)K, N_STA, N_OBS, (float *)KT);                                    // KT = K' = N_OBS*N_STA
+      Matrix.Multiply((float *)KR, (float *)KT, N_STA, N_OBS, N_STA, (float *)PPostTemp2); // PPostTemp2 = K*R*K' = N_STA*N_STA
+      Matrix.Add((float *)PPostTemp, (float *)PPostTemp2, N_STA, N_STA, (float *)PPost);   // PPost = PPostTemp + PPostTemp2 = (I - K*H)*PPrior*(I - K*H)' + K*R*K' = N_STA*N_STA
+#endif
     }
 
     if (DEBUGGING_KALMAN && ((xPrior[1] < 0) || (xPost[1] < 0)))
     {
-        for (int i = 0; i < N_STA; i++) {
-          for (int j = 0; j < N_STA; j++) {
-            Serial.print(F("PPost["));
-            Serial.print(i);
-            Serial.print(F("]["));
-            Serial.print(j);
-            Serial.print(F("] = "));
-            Serial.println(PPost[i][j]);
-          }
+      for (int i = 0; i < N_STA; i++)
+      {
+        for (int j = 0; j < N_STA; j++)
+        {
+          Serial.print(F("PPost["));
+          Serial.print(i);
+          Serial.print(F("]["));
+          Serial.print(j);
+          Serial.print(F("] = "));
+          Serial.println(PPost[i][j]);
         }
-        Serial.println();
+      }
+      Serial.println();
       //    delay(500);
     }
 
@@ -942,7 +962,8 @@ void Kalman::mainLoop()
       // delay(100);
     }
     // copyArray<float>((float *)xPrior, (float *)xPost, N_STA);
-    for (int i = 0;i < N_STA;i++) {
+    for (int i = 0; i < N_STA; i++)
+    {
       xPost[i] = xPrior[i];
     }
 
@@ -988,13 +1009,13 @@ void Kalman::mainLoop()
     PPost[0][1] = PPrior[0][1];
     PPost[1][0] = PPrior[1][0];
     PPost[1][1] = PPrior[1][1];
-    #if USE_THREE_STATE_KALMAN
+#if USE_THREE_STATE_KALMAN
     PPost[0][2] = PPrior[0][2];
     PPost[1][2] = PPrior[1][2];
     PPost[2][0] = PPrior[2][0];
     PPost[2][1] = PPrior[2][1];
     PPost[2][2] = PPrior[2][2];
-    #endif
+#endif
 
     //    *xPost = *xPrior;
     //    **PPost = **PPrior;
@@ -1044,53 +1065,14 @@ void Kalman::mainLoop()
     // }
   }
 
-  //
-  // Constrain xTrue to be within [0 nLEDs)
-  //
-
-  // if (DEBUGGING_KALMAN)
-  // {
-  //   // Serial.flush();
-  //   Serial.println(F("Constraining xTrue..."));
-  //   delay(100);
-  //   Serial.print(F("xPost[0] is "));
-  //   Serial.println(xPost[0]);
-  //   delay(100);
-  //   Serial.print(F("fmodf(xPost[0], nLEDs) is "));
-  //   Serial.println(fmodf(xPost[0], nLEDs));
-  //   delay(100);
-  // }
-  // Set the true x to the difference added to the posteriori position during this loop
-  //  xTrue += xPost[0] - xInitial;
-  xTrue = fmodf(xPost[0], nLEDs);
-
-  // if (DEBUGGING_KALMAN)
-  // {
-  //   // Serial.flush();
-  //   Serial.println(F("Getting vel and acc..."));
-  //   delay(500);
-  // }
-  velTrue = xPost[1];
-  #if USE_THREE_STATE_KALMAN
-  accTrue = xPost[2];
-  #endif
-
-  //  Serial.println(xPost[1]);
-
-  // If xTrue goes above nLEDS, subtract nLEDS (make it a topological circle)
-  //  if (xTrue >= nLEDs) {
-  //    // May want to test timing of using a mod operator on xPost[0] instead?
-  //    xTrue -= nLEDs;
-  //  }
-
   if (DEBUGGING_SPEED)
   {
     Serial.print(F("Speed = "));
-    Serial.println(velTrue);
-    #if USE_THREE_STATE_KALMAN
+    Serial.println(getVel());
+#if USE_THREE_STATE_KALMAN
     Serial.print(F("Acc = "));
-    Serial.println(accTrue);
-    #endif
+    Serial.println(getAcc());
+#endif
     Serial.println();
     Serial.println();
   }
@@ -1101,6 +1083,23 @@ void Kalman::mainLoop()
   //   Serial.println(F("Finishing Kalman..."));
   //   delay(500);
   // }
+}
+
+float Kalman::getPos()
+{
+  // Constrain xTrue to be within [0 nLEDs)
+  return fmodf(xPost[0], nLEDs);
+  ; // No unit conversion necessary
+}
+
+float Kalman::getVel()
+{
+  return xPost[1] * 1000; // Convert to LED/s from LED/ms
+}
+
+float Kalman::getAcc()
+{
+  return xPost[2] * 1000 * 1000; // Convert to LED/(s^2) from LED/(ms^2)
 }
 
 void Kalman::setPhi(float newPhi)
