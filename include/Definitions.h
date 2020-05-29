@@ -66,7 +66,7 @@
 #define POWERPIN 5
 #define BLUETOOTHPIN_TX_TO_BT_RX 9
 #define BLUETOOTHPIN_RX_TO_BT_TX 8
-#define NUMSWITCHES 3
+#define NUMSWITCHES 4
 
 #define NUMLEDS 120                     // Must be an even number!!!
 #define NUM_BYTES_PER_IMAGE NUMLEDS / 2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)

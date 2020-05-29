@@ -45,10 +45,10 @@ void Pattern::anim(int xTrueRounded)
 void Pattern::sendLEDsWithOffset(int offset)
 {
   // Go through each LED, and send specified color to the LED strip
-  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+  for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)  // TODO: Update
   {
     // Find the image index to use by adding the offset to the LED number, and using modulus to stay within NUMLEDS
-    unsigned char imagePos = (unsigned char)posMod(LEDNum + offset, NUMLEDS);
+    unsigned char imagePos = (unsigned char)posMod(LEDNum + offset, NUMLEDS);  // TODO: Update
 
     // if (DEBUGGING_PATTERN) {
     //   if (LEDNum == 0) {
@@ -57,7 +57,7 @@ void Pattern::sendLEDsWithOffset(int offset)
     //     Serial.print(F(", offset: "));
     //     Serial.print(offset);
     //     Serial.print(F(", NumLEDs: "));
-    //     Serial.print(NUMLEDS);
+    //     Serial.print(NUMLEDS);  // TODO: Update
     //     Serial.print(F(", IP: "));
     //     Serial.println(imagePos);
     //     }
@@ -343,7 +343,7 @@ colorObj Pattern_Handler::getPreCalculatedColorInPos(unsigned char colorNum)
 
 unsigned char Pattern::getImageValInPos(unsigned char LEDNum)
 {
-  if (0 <= LEDNum && LEDNum < NUMLEDS)
+  if (0 <= LEDNum && LEDNum < NUMLEDS)  // TODO: Update
   {
     unsigned char imageInd = LEDNum >> 1; // Right bit-shift the incoming LED number to get the integer division by 2 of LEDNum (very fast, because I'm very cool)
 
@@ -357,7 +357,7 @@ unsigned char Pattern::getImageValInPos(unsigned char LEDNum)
       // The number is odd, we'll want the second nibble
       return valFromSecondNibble(image[imageInd]); // Get the value from the first nibble of the LEDNum/2 index of the image
     }
-    // return image[LEDNum]; // Old method (where size(image) == NUMLEDS)
+    // return image[LEDNum]; // Old method (where size(image) == NUMLEDS)  // TODO: Update
   }
   else
   {
@@ -573,7 +573,7 @@ void Pattern::setImage(unsigned char *imageIn)
   //    delay(100);
   //  }
   // Set the image to the new image
-  for (unsigned char i = 0; i < NUM_BYTES_PER_IMAGE; i++)
+  for (unsigned char i = 0; i < NUM_BYTES_PER_IMAGE; i++)  // TODO: Update
   {
     image[i] = imageIn[i];
   }
@@ -837,7 +837,7 @@ void Moving_Helper::advanceLEDPos()
   unsigned long thisLEDAdvanceTime = micros();
   unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated?
 
-  imageMovementPos = fmodf(imageMovementPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update imageMovementPos, and keep it between 0<=imageMovementPos<NUMLEDS
+  imageMovementPos = fmodf(imageMovementPos + ((float)dt / 1000000.0) * (float)rotateSpeed, NUMLEDS); // Update imageMovementPos, and keep it between 0<=imageMovementPos<NUMLEDS  // TODO: Update
   lastLEDAdvanceTime = thisLEDAdvanceTime;                                                            // Update lastLEDAdvanceTime
 };
 
@@ -947,7 +947,7 @@ void Spinner_Helper::advanceLEDPos(int xTrueRounded)
   imageMovementVel += ((trueVel - imageMovementVel) / ((float)inertia)); // (LED/ms)
 
   // Calculate the next position based on the physical model, and mod it to be within NUMLEDS
-  imageMovementPos = fmodf(imageMovementPos + imageMovementVel * ((float)dt), (float) NUMLEDS); // (LEDs)
+  imageMovementPos = fmodf(imageMovementPos + imageMovementVel * ((float)dt), (float) NUMLEDS); // (LEDs)  // TODO: Update
 
   // Remember the last true x position and calculation timestamp for next time
   lastTrueXPosition = xTrueRounded;
@@ -1574,7 +1574,7 @@ void Pattern_Handler::mainLoop()
     if (powerStateChangedOff)
     {
       // If the power state just changed, then send all blank values to ensure that the wheel is off
-      for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)
+      for (unsigned char LEDNum = 0; LEDNum < NUMLEDS; LEDNum++)  // TODO: Update
       {
         // For each LED, send a blank color
         controller::sendPixel(0, 0, 0, 0);

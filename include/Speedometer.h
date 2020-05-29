@@ -28,10 +28,9 @@ public:
   float getVel(); // LED/s
   float getAcc(); // LED/(s^2)
 
-  float checkNumLEDs()
-  {
-    return nLEDs;
-  };                        // REMOVE AFTER TESTING
+  void setNumLEDs(unsigned char numLEDs);
+  unsigned char getNumLEDs();
+
   void setPhi(float newPhi);    // Set a new value for Q
   void setP0(float *newP0); // Set a new P0 matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_states)
   void setR(float *newR);   // Set a new R matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_observed)
@@ -111,6 +110,10 @@ public:
   float getAcc();     // Acceleration
   boolean isSlow();   // Is the wheel moving too slow to get any reliable information?
   void resetFilter(); // Expose the Kalman filter's resetFilter() function publically
+
+  void setNumLEDs(unsigned char numLEDs); // Set the number of LEDs for the Kalman filter
+
+  unsigned char getNumLEDs(); // Get the number of LEDs from the Kalman filter
 
   Kalman *getKalman(); // Get a read-only pointer to the kalman object
 

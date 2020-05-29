@@ -74,12 +74,12 @@ Speedometer::Speedometer()
   // Create the Kalman object
   kalman = Kalman();
 
-  if (DEBUGGING_KALMAN)
-  {
-    Serial.print(F("nLEDs is "));
-    Serial.println(kalman.checkNumLEDs());
-    delay(100);
-  }
+  // if (DEBUGGING_KALMAN)
+  // {
+  //   Serial.print(F("nLEDs is "));
+  //   Serial.println(kalman.checkNumLEDs());
+  //   delay(100);
+  // }
 
   //  Serial.println(F("Speedometer set"));
 }
@@ -260,6 +260,14 @@ void Speedometer::resetFilter()
   kalman.resetFilter();
 }
 
+void Speedometer::setNumLEDs(unsigned char numLEDs) {
+  kalman.setNumLEDs(numLEDs);
+}
+
+unsigned char Speedometer::getNumLEDs() {
+  return kalman.getNumLEDs();
+}
+
 //// Define static members
 //boolean Speedometer::newTic = false;
 //boolean Speedometer::newReference = false;
@@ -334,8 +342,8 @@ Kalman::Kalman()
   F[2][2] = 1;
 #endif
 
-  // Calculate the number of LEDs per segment
-  nTicLEDs = (float)NUMLEDS / (float)NUMSWITCHES;
+  // Set the number of LEDs and the number of LEDs between each tic
+  setNumLEDs(NUMLEDS);
 
   // Set the location of the first measurement to be the length of a segment
   nextMeasurePos = 0;
@@ -1148,6 +1156,17 @@ void Kalman::setRElem(unsigned char row, unsigned char col, float newElem)
   {
     R[row][col] = newElem;
   }
+}
+
+void Kalman::setNumLEDs(unsigned char numLEDs) {
+  nLEDs = numLEDs;
+
+  // Calculate the number of LEDs per segment
+  nTicLEDs = (float)numLEDs / (float)NUMSWITCHES;
+}
+
+unsigned char Kalman::getNumLEDs() {
+  return nLEDs;
 }
 
 float Kalman::getPhi()

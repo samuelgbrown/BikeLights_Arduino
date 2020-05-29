@@ -73,7 +73,7 @@ public:
 private:
   bool groundRel = true;                          // Should the Pattern be calculated relative to the ground, or relative to the wheel (i.e. if ground-relative, a non-moving image will appear still from a person standing on the street.  If wheel-relative, a non-moving image will appear to rotate at the same rate as the wheel)
   Pattern_Handler *parent_handler = NULL;                // A pointer to the parent pattern_handler, used to get access to the color palette
-  unsigned char image[NUM_BYTES_PER_IMAGE] = {0}; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's)
+  unsigned char image[NUM_BYTES_PER_IMAGE] = {0}; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's) // TODO: Update
   // unsigned char * image = new unsigned char [NUM_BYTES_PER_IMAGE]; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's)
   Image_Helper *image_helper = NULL;              // The Image_Helper for this Pattern, which defines how the image moves
 
@@ -196,7 +196,7 @@ public:
   void addImagePosition(colorObj colorObjIn, unsigned char imagePosition); // (Bit of a weird one...) For use during the anim_preImagePosUpdate() loop in derived classes.  Replaces adding a colorObj to the controller::sendPixel() function, instead sending the pixel to this object's colorMemory buffer for further processing (offsetting by imageMovementPos and "blurring")
 
 protected:
-  colorObj colorMemory[NUMLEDS]; // An array of colorObj's that keeps track of the history of movements
+  colorObj colorMemory[NUMLEDS]; // TODO: Update this so it changes with new values of numLEDs from Android!!! An array of colorObj's that keeps track of the history of movements
 #endif
 
 private:

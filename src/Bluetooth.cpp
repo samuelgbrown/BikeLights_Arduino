@@ -927,13 +927,13 @@ void Bluetooth::mainLoop()
                     }
                     // Sending Bike wheel animation
                     // Send the firsts byte with the BWA meta-data
-                    btSer->writeNextMessageByte((unsigned char)NUMLEDS);
+                    btSer->writeNextMessageByte((unsigned char)NUMLEDS); // TODO: Update
                     btSer->writeNextMessageByte(pattern_handler->getNumColors());
 
                     if (DEBUGGING_BLUETOOTH)
                     {
                         Serial.print(F("Number of LEDs: "));
-                        Serial.println(NUMLEDS);
+                        Serial.println(NUMLEDS); // TODO: Update
                         Serial.print(F("Number of Colors: "));
                         Serial.println(pattern_handler->getNumColors());
                     }
