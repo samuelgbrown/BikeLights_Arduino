@@ -944,7 +944,7 @@ void Spinner_Helper::advanceLEDPos(int xTrueRounded)
   // }
 
   // Next, calculate the new velocity, using the difference equation dV_cur/dt = (V_set - V_cur)/I
-  imageMovementVel += ((trueVel - imageMovementVel) / ((float)inertia)); // (LED/ms)
+  imageMovementVel += (((trueVel - imageMovementVel) * dt) / ((float)inertia)); // (LED/ms)
 
   // Calculate the next position based on the physical model, and mod it to be within NUMLEDS
   imageMovementPos = fmodf(imageMovementPos + imageMovementVel * ((float)dt), (float) NUMLEDS); // (LEDs)  // TODO: Update

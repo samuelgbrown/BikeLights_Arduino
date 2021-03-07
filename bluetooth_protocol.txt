@@ -25,7 +25,7 @@ C (3uint) - A numerical representation of the type of information contained in t
     3 - Storage information
     4 - Battery information
     5 - Power state information
-CF (bool) - 1 if the message is a confirmation of a previously sent message, sent when the Arduino is ready for the next message; only first 2 bytes are sent (only used in Arduino->Android communication, to confirm that a 64-byte message was just received).  If CF = true, then the next byte will be the last byte of the message (2 bytes total) [NOTE: Not yet implemented in Arduino)
+CF (bool) - 1 if the message is a confirmation of a previously sent message, sent when the Arduino is ready for the next message; only first 2 bytes are sent (only used in Arduino->Android communication, to confirm that a 64-byte message was just received).  If CF = true, then the next byte will be the last byte of the message (2 bytes total)
 X - Unused
 The second byte will be sent iff the message is a confirmation (CF = true) OR the message is being sent from Android to Arduino
 TT (4uint) - The number of 64-byte messages required to convey this information
@@ -55,7 +55,7 @@ CT (4uint) - Color_ type
     R, B, G, W (8uint) - The brightness of the indicated LED for this color
 
     # # # # # # # # # # # # # # # # # #4 # # # # #
-    CT == 1: Time-based Color_ AND Velocity-based Color_
+    CT == 1 or CT == 2: Time-based Color_ AND Velocity-based Color_
     - b_NC -
     NC (8uint) - The number of colorObj_meta's that will be encoded in the following bytes
 

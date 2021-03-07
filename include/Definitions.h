@@ -68,7 +68,7 @@
 #define BLUETOOTHPIN_RX_TO_BT_TX 8
 #define NUMSWITCHES 4
 
-#define NUMLEDS 120                     // Must be an even number!!!
+#define NUMLEDS 96                     // Must be an even number!!!
 #define NUM_BYTES_PER_IMAGE NUMLEDS / 2 // The number of chars needed to store one image (each led will be stored in one nibble, i.e. half of a byte)
 #define NUMLIGHTSPERLED 4               // Total number of lights per LED (4 = RGBW, 3 = RGB)
 #define REEDDETECTIONDIAMETER 1

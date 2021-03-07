@@ -2,6 +2,10 @@
 	"folders": [
 		{
 			"path": "C:\\Users\\Samuel Brown\\Documents\\PlatformIO\\Projects\\Bike Lights"
+		},
+		{
+			"name": "Bike Lights",
+			"path": ".."
 		}
 	],
 	"settings": {
