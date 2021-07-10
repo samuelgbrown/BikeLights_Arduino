@@ -41,7 +41,7 @@ public:
 
   virtual ~Pattern(); // Destructor
 
-  virtual void anim(int xTrueRounded); // Animation function
+  virtual void anim(float xTrue); // Animation function
   void anim() { anim(0); };            // Define a parameter-less call to anim to be the same as claiming that the x position is always 0
 
   // // Functions to manage the "palette" array of Color_**'s, or the Color_'s that this pattern may show
@@ -71,8 +71,8 @@ public:
   signed char getHelperParameter() const; // Get the parameter for the Image_Helper assigned to this Pattern
 
 private:
-  bool groundRel = true;                          // Should the Pattern be calculated relative to the ground, or relative to the wheel (i.e. if ground-relative, a non-moving image will appear still from a person standing on the street.  If wheel-relative, a non-moving image will appear to rotate at the same rate as the wheel)
-  Pattern_Handler *parent_handler = NULL;                // A pointer to the parent pattern_handler, used to get access to the color palette
+  bool groundRel;                          // Should the Pattern be calculated relative to the ground, or relative to the wheel (i.e. if ground-relative, a non-moving image will appear still from a person standing on the street.  If wheel-relative, a non-moving image will appear to rotate at the same rate as the wheel)
+  Pattern_Handler *parent_handler;                // A pointer to the parent pattern_handler, used to get access to the color palette
   unsigned char image[NUM_BYTES_PER_IMAGE] = {0}; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's) // TODO: Update
   // unsigned char * image = new unsigned char [NUM_BYTES_PER_IMAGE]; // The image that will be painted onto the wheel, using the palette provided by Pattern_Handler.  Defined as an array of integers, each of which represents a "color index", or the index in the palette array that represents the color desired (initialized to 0's)
   Image_Helper *image_helper = NULL;              // The Image_Helper for this Pattern, which defines how the image moves
@@ -150,7 +150,7 @@ public:
 
   virtual ~Image_Helper() {}; // Default (virtual) destructor
 
-  virtual int getHelperOffset(int xTrueRounded) = 0; // Returns the image offset defined by this image helper.  Called once per loop, it must perform all necessary calculations to updating and returning the offset value
+  virtual float getHelperOffset(float xTrue) = 0; // Returns the image offset defined by this image helper.  Called once per loop, it must perform all necessary calculations to updating and returning the offset value
   bool isIdleAllowed();
   virtual IMAGE_HELPER_TYPE getType() = 0;
   virtual signed char getHelperParameter() = 0; // Get the parameter information for this Helper (can be expanded later on by making it into 2 functions: one to return the number of bytes required to encode the data, and another to assign the data to an array that will be assigned to a pointer passed to the function)
@@ -168,7 +168,7 @@ public:
   IMAGE_HELPER_TYPE getType() { return STATIC; } // Static image helper
   signed char getHelperParameter();
 
-  int getHelperOffset(int xTrueRounded); // Always returns a 0, because the image should not move
+  float getHelperOffset(float xTrue); // Always returns a 0, because the image should not move
 };
 
 // A helper class to describe Patterns that use a moving image
@@ -187,7 +187,7 @@ public:
   int getRotateSpeed();                           // Get the rotation speed
 
   // Image_Helper function
-  int getHelperOffset(int xTrueRounded); // Return the current image position
+  float getHelperOffset(float xTrue); // Return the current image position
 
   // Functions that require SRAM
 #if SRAM_ATTACHED
@@ -229,16 +229,16 @@ public:
 
   // TODO: Complete this Image_Helper!!!
   // Image_Helper function
-  int getHelperOffset(int xTrueRounded); // Return the current image position
+  float getHelperOffset(float xTrue); // Return the current image position
 
 private:
   signed char inertia = 10;                    // The inertia that the Spinner has
   float imageMovementPos = 0;                  // Current image reference position around the wheel
   float imageMovementVel = 0;                  // Current image reference velocity around the wheel
   unsigned long lastLEDAdvanceTime = micros(); // The time at which imageMovementPos was last updated
-  int lastTrueXPosition = 0;                   // The last x position of the wheel (used to calculate the wheel's current true speed)
+  float lastTrueXPosition = 0;                   // The last x position of the wheel (used to calculate the wheel's current true speed)
 
-  void advanceLEDPos(int xTrueRounded); // Advance the current location of the image reference position around the wheel
+  void advanceLEDPos(float xTrueRounded); // Advance the current location of the image reference position around the wheel
 };
 
 // // A main animation that features an image that appears to not rotate relative to the ground

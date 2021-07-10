@@ -30,11 +30,11 @@
 
 // Schematic of the latch:
 //
-// Reed Switch (through high-pass)-- S        Q ---- Tic
-//                                    \      /
-//                                     FlipFlop
-//                                    /      \ 
-// Reset (output from Arduino)------ R        ~Q ---
+// Reed Switch (through high-pass)-- S        Q ---- Tic    |
+//                                    \      /              |
+//                                     FlipFlop             |
+//                                    /      \              |
+// Reset (output from Arduino)------ R        ~Q ---        |
 
 // Unit testing
 #define UNITTEST_SPEEDOMETER false // Should only the speedometer be created and tested?
@@ -56,7 +56,9 @@
 #define DEBUGGING_BLUETOOTH false          // Debug the bluetooth connection
 #define DEBUGGING_PATTERN_SIZE false       // Debug the memory allocation of the pattern object
 #define DEBUGGING_BLUETOOTH_LOWLEVEL false // Debug the bluetooth connection
-#define DEBUGGING_ANY !BLUETOOTH_USE_HARDWARESERIAL && (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_DYNAMICCOLOR || DEBUGGING_TIC || DEBUGGING_MEASUREMENT || DEBUGGING_SPINNER || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
+#define DEBUGGING_BTDEBUG false             // Debug the Bluetooth debugging interface
+// #define DEBUGGING_ANY !BLUETOOTH_USE_HARDWARESERIAL && (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_DYNAMICCOLOR || DEBUGGING_TIC || DEBUGGING_MEASUREMENT || DEBUGGING_SPINNER || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || LIBRARY_TEST)
+#define DEBUGGING_ANY (DEBUGGING_GENERAL || DEBUGGING_Q || DEBUGGING_DYNAMICCOLOR || DEBUGGING_TIC || DEBUGGING_MEASUREMENT || DEBUGGING_SPINNER || DEBUGGING_SPEED || DEBUGGING_PATTERN || DEBUGGING_SPEEDOMETER || DEBUGGING_KALMAN || UNITTEST_SPEEDOMETER || DEBUGGING_BLUETOOTH || DEBUGGING_BTDEBUG || LIBRARY_TEST)
 
 // These are the only two interrupt pins that can be used for an external interrupt request
 // Process can be sped up by using pin change interrupt and attaching interrupt by hand, using pins from different batches: https://arduino.stackexchange.com/questions/1784/how-many-interrupt-pins-can-an-uno-handle
@@ -81,6 +83,19 @@
 #define MAXTIMEBEWTEENTICS 1500
 
 #define TOTAL_MEMORY 2048
+
+// For debugging
+// TO USE BLUETOOTH DEBUGGING: Over a bluetooth terminal interface, send "dN", where N is the number of the debug code you would like to use (below)
+#define DEBUG_BUF_SIZE 24
+#define DEBUG_MAX_DIGITS 3 // Max of 999 debug codes (sue me)
+#define ASCII_SPACE_32 32 // The ASCI value of " "
+#define ASCII_ZERO_48 48 // The ASCI value of "0"
+#define DEBUG_NONE 255 // To display the help screen
+#define DEBUG_HELP_0 0 // To display the help screen
+#define DEBUG_TIC_INFO_1 1 // To get notified when a tic occurs (and of what type)
+#define DEBUG_BLOCK_EXTRA_REF_2 2 // To test the block extra reference tics method!
+#define DEBUG_RENAME_BLUETOOTH_3 3 // To rename the Bluetooth device (Note: NOT POSSIBLE WITH CURRENT CIRCUIT (key pin is not connected))
+#define DEBUG_DEBUG_9 9 // To debug the debugging (BWAAAAAAA)
 
 // For Kalman filtering
 #if USE_THREE_STATE_KALMAN
@@ -117,6 +132,8 @@
 class Color_;
 class Pattern_Handler;
 class colorObj;
+class Bluetooth;
+class Speedometer;
 
 // Define enums used for different animations
 // enum MAIN_ANIM

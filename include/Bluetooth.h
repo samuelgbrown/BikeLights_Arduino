@@ -22,7 +22,7 @@ class btSerialWrapper
 {
 public:
     // Construct a stream wrapper object
-    btSerialWrapper(Stream *stream);
+    btSerialWrapper(Stream *stream, Bluetooth * BT);
 
     // Functions for receiving messages
     // Get the next byte(s) in the stream, if available
@@ -55,13 +55,27 @@ public:
 
     Stream *stream; // Required by only constructor TODO: Make private again!!!
 
+    // Debugging the debugging (shut up)
+    unsigned char getDebugCode();
+    void extractDebugCode();
+    void processDebugCode();
+    char debugRequestChar[DEBUG_BUF_SIZE] = {'\0'};
+    void printStr(char * str);
+    void printPROGMEMStr(const char * str);
+
+
 private:
     // Meta data from the message
     unsigned char totalMessages = 0;
     unsigned char content = 0;
     bool request = false;
 
-    // Information for keeping of where we are in the entire communication
+    // Debugging
+    unsigned char debugCode = DEBUG_NONE; // The debug code (to be calculated)
+    unsigned char debugMessageStart = 0;
+    Bluetooth * BT = NULL; // Pointer to the parent Bluetooth object
+
+    // Information for keeping track of where we are in the entire communication
     int curMessageNum = 0; // The message that is being read now (or is being waited on being delivered)
     unsigned char nextByteNum = 0;   // The byte that will be read next
 };
@@ -74,6 +88,12 @@ public:
     ~Bluetooth();
 
     void mainLoop(); // The main loop that is called repeatedly for the Bluetooth class
+
+    // For debugging
+    void sendStr(char * str);
+    void sendStrPROGMEM(const char * str);
+    bool toggleSpeedometerDebugCode(unsigned char debugCode);
+
 
 #if USE_NANOPB
     // Decode methods (Generate local classes from a protocol buffer stream)
@@ -99,7 +119,7 @@ public:
 
 private:
 #if BLUETOOTH_USE_HARDWARESERIAL
-    btSerialWrapper * btSer = new btSerialWrapper(&Serial); // Initialize the Serial connection to the bluetooth device (HC06)
+    btSerialWrapper * btSer = new btSerialWrapper(&Serial, this); // Initialize the Serial connection to the bluetooth device (HC06)
 #else
     btSerialWrapper * btSer = new btSerialWrapper(new SoftwareSerial(BLUETOOTHPIN_RX_TO_BT_TX, BLUETOOTHPIN_TX_TO_BT_RX)); // Initialize the Serial connection to the bluetooth device (HC06)
 #endif

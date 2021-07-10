@@ -13,9 +13,11 @@
 
 #include "Arduino.h"
 #include "Definitions.h"
+#include "Bluetooth.h"
 #include <MatrixMath.h>
 #include <math.h>
 
+class Bluetooth;
 class Kalman
 {
 public:
@@ -117,6 +119,11 @@ public:
 
   Kalman *getKalman(); // Get a read-only pointer to the kalman object
 
+  // For debugging:
+  void setBluetooth(Bluetooth * newBTPointer);
+  bool toggleDebugging(unsigned char debugCode); // For toggling a debug flag
+  bool isDebugging(unsigned char debugCode); // For checking if a certain debug flag is set
+
 private:
   unsigned char numSwitches = NUMSWITCHES; // Number of reed switches that are on the bike wheel (including the reference switch)
   // int ticPin = TICKPIN;                    // Pin that the reed switches sets HIGH, stored as a PHYSICAL PIN, not an interupt pin
@@ -148,6 +155,12 @@ private:
   float currentReferenceLED = 0; // The index of the reference (top-most LED when upright) location for the LEDs
   float currentTopLED = 0;       // The index of the top-most LED on the wheel (always shows the index of the LED at the top of the wheel over time)
   float currentWheelSpeed = 0;   // The speed of the wheel, measured in the number of LEDS that traverse a point on the wheel per second
+
+  // For debugging
+  Bluetooth *bt = NULL; // A pointer to the Bluetooth object, for debugging
+  bool debug_tic_info = false; // Should the tic info be sent over Bluetooth?
+  bool debug_block_extra_ref = false; // Should the extra reference tics be blocked?
+  bool debug_readyForRef = true; // For the block extra reference tic function: are we ready for the next reference tic?
 };
 
 #endif

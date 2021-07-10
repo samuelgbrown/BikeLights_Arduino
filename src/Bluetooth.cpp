@@ -224,7 +224,11 @@ void Bluetooth::mainLoop()
             int freeRamNow = freeRam();
 
             // Read the meta-data from the information that is now in the Bluetooth buffer, to initialize btSer member variables.
-            btSer->initReceiveMessage();
+            bool isValid = btSer->initReceiveMessage();
+            if (!isValid) {
+                // If it is "not valid", it means that it's either an error or a debug code, so no further processing is needed
+                return;
+            }
 
             // while (messageNum < totalNumMessages) {
             if (!btSer->isRequest())
@@ -1300,7 +1304,20 @@ void Bluetooth::mainLoop()
     }
 }
 
-btSerialWrapper::btSerialWrapper(Stream *stream) : stream(stream)
+void Bluetooth::sendStr(char * str) {
+    btSer->printStr(str);
+}
+
+void Bluetooth::sendStrPROGMEM(const char * str) {
+    // Print a string that is stored in program memory (if we just printed it on its own, it would read from the address that str points to in RAM, not PROGMEM)
+    btSer->printPROGMEMStr(str);
+}
+
+bool Bluetooth::toggleSpeedometerDebugCode(unsigned char debugCode) {
+    return speedometer->toggleDebugging(debugCode);
+}
+
+btSerialWrapper::btSerialWrapper(Stream *stream, Bluetooth * BT) : stream(stream), BT(BT)
 {
 #if BLUETOOTH_USE_HARDWARESERIAL
     ((HardwareSerial *)stream)->begin(BLUETOOTH_BAUD);
@@ -1330,20 +1347,51 @@ void btSerialWrapper::setCurMessageNum(int newCurMessageNum)
 bool btSerialWrapper::initReceiveMessage()
 {
     // This function reads the meta-data from the next message, if it exists, and returns if the meta-data was successfully read
-
     if (nextByteNum == 0)
     {
         // We have not yet read the meta-data.  Extract this first
 
-        if (DEBUGGING_BLUETOOTH_LOWLEVEL)
+        if (DEBUGGING_BLUETOOTH_LOWLEVEL || DEBUGGING_BTDEBUG)
         {
-            // Serial.println(F("      Initializing message..."));
+            Serial.println(F("      Got message..."));
         }
         // Read the first two bytes into a temporary buffer
         unsigned char tmpStreamBuf[2];
-        stream->readBytes(tmpStreamBuf, 2);
+        size_t numIncomingBytes = stream->readBytes(tmpStreamBuf, 2); // Minus one to get rid of the null terminator
 
         // Read the data from this temporary buffer
+        if (tmpStreamBuf[0] == 'd') // NOTE: 'd' == 0b01100100.  This byte series should not occur unless via terminal debugging
+        {
+            // If this is a debug request
+            if (numIncomingBytes == 1)
+            {
+
+                // If we only read one byte, then the user is requesting the help info.
+                debugCode = DEBUG_HELP_0;
+            }
+            else
+            {
+                unsigned char curBufLoc = 0;
+                if (tmpStreamBuf[1] != ASCII_SPACE_32)
+                {
+                    // Ignore spaces
+                    debugRequestChar[curBufLoc] = tmpStreamBuf[1];
+                    curBufLoc++;
+                }
+
+                // Read the debug request
+                stream->readBytesUntil('\n', &debugRequestChar[curBufLoc], DEBUG_BUF_SIZE - curBufLoc - 1);
+
+                // Extract the debug code (and message, if applicable)
+                extractDebugCode();
+            }
+
+            // Process the debug request
+            processDebugCode();
+
+            // Return an "error" so the remaining communication processing doesn't occur, because we've done everything we need to
+            return false;
+        }
         request = getBoolFromByte(tmpStreamBuf[0], 7);                          // Determine if this is a request for information, or a message containing infromation
         content = getNUIntFromByte(tmpStreamBuf[0], 3, 4);                      // Get the type of content that is being requested or sent
         totalMessages = getNUIntFromByte(tmpStreamBuf[1], 4, 4);                // Get the total number of messages
@@ -1431,6 +1479,136 @@ bool btSerialWrapper::initReceiveMessage()
 //         }
 //     }
 // }
+
+unsigned char btSerialWrapper::getDebugCode() {
+    return debugCode;
+}
+
+void btSerialWrapper::extractDebugCode() {
+    // Now parse the string to get the debug code (and info on the debug message, if applicable)
+    unsigned char debugCodeBuf[DEBUG_MAX_DIGITS] = {0}; // The debug code buffer (used to calculate the debug code)
+    char debugCodeLoc = DEBUG_MAX_DIGITS - 1;               // The location in the debug code buffer
+    unsigned curBufLoc = 0;                       // The location in the request buffer as it is processed
+
+
+    for (curBufLoc = 0; curBufLoc < DEBUG_BUF_SIZE; curBufLoc++)
+    {
+        // For each character in the request buffer
+        if (debugCodeLoc < 0)
+        {
+            // If we got all of the possible digits, calculate the debug code
+            debugCode = 0;
+            for (debugCodeLoc = DEBUG_MAX_DIGITS - 1; debugCodeLoc >= 0; debugCodeLoc--)
+            {
+                debugCode += debugCodeBuf[debugCodeLoc] * pow(10, DEBUG_MAX_DIGITS - debugCodeLoc - 1);
+            }
+
+            // If this is for renaming the bluetooth device, store the location of the message start (skip spaces, if necessary)
+            if (debugCode == DEBUG_RENAME_BLUETOOTH_3 || debugCode == DEBUG_DEBUG_9)
+            {
+                debugMessageStart = curBufLoc - 1; // The debug message starts right after this value
+                while (debugRequestChar[debugMessageStart] == ASCII_SPACE_32)
+                {
+                    // Skip spaces where required
+                    debugMessageStart++;
+                }
+            }
+
+            // After calculating the debug code, we can break from this loop
+            break;
+        }
+
+        unsigned char curVal = ((unsigned char)debugRequestChar[curBufLoc]) - ASCII_ZERO_48;
+        if (0 <= curVal && curVal <= 9)
+        {
+            // If this is a single digit, add it to our sum
+            debugCodeBuf[debugCodeLoc] = curVal;
+            debugCodeLoc--;
+        }
+        else
+        {
+            // This is no longer a digit, so say that we've got all of the debugNum digits
+            debugCodeLoc = -1;
+        }
+    }
+
+    // TODO: The debug code is now stored in debugCode, and the message for changing the bluetooth name is now stored at debugRequestChar[debugMessageStart] (is c-string, ends in null terminator)
+}
+
+void btSerialWrapper::printStr(char * str)
+{
+    stream->write(str);
+    stream->write("\n");
+}
+
+void btSerialWrapper::printPROGMEMStr(const char * str)
+{
+    // Write the PROGMEM string over bluetooth (if we just printed it on its own, it would read from the address that str points to in RAM, not PROGMEM)
+    for (byte i = 0; i < strlen_P(str); i++)
+    {
+        stream->write(pgm_read_byte_near(str + i));
+    }
+}
+
+void btSerialWrapper::processDebugCode() {
+    switch(debugCode)
+    {
+    case DEBUG_HELP_0:
+    {
+        // Send instructions on included debug codes
+        const static char debugHelp[] PROGMEM = "Debug info:\nd or d0: Brings up this menu.\nd1: Tic debugging\nd2: Block extra reference tics\nd3: (NOT IN USE) Follow with a name to rename the Bluetooth module.\n";
+        printPROGMEMStr(debugHelp);
+        break;
+    }
+    case DEBUG_TIC_INFO_1:
+    {
+        // Set up debug tic info
+        // First, make sure the speedometer has a pointer to this btSerialWrapper object
+        bool status = BT->toggleSpeedometerDebugCode(DEBUG_TIC_INFO_1);
+
+        const static char ticMessage[] PROGMEM = "Toggling tic monitoring.\n    Now set to: ";
+        printPROGMEMStr(ticMessage);
+        char returnVal[3];
+        sprintf(returnVal, "%d\n", status ? 1 : 0);
+        printStr(returnVal);
+        break;
+    }
+    case DEBUG_BLOCK_EXTRA_REF_2:
+    {
+        // Start blocking extra reference signals
+        // First, make sure the speedometer has a pointer to this btSerialWrapper object
+        bool status = BT->toggleSpeedometerDebugCode(DEBUG_BLOCK_EXTRA_REF_2);
+
+        const static char blockRefMessage[] PROGMEM = "Toggling Blocking extra reference tics.\n    Now set to: ";
+        printPROGMEMStr(blockRefMessage);
+        char returnVal[3];
+        sprintf(returnVal, "%d\n", status ? 1 : 0);
+        printStr(returnVal);
+        break;
+    }
+    case DEBUG_DEBUG_9:
+    {
+        // Return the debug message
+        const static char debugDebugPreMsg[] PROGMEM = "Got debug message:\n\n";
+        printPROGMEMStr(debugDebugPreMsg);
+
+        stream->write(&debugRequestChar[debugMessageStart]);
+
+        const static char debugDebugPostMsg[] PROGMEM = "\n\n";
+        printPROGMEMStr(debugDebugPostMsg);
+        break;
+    }
+    case DEBUG_NONE:
+    default:
+    {
+        // Do nothing
+        const static char unknownDebug[] PROGMEM = "Debug code not recognized!\nEnter 'd0' for help.\n";
+        printPROGMEMStr(unknownDebug);
+    }
+    }
+
+    debugCode = DEBUG_NONE;
+}
 
 bool btSerialWrapper::readNextMessageByte(unsigned char &byteDestination)
 {
@@ -1732,6 +1910,11 @@ void btSerialWrapper::resetCommunicationData()
     request = false;
     setCurMessageNum(0);
     nextByteNum = 0;
+
+    debugCode = DEBUG_NONE;
+    for (unsigned char i = 0;i < DEBUG_BUF_SIZE;i++) {
+        debugRequestChar[i] = '\0';
+    }
 }
 
 #if USE_NANOPB

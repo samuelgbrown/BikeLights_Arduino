@@ -4,7 +4,7 @@
 
 boolean newTic = false;
 boolean newReference = false;
-static unsigned long debounceTime = 100; // Use a debouncing time
+static unsigned long debounceTime = 10; // Use a debouncing time (TODO: May need to get rid of?  Was 100ms (changed on 6/6/21, already uploaded), interferes with higher speeds)
 unsigned long lastTicTime = 0;           // The time since the last interrupt was triggered (used in debugging)
 
 #if !TIC_USE_LATCH
@@ -108,6 +108,16 @@ void Speedometer::mainLoop()
   int tic = digitalRead(TICKPIN);
   int rTic = digitalRead(RTICKPIN);
 
+  if (debug_block_extra_ref && !debug_readyForRef) {
+    // If we are blocking extra reference tics for debugging:
+    // If we are not ready for another reference tic, then make sure no reference tics come through
+    rTic = LOW;
+  }
+
+  // TODO START HERE: Another idea for a false measurement mitigation:
+  //    If 3 tics have been read since the last rtic, do not accept any more.  If another tic occurs, then 1) ignore it, and 2) set a flag.
+  //    If the flag is set when an rtic is read, then re-initialize the Kalman filter with the location/speed as measured from the last valid rtic
+
   // if (DEBUGGING_TIC) {
   //   Serial.print(F("Pin is: "));
   //   Serial.println(digitalRead(RTICKPIN));
@@ -140,22 +150,38 @@ void Speedometer::mainLoop()
       // }
       // If there has been any tic, then record it and its time
       newTic = true;       // Set the newTic flag for the main loop
-      newReference = rTic; // Set the newReference flag for the main loop
+      newReference = (rTic == HIGH); // Set the newReference flag for the main loop
       lastTicTime = timeAtThisTic;
 
       if (DEBUGGING_TIC)
       {
         // Serial.flush();
-        if (tic)
+        if (tic == HIGH)
         {
           Serial.println(F("tic"));
         }
 
-        if (rTic)
+        if (rTic == HIGH)
         {
           Serial.println(F("rTic"));
         }
       }
+
+      if (debug_tic_info && bt) {
+        // If we need to print the tic's to Bluetooth, do so
+        if (tic == HIGH) {
+          const static char ticStr[] PROGMEM = "tic";
+          bt->sendStrPROGMEM(ticStr);
+        }
+        else if (rTic == HIGH)
+        {
+          const static char refTicStr[] PROGMEM = "REF tic";
+          bt->sendStrPROGMEM(refTicStr);
+        }
+      }
+
+      // For debugging: We are ready for a new reference if the last tic was NOT a reference.  Otherwise, block any new reference tics until the next non-reference
+      debug_readyForRef = !newReference;
     }
   }
 
@@ -233,6 +259,40 @@ void Speedometer::mainLoop()
 Kalman *Speedometer::getKalman()
 {
   return &kalman;
+}
+
+void Speedometer::setBluetooth(Bluetooth * newBTPointer) {
+  bt = newBTPointer;
+}
+
+bool Speedometer::isDebugging(unsigned char debugCode)
+{
+  switch (debugCode)
+  {
+  case DEBUG_TIC_INFO_1:
+    return debug_tic_info;
+  case DEBUG_BLOCK_EXTRA_REF_2:
+    return debug_block_extra_ref;
+  default:
+    return false;
+  }
+}
+
+bool Speedometer::toggleDebugging(unsigned char debugCode)
+{
+  switch (debugCode)
+  {
+  case DEBUG_TIC_INFO_1:
+    debug_tic_info ^= 1;
+    break;
+  case DEBUG_BLOCK_EXTRA_REF_2:
+    debug_block_extra_ref ^= 1;
+    break;
+  default:
+    break;
+  }
+
+  return isDebugging(debugCode);
 }
 
 float Speedometer::getPos()

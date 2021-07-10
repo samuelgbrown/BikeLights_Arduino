@@ -25,7 +25,7 @@ Pattern::Pattern(Pattern_Handler *parent_handler) : Pattern(parent_handler, new 
   //  setupColors(1);
 };
 
-Pattern::Pattern(Pattern_Handler *parent_handler, Image_Helper *image_helper, bool groundRel) : parent_handler(parent_handler), groundRel(groundRel)
+Pattern::Pattern(Pattern_Handler *parent_handler, Image_Helper *image_helper, bool groundRel) : groundRel(groundRel), parent_handler(parent_handler)
 {
   setImageHelper(image_helper);
 }
@@ -37,9 +37,9 @@ Pattern::~Pattern()
   // delete [] image;
 }
 
-void Pattern::anim(int xTrueRounded)
+void Pattern::anim(float xTrue)
 {
-  sendLEDsWithOffset((groundRel ? xTrueRounded : 0) - image_helper->getHelperOffset(xTrueRounded)); // Send the colors to the LED strip with an offset.  This offset will be modulus'd as needed.  The offset is defined as the negative of the helper's offset (so that positive offsets rotate the image forward), plus [xTrueRounded if the image position is defined relative to the ground, or 0 if the image position is defined relative to the wheel]
+  sendLEDsWithOffset((int) roundf((groundRel ? xTrue : 0) - image_helper->getHelperOffset(xTrue))); // Send the colors to the LED strip with an offset.  This offset will be modulus'd as needed.  The offset is defined as the negative of the helper's offset (so that positive offsets rotate the image forward), plus [xTrue if the image position is defined relative to the ground, or 0 if the image position is defined relative to the wheel]
 }
 
 void Pattern::sendLEDsWithOffset(int offset)
@@ -95,115 +95,8 @@ void Pattern_Handler::setupPalette(unsigned char numColorsIn)
     newColorArray[i] = new Color_Static();
   }
 
-  // unsigned char brightness = 50;
-
-  //  if (DEBUGGING_PATTERN) {
-  //    // Serial.flush();
-  //    Serial.println(F("Created color array..."));
-  //    Serial.print(F("Current memory: "));
-  //    Serial.println(freeRam());
-  //    Serial.println();
-  //  }
-
-  // Determine how many of the old colors should be preserved
-  // unsigned char numOldColorsToPreserve = min(numColorsIn, numColors);
-
-  //  if (DEBUGGING_PATTERN) {
-  //    // Serial.flush();
-  //    Serial.print(numOldColorsToPreserve);
-  //    Serial.println(F(" old colors being preserved."));
-  //    Serial.print(numColorsIn);
-  //    Serial.println(F(" colors in."));
-  //    Serial.print(numColors);
-  //    Serial.println(F(" colors exist now."));
-  //  }
-
-  // for (unsigned char i = 0; i < numOldColorsToPreserve; i++)
-  // {
-  //   if (DEBUGGING_PATTERN)
-  //   {
-  //     // Serial.flush();
-  //     Serial.print(F("Cloning color "));
-  //     Serial.println(i);
-  //     // delay(1000);
-  //     Serial.print(F("R = "));
-  //     Serial.print(palette[i]->getColor().r());
-  //     Serial.print(F(", G = "));
-  //     Serial.print(palette[i]->getColor().g());
-  //     Serial.print(F(", B = "));
-  //     Serial.print(palette[i]->getColor().b());
-  //     Serial.print(F(", W = "));
-  //     Serial.println(palette[i]->getColor().w());
-  //     // delay(1000);
-  //   }
-  //   newColorArray[i] = palette[i]->clone();
-  // }
-
-  //  if (DEBUGGING_PATTERN) {
-  //    // Serial.flush();
-  //    Serial.println(F("Cloned old color array..."));
-  //    Serial.print(F("Current memory: "));
-  //    Serial.println(freeRam());
-  //    Serial.println();
-  //    //    delay(500);
-  //    //      Serial.println(numOldColorsToPreserve);
-  //    //      Serial.println(numColorsIn);
-  //  }
-
-  // Fill in the rest of the array with static default colors
-  // for (unsigned char i = numOldColorsToPreserve; i < numColorsIn; i++)
-  // {
-  //    if (DEBUGGING_PATTERN) {
-  //    // Serial.flush();
-  //    Serial.print(F("Adding color number "));
-  //    Serial.println(i);
-  //    delay(500);
-  //    //      Serial.println(numOldColorsToPreserve);
-  //    //      Serial.println(numColorsIn);
-  //  }
-  // if (i == 0)
-  // {
-  // newColorArray[i] = new Color_Static();
-  // }
-  // else if ((i % 4) == 1)
-  // {
-  //   newColorArray[i] = new Color_Static(0, 0, 0, brightness);
-  // }
-  // else if ((i % 4) == 2)
-  // {
-  //   newColorArray[i] = new Color_Static(brightness, 0, 0, 0);
-  // }
-  // else if ((i % 4) == 3)
-  // {
-  //   newColorArray[i] = new Color_Static(0, brightness, 0, 0);
-  // }
-  // else if ((i % 4) == 0)
-  // {
-  //   newColorArray[i] = new Color_Static(0, 0, brightness, 0);
-  // }
-  // }
-
-  //  if (DEBUGGING_PATTERN) {
-  //    // Serial.flush();
-  //    Serial.println(F("Initialized Color array..."));
-  //    Serial.print(F("Current memory: "));
-  //    Serial.println(freeRam());
-  //    Serial.println();
-  //  }
-
   setupPalette(newColorArray, numColorsIn);
 
-  // Delete newColorArray
-  //  for (int i = 0;i<numColorsIn;i++) { // Do not delete the objects that these points point to, because they are in "colors"
-  //    delete newColorArray[i];
-  //  }
-
-  // delete[] newColorArray;
-
-  //  if (DEBUGGING_PATTERN) {
-  //    Serial.println(F("Deleted temporary color array"));
-  //    //    delay(500);
-  //  }
 };
 
 void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColorsIn)
@@ -227,63 +120,10 @@ void Pattern_Handler::setupPalette(Color_ **newColorArray, unsigned char numColo
   }
   // TODO: Change this function so that it takes ownership of the incoming array, so that it does not need to be deleted
 
-  //  if (DEBUGGING_PATTERN) {
-  //    Serial.println(F("Checking input color array for first empty..."));
-  //    Serial.print(F("Current memory: "));
-  //    Serial.println(freeRam());
-  //    delay(500);
-  //  }
-
-  // if (!newColorArray[0]->isThisEmpty())
-  // {
-  //   // If the first color is not empty, then add a new blank color in the beginning
-  //   numColorsIn++;                                        // Increase the number of colors
-  //   Color_ **newerColorArray = new Color_ *[numColorsIn]; // Deleted at the end of this function
-  //   newerColorArray[0] = new Color_Static();              // Create a new blank object
-  //   for (unsigned char i = 1; i < numColorsIn; i--)
-  //   {
-  //     newerColorArray[i] = newColorArray[i - 1];
-  //   }
-
-  //   // Oh god please let this actually be real code
-  //   delete[] newColorArray;
-  //   newColorArray = newerColorArray;
-  //   delete[] newerColorArray;
-  // }
-
-  //  if (DEBUGGING_PATTERN) {
-  //    Serial.println(F("Copying input color array..."));
-  //    Serial.print(F("Current memory: "));
-  //    Serial.println(freeRam());
-  //    delay(500);
-  //  }
-
   preCalculatedColors = new colorObj[numColorsIn]; // Allocate space for the preCalculatedColors array
 
-  // palette = new Color_ *[numColorsIn];             // Allocate space for the color array
-  // copyArray<Color_ *>(newColorArray, palette, numColorsIn); // Copy over the pointers to the incoming Color_* array
   palette = newColorArray; // TODO: Should we use this method, of just transfering the array?  Go through all code and see if this would be ok.
   numColors = numColorsIn;
-
-  //  if (DEBUGGING_PATTERN) {
-  //    Serial.println(F("Copied array..."));
-  //    Serial.print(F("Current memory: "));
-  //    Serial.println(freeRam());
-  //    for (unsigned char i = 0; i < numColorsIn; i++) {
-  //      // Serial.flush();
-  //      Serial.print(F("Color "));
-  //      Serial.print(i);
-  //      Serial.print(F(": R = "));
-  //      Serial.print(colors[i]->getColor().r());
-  //      Serial.print(F(", G = "));
-  //      Serial.print(colors[i]->getColor().g());
-  //      Serial.print(F(", B = "));
-  //      Serial.print(colors[i]->getColor().b());
-  //      Serial.print(F(", W = "));
-  //      Serial.println(colors[i]->getColor().w());
-  //      //      delay(500);
-  //    }
-  //  }
 };
 
 #if USE_NANOPB
@@ -802,7 +642,7 @@ bool Image_Helper::isIdleAllowed()
 
 Static_Helper::Static_Helper() : Image_Helper() {}
 
-int Static_Helper::getHelperOffset(int xTrueRounded)
+float Static_Helper::getHelperOffset(float xTrueRounded)
 {
   return 0; // Always return 0, so that the image does not move
 }
@@ -826,10 +666,10 @@ int Moving_Helper::getRotateSpeed()
   return rotateSpeed;
 }
 
-int Moving_Helper::getHelperOffset(int xTrueRounded)
+float Moving_Helper::getHelperOffset(float xTrueRounded)
 {
   advanceLEDPos();                               // Advance the LED position, based on the current time
-  return (unsigned char)round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
+  return imageMovementPos; // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
 }
 
 void Moving_Helper::advanceLEDPos()
@@ -914,31 +754,31 @@ unsigned char Spinner_Helper::getInertia()
   return inertia;
 }
 
-int Spinner_Helper::getHelperOffset(int xTrueRounded)
+float Spinner_Helper::getHelperOffset(float xTrue)
 {
-  advanceLEDPos(xTrueRounded);                   // Advance the LED position, based on the current time
-  return (unsigned char)round(imageMovementPos); // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
+  advanceLEDPos(xTrue);                   // Advance the LED position, based on the current time
+  return imageMovementPos; // Return the newly calculated image offset, converted from float to unsigned char.  TODO: Check that this maps the float value properly
 }
 
-void Spinner_Helper::advanceLEDPos(int xTrueRounded)
+void Spinner_Helper::advanceLEDPos(float xTrue)
 {
   // TODO: Write the Spinner image type!!!
   // First, calculate the change in time since the last update
   unsigned long thisLEDAdvanceTime = millis();
-  unsigned long dt = thisLEDAdvanceTime - lastLEDAdvanceTime; // How much time as passed since the LED position was last updated? (ms)
+  float dt = (float) (thisLEDAdvanceTime - lastLEDAdvanceTime); // How much time as passed since the LED position was last updated? (ms)
 
   // Next, calculate the wheel's true velocity, using the last recorded true X position
-  if (xTrueRounded < lastTrueXPosition)
+  if (xTrue < lastTrueXPosition)
   {
     // If the new x position is less than the old position, assume that we have wrapped around the wheel back to the beginning.  Assume further that we are not moving more than the distance of a full wheel rotation in one program tick
     lastTrueXPosition -= NUMLEDS; // Remove NUMLEDS from the value, so we get a positive velocity
   }
-  float trueVel = ((float)(xTrueRounded - lastTrueXPosition)) / ((float)dt); // Also known as V_set, or the set velocity (LED/ms)
+  float trueVel = (xTrue - lastTrueXPosition) / dt; // Also known as V_set, or the set velocity (LED/ms)
 
   // if (DEBUGGING_SPINNER)
   // {
   //   Serial.print(F("diff = "));
-  //   Serial.println((float)(xTrueRounded - lastTrueXPosition));
+  //   Serial.println((float)(xTrue - lastTrueXPosition));
   //   Serial.print(F("floatDT = "));
   //   Serial.println((float)(dt));
   // }
@@ -947,24 +787,24 @@ void Spinner_Helper::advanceLEDPos(int xTrueRounded)
   imageMovementVel += (((trueVel - imageMovementVel) * dt) / ((float)inertia)); // (LED/ms)
 
   // Calculate the next position based on the physical model, and mod it to be within NUMLEDS
-  imageMovementPos = fmodf(imageMovementPos + imageMovementVel * ((float)dt), (float) NUMLEDS); // (LEDs)  // TODO: Update
+  imageMovementPos = fmodf(imageMovementPos + imageMovementVel * dt, (float) NUMLEDS); // (LEDs)  // TODO: Update
 
   // Remember the last true x position and calculation timestamp for next time
-  lastTrueXPosition = xTrueRounded;
-  lastLEDAdvanceTime = thisLEDAdvanceTime;               
+  lastTrueXPosition = xTrue;
+  lastLEDAdvanceTime = thisLEDAdvanceTime;
 
   if (DEBUGGING_SPINNER)
   {
-    Serial.print(F("xTrueRounded = "));
-    Serial.println(xTrueRounded);
+    Serial.print(F("xTrue = "));
+    Serial.println(xTrue);
     Serial.print(F("imageMovementPos = "));
     Serial.println(imageMovementPos);
     // Serial.print(F("ImageVel = "));
     // Serial.println(imageMovementVel);
     // Serial.print(F("TrueVel = "));
     // Serial.println(trueVel);
-    // Serial.print(F("xTrueRounded = "));
-    // Serial.println(xTrueRounded);
+    // Serial.print(F("xTrue = "));
+    // Serial.println(xTrue);
     Serial.println();
     Serial.println();
   }
@@ -1539,7 +1379,7 @@ void Pattern_Handler::mainLoop()
     preCalculateAllColor_();
 
     // Then, run the correct animation
-    if (speedometer->isSlow() && mainPattern->supportIdle())
+    if (mainPattern->supportIdle() && speedometer->isSlow())
     {
       // Wheel is moving slowly (and the main Pattern supports an idle function), do idle animation
 
@@ -1563,7 +1403,7 @@ void Pattern_Handler::mainLoop()
       //   //      Serial.println(mainPattern->allowIdle);
       //   delay(500);
       // }
-      mainPattern->anim((int)roundf(speedometer->getPos()));
+      mainPattern->anim(speedometer->getPos());
     }
 
     // Display the image

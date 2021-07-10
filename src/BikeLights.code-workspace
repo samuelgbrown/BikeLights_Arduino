@@ -6,6 +6,14 @@
 		{
 			"name": "Bike Lights",
 			"path": ".."
+		},
+		{
+			"name": "BL_Library_Testing",
+			"path": "..\\..\\BL_Library_Testing"
+		},
+		{
+			"name": "LED Strip Test",
+			"path": "..\\..\\LED Strip Test"
 		}
 	],
 	"settings": {
