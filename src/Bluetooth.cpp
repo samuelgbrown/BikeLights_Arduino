@@ -1365,7 +1365,6 @@ bool btSerialWrapper::initReceiveMessage()
             // If this is a debug request
             if (numIncomingBytes == 1)
             {
-
                 // If we only read one byte, then the user is requesting the help info.
                 debugCode = DEBUG_HELP_0;
             }

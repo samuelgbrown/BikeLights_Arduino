@@ -61,7 +61,7 @@ private:
 
   // Declare variables needed for calculation (same naming as found on Wikipedia - Kalman Filter)
   float H[N_OBS][N_STA];  // H - matrix, size = observed x state (2x3)
-  // float Ht[N_STA][N_OBS]; //H(transpose) - matrix, size = state x observed (3 x 2)
+  float Ht[N_STA][N_OBS]; //H(transpose) - matrix, size = state x observed (3 x 2)
   float R[N_OBS][N_OBS];  // R - matrix, size = observed x observed (2x2, [00001, 0;0 .1])
   float Q[N_STA][N_STA];                // Q - scalar (10000)
   float phi;              // Process white noise spectral density used to calculated Q)
