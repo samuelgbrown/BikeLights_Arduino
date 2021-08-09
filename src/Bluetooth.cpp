@@ -1486,7 +1486,7 @@ unsigned char btSerialWrapper::getDebugCode() {
 void btSerialWrapper::extractDebugCode() {
     // Now parse the string to get the debug code (and info on the debug message, if applicable)
     unsigned char debugCodeBuf[DEBUG_MAX_DIGITS] = {0}; // The debug code buffer (used to calculate the debug code)
-    char debugCodeLoc = DEBUG_MAX_DIGITS - 1;               // The location in the debug code buffer
+    int debugCodeLoc = DEBUG_MAX_DIGITS - 1;               // The location in the debug code buffer
     unsigned curBufLoc = 0;                       // The location in the request buffer as it is processed
 
 
@@ -1555,7 +1555,7 @@ void btSerialWrapper::processDebugCode() {
     case DEBUG_HELP_0:
     {
         // Send instructions on included debug codes
-        const static char debugHelp[] PROGMEM = "Debug info:\nd or d0: Brings up this menu.\nd1: Tic debugging\nd2: Block extra reference tics\nd3: (NOT IN USE) Follow with a name to rename the Bluetooth module.\n";
+        const static char debugHelp[] PROGMEM = "Debug info:\nd or d0: Brings up this menu.\nd1: Tic debugging\nd2: Block extra reference tics\nd3: (NOT IN USE) Follow with a name to rename the Bluetooth module.\nd4: Block extra standard tics\n";
         printPROGMEMStr(debugHelp);
         break;
     }
@@ -1579,6 +1579,19 @@ void btSerialWrapper::processDebugCode() {
         bool status = BT->toggleSpeedometerDebugCode(DEBUG_BLOCK_EXTRA_REF_2);
 
         const static char blockRefMessage[] PROGMEM = "Toggling Blocking extra reference tics.\n    Now set to: ";
+        printPROGMEMStr(blockRefMessage);
+        char returnVal[3];
+        sprintf(returnVal, "%d\n", status ? 1 : 0);
+        printStr(returnVal);
+        break;
+    }
+    case DEBUG_BLOCK_EXTRA_TIC_4:
+    {
+        // Start blocking extra standard tic signals
+        // First, make sure the speedometer has a pointer to this btSerialWrapper object
+        bool status = BT->toggleSpeedometerDebugCode(DEBUG_BLOCK_EXTRA_TIC_4);
+
+        const static char blockRefMessage[] PROGMEM = "Toggling Blocking extra standard tics.\n    Now set to: ";
         printPROGMEMStr(blockRefMessage);
         char returnVal[3];
         sprintf(returnVal, "%d\n", status ? 1 : 0);

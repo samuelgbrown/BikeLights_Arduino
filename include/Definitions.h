@@ -95,6 +95,7 @@
 #define DEBUG_TIC_INFO_1 1 // To get notified when a tic occurs (and of what type)
 #define DEBUG_BLOCK_EXTRA_REF_2 2 // To test the block extra reference tics method!
 #define DEBUG_RENAME_BLUETOOTH_3 3 // To rename the Bluetooth device (Note: NOT POSSIBLE WITH CURRENT CIRCUIT (key pin is not connected))
+#define DEBUG_BLOCK_EXTRA_TIC_4 4 // To test the block extra reference tics method!
 #define DEBUG_DEBUG_9 9 // To debug the debugging (BWAAAAAAA)
 
 // For Kalman filtering

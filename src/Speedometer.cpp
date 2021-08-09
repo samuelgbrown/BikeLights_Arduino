@@ -108,10 +108,19 @@ void Speedometer::mainLoop()
   int tic = digitalRead(TICKPIN);
   int rTic = digitalRead(RTICKPIN);
 
-  if (debug_block_extra_ref && !debug_readyForRef) {
+  if (debug_flag_block_extra_ref && !debug_BER_readyForRef) {
     // If we are blocking extra reference tics for debugging:
     // If we are not ready for another reference tic, then make sure no reference tics come through
     rTic = LOW;
+  }
+
+  if (debug_flag_block_extra_tic && (debug_BET_numConsecTics >= (NUMSWITCHES - 1))) {
+    // If we are blocking extra standard tics for debugging:
+    // If the number of consecutive tics that we have already registered is greater than
+    // or equal to NUMSWITCHES - 1 (or 3, for the standard configuration), then make sure no 
+    // standard tics come through
+    tic = LOW;
+    kalman.debug_resetFromRef = true;
   }
 
   // TODO START HERE: Another idea for a false measurement mitigation:
@@ -170,18 +179,30 @@ void Speedometer::mainLoop()
       if (debug_tic_info && bt) {
         // If we need to print the tic's to Bluetooth, do so
         if (tic == HIGH) {
-          const static char ticStr[] PROGMEM = "tic";
+          const static char ticStr[] PROGMEM = "tic ";
+          char ticNum[4];
+          sprintf(ticNum, "%d\n", debug_BET_numConsecTics);
           bt->sendStrPROGMEM(ticStr);
+          bt->sendStr(ticNum);
         }
         else if (rTic == HIGH)
         {
-          const static char refTicStr[] PROGMEM = "REF tic";
+          const static char refTicStr[] PROGMEM = "REF tic\n";
           bt->sendStrPROGMEM(refTicStr);
         }
       }
 
       // For debugging: We are ready for a new reference if the last tic was NOT a reference.  Otherwise, block any new reference tics until the next non-reference
-      debug_readyForRef = !newReference;
+      debug_BER_readyForRef = !newReference;
+
+      if (tic == HIGH)
+      {
+        debug_BET_numConsecTics++; // Increment the number of consecutive tics we have received
+      }
+      else // if (rTic == HIGH)
+      { 
+        debug_BET_numConsecTics = 0; // If we just got a reference, reset our counter
+      }
     }
   }
 
@@ -272,7 +293,9 @@ bool Speedometer::isDebugging(unsigned char debugCode)
   case DEBUG_TIC_INFO_1:
     return debug_tic_info;
   case DEBUG_BLOCK_EXTRA_REF_2:
-    return debug_block_extra_ref;
+    return debug_flag_block_extra_ref;
+  case DEBUG_BLOCK_EXTRA_TIC_4:
+    return debug_flag_block_extra_tic;
   default:
     return false;
   }
@@ -286,7 +309,10 @@ bool Speedometer::toggleDebugging(unsigned char debugCode)
     debug_tic_info ^= 1;
     break;
   case DEBUG_BLOCK_EXTRA_REF_2:
-    debug_block_extra_ref ^= 1;
+    debug_flag_block_extra_ref ^= 1;
+    break;
+  case DEBUG_BLOCK_EXTRA_TIC_4:
+    debug_flag_block_extra_tic ^= 1;
     break;
   default:
     break;
@@ -484,7 +510,6 @@ void Kalman::resetFilter()
 
 void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasurement)
 {
-  dt = timeAtThisMeasurement - timeAtLastMeasurement;
   // Update the value of the next measurement
   if (isReference)
   {
@@ -495,12 +520,12 @@ void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasure
     nextMeasurePos += nTicLEDs; // A normal tic was recieved, add the tic number of LEDs to the measurement
   }
 
-  if (!isReset)
+  if (!(isReset || debug_resetFromRef))
   {
     // Add a measurement to the Kalman filter
     z[0] = nextMeasurePos; // Position, in LEDs
 #if USE_VEL_MEASUREMENT
-    z[1] = nTicLEDs / dt; // Velocity, in LEDs per ms
+    z[1] = nTicLEDs / (timeAtThisMeasurement - timeAtLastMeasurement); // Velocity, in LEDs per ms
 #endif
     //  z[2] = (sq(newVell) - sq(xPost[1])) / (2 * nTicLEDs); // LEDs per ms^2 (a = ((vf)^2  - (vi)^2)/(2*d) ) [ACCELERATION NOT MEASURED, TOO UNSTABLE]
 
@@ -523,14 +548,19 @@ void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasure
   else
   {
     // If the filter is reset, attempt to initialize the filter (will succeed if !justStarted and it has been less than maxTimeBetweenMeasurements since the last measurement)
-    initializeFilter(dt, isReference);
+    initializeFilter(timeAtThisMeasurement, isReference);
   }
 
   // Do these every time, even if the filter is currently reset and more than maxTimeBetweenMeasurements has passed since the last measurement
-  timeAtLastMeasurement = timeAtThisMeasurement; // Update the timeAtLastMeasurementk
+  timeAtLastMeasurement = timeAtThisMeasurement; // Update the timeAtLastMeasurement
+
+  // TODO: Make sure that this gets set before debug_resetFromRef can be set! Otherwise, things might go...strange!
+  if (isReference) {
+    timeAtLastRef = timeAtThisMeasurement; // Update the last reference time
+  }
 }
 
-void Kalman::initializeFilter(unsigned long dt, boolean isReference)
+void Kalman::initializeFilter(unsigned long timeAtThisMeasurement, boolean isReference)
 {
   if (DEBUGGING_SPEED)
   {
@@ -557,18 +587,34 @@ void Kalman::initializeFilter(unsigned long dt, boolean isReference)
     }
   }
 
-  if (dt > maxTimeBetweenMeasurements)
+  if (!debug_resetFromRef)
   {
-    // If this measurement is outside of the allowable window, then do not initialize the filter
-    return;
-  }
+    if ((timeAtThisMeasurement - timeAtLastMeasurement) > maxTimeBetweenMeasurements)
+    {
+      // If this measurement is outside of the allowable window, then do not initialize the filter
+      return;
+    }
 
-  // If the filter has not just it has been less than maxTimeBetweenMeasurements
-  xPost[0] = nextMeasurePos; // Position, in LEDs
-  xPost[1] = nTicLEDs / dt;  // Velocity, in LEDs per ms
+    // If the filter has not just it has been less than maxTimeBetweenMeasurements
+    xPost[0] = nextMeasurePos; // Position, in LEDs
+    xPost[1] = nTicLEDs / (timeAtThisMeasurement - timeAtLastMeasurement);  // Velocity, in LEDs per ms
 #if USE_THREE_STATE_KALMAN
-  xPost[2] = 0; // Acceleration in LEDs per ms^2
+    xPost[2] = 0; // Acceleration in LEDs per ms^2
 #endif
+  }
+  else
+  {
+    // Reset the filter, and then initialize using only the last reference tic (this only occurs during a current reference tic)
+    resetFilter();
+
+    xPost[0] = nextMeasurePos; // Position, in LEDs
+    xPost[1] = nLEDs / (timeAtThisMeasurement - timeAtLastRef);  // Velocity (from the last reference tic), in LEDs per ms
+#if USE_THREE_STATE_KALMAN
+    xPost[2] = 0; // Acceleration in LEDs per ms^2
+#endif
+    // Reset the flag
+    debug_resetFromRef = false;
+  }
   isReset = false; // Turn off the reset settings
 
   timeAtLastPredict = millis(); // Initialize the timeAtLastPredict to the current time to prepare for the prediction step
@@ -953,7 +999,6 @@ void Kalman::mainLoop()
 
 // For original PPost calculation, stop here.  For rounding error compensation method, use below lines
 #if USE_LOWERROR_PPOST
-      // TODO: Include check to see if we have enough RAM to do this...?
       float PPostTemp2[N_STA][N_STA];
       Transpose((float *)PPostTemp, N_STA, N_STA, (float *)PPostTemp2);                              // PPostTemp2 = PPostTemp = (I - K*H)' = N_STA*N_STA
       Matrix.Multiply((float *)PPost, (float *)PPostTemp2, N_STA, N_STA, N_STA, (float *)PPostTemp); // PPostTemp = PPost*PPostTemp2 = (I - K*H)*PPrior*(I - K*H)' = N_STA*N_STA

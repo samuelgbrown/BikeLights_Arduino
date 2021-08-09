@@ -47,6 +47,8 @@ public:
   void resetFilter();     // Reset the filter to its zero state, the next time two measurements come in quick succession, the filter will initialize with that position/velocity
   boolean isReset = true; // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
 
+  bool debug_resetFromRef = false; // For the block extra standard tic function: should we reset the Kalman filter using only this and the previous reference tics?
+
 private:
 
   // The current best guess at the LED position, velocity, and acceleration
@@ -83,6 +85,7 @@ private:
   // Control parameters
   boolean newMeasurement = false;                                // Is there a new measurement that was added?
   unsigned long timeAtLastMeasurement = -1 * MAXTIMEBEWTEENTICS; // At what time was the last measurement recorded? (Initialize such that the first tic does not add a measurement)
+  unsigned long timeAtLastRef = -1 * MAXTIMEBEWTEENTICS;       // At what time was the last reference recorded? (Initialize such that the first tic does not add a measurement)
   unsigned long maxTimeBetweenMeasurements = MAXTIMEBEWTEENTICS; // The maximum time in milliseconds between tics that will be used to calculate high speeds
   float nTicLEDs;                                                // The number of LEDs that pass between measurements/segments
   float nextMeasurePos;                                          // The location of the next measurement
@@ -92,7 +95,7 @@ private:
   boolean justStarted = true;                                    // Has the filter just started (is the current position ambiguous)?
 
   // Control functions
-  void initializeFilter(unsigned long dt, boolean isReference); // Initialize xPost with the position and velocity as most recently measured
+  void initializeFilter(unsigned long timeAtThisMeasurement, boolean isReference); // Initialize xPost with the position and velocity as most recently measured
 };
 
 class Speedometer
@@ -159,8 +162,10 @@ private:
   // For debugging
   Bluetooth *bt = NULL; // A pointer to the Bluetooth object, for debugging
   bool debug_tic_info = false; // Should the tic info be sent over Bluetooth?
-  bool debug_block_extra_ref = false; // Should the extra reference tics be blocked?
-  bool debug_readyForRef = true; // For the block extra reference tic function: are we ready for the next reference tic?
+  bool debug_flag_block_extra_ref = false; // Should the extra reference tics be blocked?
+  bool debug_flag_block_extra_tic = false; // Should extra standard tics be blocked?
+  bool debug_BER_readyForRef = true; // For the block extra reference tic function: are we ready for the next reference tic?
+  unsigned char debug_BET_numConsecTics = 0; // For the block extra standard tic function: how many consecutive standard tics have we seen?
 };
 
 #endif
