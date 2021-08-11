@@ -160,10 +160,13 @@ private:
   float currentWheelSpeed = 0;   // The speed of the wheel, measured in the number of LEDS that traverse a point on the wheel per second
 
   // For debugging
+  // Debug flags
   Bluetooth *bt = NULL; // A pointer to the Bluetooth object, for debugging
   bool debug_tic_info = false; // Should the tic info be sent over Bluetooth?
   bool debug_flag_block_extra_ref = false; // Should the extra reference tics be blocked?
   bool debug_flag_block_extra_tic = false; // Should extra standard tics be blocked?
+
+  // Debug parameters
   bool debug_BER_readyForRef = true; // For the block extra reference tic function: are we ready for the next reference tic?
   unsigned char debug_BET_numConsecTics = 0; // For the block extra standard tic function: how many consecutive standard tics have we seen?
 };

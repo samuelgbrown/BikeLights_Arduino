@@ -108,10 +108,21 @@ void Speedometer::mainLoop()
   int tic = digitalRead(TICKPIN);
   int rTic = digitalRead(RTICKPIN);
 
+  if ((tic == HIGH) && (rTic == HIGH)) {
+    // If both tics are high, use just the reference
+    tic = LOW;
+  }
+
   if (debug_flag_block_extra_ref && !debug_BER_readyForRef) {
     // If we are blocking extra reference tics for debugging:
     // If we are not ready for another reference tic, then make sure no reference tics come through
     rTic = LOW;
+
+    if (bt)
+    {
+      const static char ticStr[] PROGMEM = "--*BLOCKED* REF tic\n";
+      bt->sendStrPROGMEM(ticStr);
+    }
   }
 
   if (debug_flag_block_extra_tic && (debug_BET_numConsecTics >= (NUMSWITCHES - 1))) {
@@ -121,11 +132,13 @@ void Speedometer::mainLoop()
     // standard tics come through
     tic = LOW;
     kalman.debug_resetFromRef = true;
-  }
 
-  // TODO START HERE: Another idea for a false measurement mitigation:
-  //    If 3 tics have been read since the last rtic, do not accept any more.  If another tic occurs, then 1) ignore it, and 2) set a flag.
-  //    If the flag is set when an rtic is read, then re-initialize the Kalman filter with the location/speed as measured from the last valid rtic
+    if (bt)
+    {
+      const static char ticStr[] PROGMEM = "*BLOCKED* tic (reset primed)\n";
+      bt->sendStrPROGMEM(ticStr);
+    }
+  }
 
   // if (DEBUGGING_TIC) {
   //   Serial.print(F("Pin is: "));
@@ -157,7 +170,8 @@ void Speedometer::mainLoop()
       // if (DEBUGGING_TIC) {
       //   Serial.println(F("Tic Debounced"));
       // }
-      // If there has been any tic, then record it and its time
+
+      // If there has been any tic, then record it and its time for debouncing
       newTic = true;       // Set the newTic flag for the main loop
       newReference = (rTic == HIGH); // Set the newReference flag for the main loop
       lastTicTime = timeAtThisTic;
@@ -187,7 +201,7 @@ void Speedometer::mainLoop()
         }
         else if (rTic == HIGH)
         {
-          const static char refTicStr[] PROGMEM = "REF tic\n";
+          const static char refTicStr[] PROGMEM = "--REF tic\n\n";
           bt->sendStrPROGMEM(refTicStr);
         }
       }
@@ -547,14 +561,12 @@ void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasure
   }
   else
   {
-    // If the filter is reset, attempt to initialize the filter (will succeed if !justStarted and it has been less than maxTimeBetweenMeasurements since the last measurement)
+    // If the filter is reset (or we want to force-reset the filter from reference), attempt to initialize the filter (will succeed if !justStarted and it has been less than maxTimeBetweenMeasurements since the last measurement)
     initializeFilter(timeAtThisMeasurement, isReference);
   }
 
   // Do these every time, even if the filter is currently reset and more than maxTimeBetweenMeasurements has passed since the last measurement
   timeAtLastMeasurement = timeAtThisMeasurement; // Update the timeAtLastMeasurement
-
-  // TODO: Make sure that this gets set before debug_resetFromRef can be set! Otherwise, things might go...strange!
   if (isReference) {
     timeAtLastRef = timeAtThisMeasurement; // Update the last reference time
   }
@@ -576,47 +588,52 @@ void Kalman::initializeFilter(unsigned long timeAtThisMeasurement, boolean isRef
     {
       return; // If the filter just started and most recent tic was not a reference, ignore it
     }
-    else
+
+    justStarted = false;        // The filter just started, but we now have a reference, so turn off the just started signal (permanently)
+    debug_resetFromRef = false; // In case we got a bunch of tic's before starting (in which case this flag is true), make sure that the first initialization does not try reset from reference.  After this, we can reset from ref whenever we want.
+
+    if (DEBUGGING_SPEED || DEBUGGING_KALMAN)
     {
-      if (DEBUGGING_SPEED || DEBUGGING_KALMAN)
-      {
-        // Serial.flush();
-        Serial.println(F("First filter initialization!!!"));
-      }
-      justStarted = false; // The filter just started, but we now have a reference, so turn off the just started signal (permanently)
+      // Serial.flush();
+      Serial.println(F("First filter initialization!!!"));
     }
   }
 
+  if ((timeAtThisMeasurement - timeAtLastMeasurement) > maxTimeBetweenMeasurements)
+  {
+    // If this measurement is outside of the allowable window, then do not initialize the filter
+    // We just got our first tic in a while.  If the next tic happens soon, we can use it to initialize the filter.
+    return;
+  }
+
+  // Set the speed
+  float thisVel;
   if (!debug_resetFromRef)
   {
-    if ((timeAtThisMeasurement - timeAtLastMeasurement) > maxTimeBetweenMeasurements)
-    {
-      // If this measurement is outside of the allowable window, then do not initialize the filter
-      return;
-    }
-
-    // If the filter has not just it has been less than maxTimeBetweenMeasurements
-    xPost[0] = nextMeasurePos; // Position, in LEDs
-    xPost[1] = nTicLEDs / (timeAtThisMeasurement - timeAtLastMeasurement);  // Velocity, in LEDs per ms
-#if USE_THREE_STATE_KALMAN
-    xPost[2] = 0; // Acceleration in LEDs per ms^2
-#endif
+    // Use the speed from the last tic
+    thisVel = nTicLEDs / (timeAtThisMeasurement - timeAtLastMeasurement); // Velocity, in LEDs per ms
   }
   else
   {
-    // Reset the filter, and then initialize using only the last reference tic (this only occurs during a current reference tic)
+    // Use the speed from the last reference tic
+    thisVel = nLEDs / (timeAtThisMeasurement - timeAtLastRef); // Velocity (from the last reference tic), in LEDs per ms
+
+    // Reset the filter, and then initialize using only this and previous reference tic (this only occurs during a current reference tic)
     resetFilter();
 
-    xPost[0] = nextMeasurePos; // Position, in LEDs
-    xPost[1] = nLEDs / (timeAtThisMeasurement - timeAtLastRef);  // Velocity (from the last reference tic), in LEDs per ms
-#if USE_THREE_STATE_KALMAN
-    xPost[2] = 0; // Acceleration in LEDs per ms^2
-#endif
     // Reset the flag
     debug_resetFromRef = false;
   }
-  isReset = false; // Turn off the reset settings
 
+  // Initialize the filter's state
+  xPost[0] = nextMeasurePos; // Position, in LEDs
+  xPost[1] = thisVel;
+#if USE_THREE_STATE_KALMAN
+  xPost[2] = 0; // Acceleration in LEDs per ms^2
+#endif
+
+  // Set flags and parameters
+  isReset = false;              // Turn off the reset settings
   timeAtLastPredict = millis(); // Initialize the timeAtLastPredict to the current time to prepare for the prediction step
 
   if (DEBUGGING_SPEED)
