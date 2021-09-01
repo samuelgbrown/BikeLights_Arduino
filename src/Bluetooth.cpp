@@ -1555,13 +1555,13 @@ void btSerialWrapper::processDebugCode() {
     case DEBUG_HELP_0:
     {
         // Send instructions on included debug codes
-        const static char debugHelp[] PROGMEM = "Debug info:\nd or d0: Brings up this menu.\nd1: Tic debugging\nd2: Block extra reference tics\nd3: (NOT IN USE) Follow with a name to rename the Bluetooth module.\nd4: Block extra standard tics\n";
+        const static char debugHelp[] PROGMEM = "Debug info:\nd or d0: Brings up this menu.\nd1: Tic debugging\nd2: Block extra reference tics\nd3: (NOT IN USE) Follow with a name to rename the Bluetooth module.\nd4: Block extra standard tics\nd5: Use adaptive debouncing\n";
         printPROGMEMStr(debugHelp);
         break;
     }
     case DEBUG_TIC_INFO_1:
     {
-        // Set up debug tic info
+        // Toggle using debug tic info
         // First, make sure the speedometer has a pointer to this btSerialWrapper object
         bool status = BT->toggleSpeedometerDebugCode(DEBUG_TIC_INFO_1);
 
@@ -1574,7 +1574,7 @@ void btSerialWrapper::processDebugCode() {
     }
     case DEBUG_BLOCK_EXTRA_REF_2:
     {
-        // Start blocking extra reference signals
+        // Toggle blocking extra reference signals
         // First, make sure the speedometer has a pointer to this btSerialWrapper object
         bool status = BT->toggleSpeedometerDebugCode(DEBUG_BLOCK_EXTRA_REF_2);
 
@@ -1587,12 +1587,25 @@ void btSerialWrapper::processDebugCode() {
     }
     case DEBUG_BLOCK_EXTRA_TIC_4:
     {
-        // Start blocking extra standard tic signals
+        // Toggle blocking extra standard tic signals
         // First, make sure the speedometer has a pointer to this btSerialWrapper object
         bool status = BT->toggleSpeedometerDebugCode(DEBUG_BLOCK_EXTRA_TIC_4);
 
         const static char blockRefMessage[] PROGMEM = "Toggling Blocking extra standard tics.\n    Now set to: ";
         printPROGMEMStr(blockRefMessage);
+        char returnVal[3];
+        sprintf(returnVal, "%d\n", status ? 1 : 0);
+        printStr(returnVal);
+        break;
+    }
+    case DEBUG_ADAPTIVE_DEBOUNCE_5:
+    {
+        // Toggle using adaptive debouncing
+        // First, make sure the speedometer has a pointer to this btSerialWrapper object
+        bool status = BT->toggleSpeedometerDebugCode(DEBUG_ADAPTIVE_DEBOUNCE_5);
+
+        const static char adaptiveDebounceMessage[] PROGMEM = "Toggling Adaptive debouncing.\n    Now set to: ";
+        printPROGMEMStr(adaptiveDebounceMessage);
         char returnVal[3];
         sprintf(returnVal, "%d\n", status ? 1 : 0);
         printStr(returnVal);

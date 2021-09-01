@@ -113,6 +113,7 @@ void setup()
 
       // Set up a Bluetooth object
       bluetooth = new Bluetooth(pattern_handler, speedometer);
+      speedometer->setBluetooth(bluetooth);
 
       if (DEBUGGING_GENERAL)
       {

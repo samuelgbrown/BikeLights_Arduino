@@ -27,6 +27,7 @@
 #define USE_LOWERROR_PPOST true     // Should PPost be calculated in such a way as to reduce rounding errors (will use more RAM during the calculation, should be 4*(3*3 + 2*(2*3)) = 84 bytes)
 #define USE_THREE_STATE_KALMAN true // Should the Kalman filter track three states (position + velocity + acceleration) instead of two (- acceleration)?
 #define USE_VEL_MEASUREMENT true    // Should the Kalman filter accept velocities as measurements from the switches, or only positions?
+#define USE_ADAPTIVE_DEBOUNCE true  // Should the adaptive debouncing method be used?
 
 // Schematic of the latch:
 //
@@ -78,6 +79,9 @@
 #define BLUETOOTH_COMPLETION_SIGNAL_SIZE 10 // The size in bytes of the completion signal to be sent to Android to let it know that we're done transmitting
 #define BLUETOOTH_TIMEOUT_MILLI 5000        // The timeout period in which we will wait for a bluetooth message that we requested
 #define BLUETOOTH_BAUD 9600                 // The baud rate for communicating to the bluetooth module
+#define DEBOUNCE_SPEED_MULT   3.0           // The maximum speed that will be allowed between tic's, as a multiple of naive speed (speed as measured just by tics), down to DEBOUNCE_MIN_TIME
+#define DEBOUNCE_MAX_TIME     100           // The maximum time allowed between tics, in ms
+#define DEBOUNCE_MIN_TIME     10            // The minimum time allowed between tics, in ms
 
 #define MAXPULSELENGTH 50000
 #define MAXTIMEBEWTEENTICS 1500
@@ -96,6 +100,7 @@
 #define DEBUG_BLOCK_EXTRA_REF_2 2 // To test the block extra reference tics method!
 #define DEBUG_RENAME_BLUETOOTH_3 3 // To rename the Bluetooth device (Note: NOT POSSIBLE WITH CURRENT CIRCUIT (key pin is not connected))
 #define DEBUG_BLOCK_EXTRA_TIC_4 4 // To test the block extra reference tics method!
+#define DEBUG_ADAPTIVE_DEBOUNCE_5 5 // To test the adaptive debounce method!
 #define DEBUG_DEBUG_9 9 // To debug the debugging (BWAAAAAAA)
 
 // For Kalman filtering

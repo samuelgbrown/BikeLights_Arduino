@@ -4,8 +4,9 @@
 
 boolean newTic = false;
 boolean newReference = false;
-static unsigned long debounceTime = 10; // Use a debouncing time (TODO: May need to get rid of?  Was 100ms (changed on 6/6/21, already uploaded), interferes with higher speeds)
-unsigned long lastTicTime = 0;           // The time since the last interrupt was triggered (used in debugging)
+unsigned long debounceTime = DEBOUNCE_MIN_TIME; // Use a debouncing time
+static unsigned long lastTicTime = 0;           // The time since the last tic was triggered (used in debugging)
+static unsigned long lastTicPeriod = 0;         // The time between the last tic and the one before it (used in debugging)
 
 #if !TIC_USE_LATCH
 //void Speedometer::tic() {
@@ -113,6 +114,24 @@ void Speedometer::mainLoop()
     tic = LOW;
   }
 
+  if (debug_tic_info && bt)
+  {
+    // If we need to print the tic's to Bluetooth, do so
+    if (tic == HIGH)
+    {
+      const static char ticStr[] PROGMEM = "tic ";
+      char ticNum[4];
+      sprintf(ticNum, "%d\n", debug_BET_numConsecTics);
+      bt->sendStrPROGMEM(ticStr);
+      bt->sendStr(ticNum);
+    }
+    else if (rTic == HIGH)
+    {
+      const static char refTicStr[] PROGMEM = "--REF tic\n\n";
+      bt->sendStrPROGMEM(refTicStr);
+    }
+  }
+
   if (debug_flag_block_extra_ref && !debug_BER_readyForRef) {
     // If we are blocking extra reference tics for debugging:
     // If we are not ready for another reference tic, then make sure no reference tics come through
@@ -164,6 +183,33 @@ void Speedometer::mainLoop()
     digitalWrite(RESETTICKPIN, HIGH);
     digitalWrite(RESETTICKPIN, LOW);
     digitalWrite(RESETTICKPIN, HIGH);
+    
+    if (USE_ADAPTIVE_DEBOUNCE || debug_flag_adaptive_debounce)
+    {
+      unsigned long adaptiveDebounceTime;
+      // If using adaptive debouncing (and we are not stopped), calculate what the new debouncing time should be
+      if (kalman.getIsReset()) {
+        adaptiveDebounceTime = DEBOUNCE_MAX_TIME; // If the filter is reset, just assume the maximum debounce time (the slowest speed)
+      }
+      else
+      {
+        adaptiveDebounceTime = (unsigned long)round((float)lastTicPeriod / DEBOUNCE_SPEED_MULT); // To avoid multiple evaluation in max()        
+      }
+
+      debounceTime = max(min(adaptiveDebounceTime, DEBOUNCE_MAX_TIME), DEBOUNCE_MIN_TIME); // Bound the debounce time between the min and the max
+
+      if (!USE_ADAPTIVE_DEBOUNCE)
+      {
+        // Send update to user
+        char ticPeriod[30];
+        sprintf(ticPeriod, "%lums (must beat %lums)\n", (timeAtThisTic - lastTicTime), debounceTime);
+        bt->sendStr(ticPeriod);
+        }
+    }
+    else
+    {
+      debounceTime = DEBOUNCE_MIN_TIME;
+    }
 
     if ((timeAtThisTic - lastTicTime) > debounceTime)
     {
@@ -174,6 +220,7 @@ void Speedometer::mainLoop()
       // If there has been any tic, then record it and its time for debouncing
       newTic = true;       // Set the newTic flag for the main loop
       newReference = (rTic == HIGH); // Set the newReference flag for the main loop
+      lastTicPeriod = timeAtThisTic - lastTicTime;
       lastTicTime = timeAtThisTic;
 
       if (DEBUGGING_TIC)
@@ -190,22 +237,6 @@ void Speedometer::mainLoop()
         }
       }
 
-      if (debug_tic_info && bt) {
-        // If we need to print the tic's to Bluetooth, do so
-        if (tic == HIGH) {
-          const static char ticStr[] PROGMEM = "tic ";
-          char ticNum[4];
-          sprintf(ticNum, "%d\n", debug_BET_numConsecTics);
-          bt->sendStrPROGMEM(ticStr);
-          bt->sendStr(ticNum);
-        }
-        else if (rTic == HIGH)
-        {
-          const static char refTicStr[] PROGMEM = "--REF tic\n\n";
-          bt->sendStrPROGMEM(refTicStr);
-        }
-      }
-
       // For debugging: We are ready for a new reference if the last tic was NOT a reference.  Otherwise, block any new reference tics until the next non-reference
       debug_BER_readyForRef = !newReference;
 
@@ -216,6 +247,14 @@ void Speedometer::mainLoop()
       else // if (rTic == HIGH)
       { 
         debug_BET_numConsecTics = 0; // If we just got a reference, reset our counter
+      }
+    }
+    else if (debug_flag_adaptive_debounce)
+    {
+      if (bt)
+      {
+        const static char debounceStr[] PROGMEM = "*DEBOUNCED* tic\n\n\n";
+        bt->sendStrPROGMEM(debounceStr);
       }
     }
   }
@@ -310,6 +349,8 @@ bool Speedometer::isDebugging(unsigned char debugCode)
     return debug_flag_block_extra_ref;
   case DEBUG_BLOCK_EXTRA_TIC_4:
     return debug_flag_block_extra_tic;
+  case DEBUG_ADAPTIVE_DEBOUNCE_5:
+    return debug_flag_adaptive_debounce;
   default:
     return false;
   }
@@ -327,6 +368,9 @@ bool Speedometer::toggleDebugging(unsigned char debugCode)
     break;
   case DEBUG_BLOCK_EXTRA_TIC_4:
     debug_flag_block_extra_tic ^= 1;
+    break;
+  case DEBUG_ADAPTIVE_DEBOUNCE_5:
+    debug_flag_adaptive_debounce ^= 1;
     break;
   default:
     break;
@@ -352,7 +396,7 @@ float Speedometer::getAcc()
 
 boolean Speedometer::isSlow()
 {
-  return kalman.isReset;
+  return kalman.getIsReset();
 }
 
 void Speedometer::resetFilter()
@@ -520,6 +564,10 @@ void Kalman::resetFilter()
     //      }
     //    }
   }
+}
+
+bool Kalman::getIsReset() {
+  return isReset;
 }
 
 void Kalman::addMeasurement(boolean isReference, unsigned long timeAtThisMeasurement)
@@ -1289,6 +1337,10 @@ void Kalman::setNumLEDs(unsigned char numLEDs) {
 
 unsigned char Kalman::getNumLEDs() {
   return nLEDs;
+}
+
+unsigned char Kalman::getNumTicLEDs() {
+  return nTicLEDs;
 }
 
 float Kalman::getPhi()

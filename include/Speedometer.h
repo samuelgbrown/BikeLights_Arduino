@@ -32,6 +32,7 @@ public:
 
   void setNumLEDs(unsigned char numLEDs);
   unsigned char getNumLEDs();
+  unsigned char getNumTicLEDs();
 
   void setPhi(float newPhi);    // Set a new value for Q
   void setP0(float *newP0); // Set a new P0 matrix (will not take a size value for the matrix, because we're just going to assume that it's using the size defined by num_states)
@@ -45,8 +46,7 @@ public:
   const float **getR();  // Get a pointer to the r matrix
 
   void resetFilter();     // Reset the filter to its zero state, the next time two measurements come in quick succession, the filter will initialize with that position/velocity
-  boolean isReset = true; // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
-
+  bool getIsReset();         // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
   bool debug_resetFromRef = false; // For the block extra standard tic function: should we reset the Kalman filter using only this and the previous reference tics?
 
 private:
@@ -55,6 +55,9 @@ private:
   float xTrue = 0.0f;
   float velTrue = 0.0f;
   float accTrue = 0.0f;
+
+  // Is the Kalman filter currently in a "reset" state (the wheel is moving too slow)
+  boolean isReset = true;
 
   //  Create custom matrix function
   void ScalarAddF(float *A, float b, unsigned char numRows, unsigned char numCols, float *C); // Add scalar (float) b to matrix (float) A, and output to matrix C
@@ -163,8 +166,9 @@ private:
   // Debug flags
   Bluetooth *bt = NULL; // A pointer to the Bluetooth object, for debugging
   bool debug_tic_info = false; // Should the tic info be sent over Bluetooth?
-  bool debug_flag_block_extra_ref = false; // Should the extra reference tics be blocked?
-  bool debug_flag_block_extra_tic = false; // Should extra standard tics be blocked?
+  bool debug_flag_block_extra_ref = false;    // Should the extra reference tics be blocked?
+  bool debug_flag_block_extra_tic = false;    // Should extra standard tics be blocked?
+  bool debug_flag_adaptive_debounce = false;  // Should adaptive debouncing be used (allows aggressive debouncing at low speeds, but a higher maximum speed)?
 
   // Debug parameters
   bool debug_BER_readyForRef = true; // For the block extra reference tic function: are we ready for the next reference tic?
