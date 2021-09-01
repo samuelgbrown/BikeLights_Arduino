@@ -13,11 +13,23 @@ TODO:  Link to video
 ## Electronics / Hardware
 [Hardware Bill of Materials](https://htmlpreview.github.io/?https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bom.html)
 
+Additionally:
+  * ~2m per wheel WS2812B (or equivalent) RGBW LED strip
+  * 1x 12V Lithium ion battery pack (I used 6800 mAh)
+
+
 [Schematic](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_schem.png) (please forgive some of the upside-down values...)
 
-[Bread Board configuration](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bb.png) (blue, black, green, and red are wires; pink are solder blobs)
+
+[Bread Board configuration](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bb.png)
+  * Blue, black, green, and red are wires
+  * Pink are solder blobs)
+
 
 [Models for mounting hardware](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models)
+
+
+[Reference pictures of installation](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/pics)
 
 ## Instructions
 TODO: Write up useful instructions to use this version, and to adapt to another bike (in general)
