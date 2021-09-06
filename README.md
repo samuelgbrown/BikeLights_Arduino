@@ -9,13 +9,13 @@ TODO:  Link to video
 
 [See Android portion here](https://github.com/samuelgbrown/BikeLights_Android)
 
-## Instructions to use
+# Instructions for use
 TODO: Write up useful instructions to use this version, and to adapt to another bike (in general)
 
-## Theory of Operation
+# Theory of Operation
 To use BikeLights, the user will design a custom lighting pattern on their Android phone using the Bike Lights app.  The user can then connect to the bluetooth adapter that is mounted on their bike wheel to send the lighting pattern to the LED's on the wheel.  The Arduino board on the wheel-mounted device will then display the designed pattern on the water-proof LED strip mounted along the rim of the wheel, using the information collected by the reed switches.
 
-#### 1. Bluetooth Communication protocol
+### 1. Bluetooth Communication protocol
 The Android app and Arduino board must be able to communicate via bluetooth, despite the fact that their software is written in different languages.  Additionally, the memory constraints on the Arduino board necessitated writing a custom bluetooth protocol that would minimize the size of the message that must be stored on the Arduino during processing, while still allowing arbitrarily large messages to be received.  [The protocol design can be found here](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/bluetooth_protocol.txt).
 
 ### 2. Speed Detection
@@ -31,7 +31,7 @@ The Color_ represents the "paint", and is composed of individual colorObj object
 The Pattern represents how the Color_ objects are arranged on the wheel.  Each LED can be painted with a Color_.  This pattern can be defined relative to the wheel (wheel speed independent) or relative to the ground (Pattern location changes dependent on wheel speed, to make it appear like it's not moving).  It each case, it can also have some constant angular velocity.  Finally, different patterns can be display in "idle" mode (when the wheel is moving too slowly to be measured by the speedometer) or "main" mode (when the wheel is moving at speed).
 
 
-## Electronics / Hardware
+# Electronics / Hardware
 [Hardware Bill of Materials](https://htmlpreview.github.io/?https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bom.html)
 
 Additionally:
