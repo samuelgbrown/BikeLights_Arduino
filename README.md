@@ -50,4 +50,4 @@ Additionally:
 [Models for mounting hardware](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models)
 
 
-[Reference pictures of installation](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/pics)
+[Reference pictures of installation](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/pics)
