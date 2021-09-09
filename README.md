@@ -1,16 +1,14 @@
 # BikeLights_Arduino
-BikeLights project portion for Arduino
-
-"BikeLights" is a custom-made lighting setup to generate speed-sensitive light patterns on the edge of a bike's wheel.
-
-Made using [PlatformIO](https://platformio.org/)!
 
 TODO:  Link to video
 
+"BikeLights" is a custom-made lighting setup to generate speed-sensitive light patterns on the edge of a bike's wheel.
+
 [See Android portion here](https://github.com/samuelgbrown/BikeLights_Android)
 
-# Instructions for use
-TODO: Write up useful instructions to use this version, and to adapt to another bike (in general)
+Made using [PlatformIO](https://platformio.org/)!
+
+
 
 # Theory of Operation
 To use BikeLights, the user will design a custom lighting pattern on their Android phone using the Bike Lights app.  The user can then connect to the bluetooth adapter that is mounted on their bike wheel to send the lighting pattern to the LED's on the wheel.  The Arduino board on the wheel-mounted device will then display the designed pattern on the water-proof LED strip mounted along the rim of the wheel, using the information collected by the reed switches.
@@ -30,21 +28,42 @@ The Color_ represents the "paint", and is composed of individual colorObj object
 
 The Pattern represents how the Color_ objects are arranged on the wheel.  Each LED can be painted with a Color_.  This pattern can be defined relative to the wheel (wheel speed independent) or relative to the ground (Pattern location changes dependent on wheel speed, to make it appear like it's not moving).  It each case, it can also have some constant angular velocity.  Finally, different patterns can be display in "idle" mode (when the wheel is moving too slowly to be measured by the speedometer) or "main" mode (when the wheel is moving at speed).
 
+# Instructions for use
+To set up BikeLights:
+1. Prepare** all materials
+    1. **Prepare** Electronics
+        1. **Purchase** the items on the Bill of Materials and any listed additional items (see below)
+        2. **Prepare** a soldering workstation (including solder, wires, etc)
+        3. **Solder** the breadboard according to the [bread board configuration](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bb.png) (see below for wire color legend), using the [schematic](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_schem.png) for reference.
+        4. **Measure** the length of LED strip (and, most importantly, the number of LEDs) you will need to surround the circumference of your bike wheel.  Note that the BikeLights looks best when the LEDs are facing ["outward" from the wheel](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/pics/Reed%20Switch%20Positioning.jpg).
+    2. **Prepare** Arduino Software
+        1. **Clone** this repo, and open in [PlatformIO](https://platformio.org/)
+        2. **Flash** the software onto the Arduino Nano
+        
+
+# Adapting for your own bike
+BikeLights was custom made for my bike wheel (a Specialized 28" wheel [700x32c]), but it should be possible to adapt to your own needs. 
+
+TODO: Write up useful instructions to use this version, and to adapt to another bike (in general)
 
 # Electronics / Hardware
 [Hardware Bill of Materials](https://htmlpreview.github.io/?https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bom.html)
 
 Additionally:
-  * ~2m per wheel WS2812B (or equivalent) RGBW LED strip
+  * ~2m per wheel WS2812B (or equivalent) RGBW LED strip, preferably with IP67 waterproofing
   * 1x 12V Lithium ion battery pack (I used 6800 mAh)
+  * Required wire (potentially two types, see Bread Board Configuration below)
+  * 1x (4"x6") Prototype PCB / solderable bread-board
 
 
 [Schematic](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_schem.png) (please forgive some of the upside-down values...)
 
 
-[Bread Board configuration](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bb.png)
-  * Blue, black, green, and red are wires
-  * Pink are solder blobs)
+[Bread Board Configuration](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bb.png)
+  * Blue, black, and red are standard-gauge (20-22 AWG) wires
+  * Green are fine gauge (36 AWG) wires
+    * Note these are a bit difficult to work with
+  * Pink are solder blobs
 
 
 [Models for mounting hardware](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models)
