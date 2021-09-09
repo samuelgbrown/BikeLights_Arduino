@@ -32,7 +32,7 @@ The Pattern represents how the Color_ objects are arranged on the wheel.  Each L
 Note that BikeLights only works on Android devices.
 
 To set up BikeLights:
-1. Prepare** all materials
+1. **Prepare** all materials
     1. **Prepare** Electronics
         1. **Purchase** the items on the Bill of Materials and any listed additional items (see below)
         2. **Prepare** a soldering workstation (including solder, wires, etc)
@@ -50,7 +50,8 @@ To set up BikeLights:
         2. **Assemble** the parts.
             1. Place the soldered breadboard in its 3D printed case ([top](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Top_New_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Bottom_New_Final.stl)).
             2. Place the battery in its 3D printed case ([top](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Battery_Case_Top_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Battery_Case_Bottom_Final.stl)).
-    5. **Debug** The System
+2. **Mount** The Hardware
+3. **Debug** The System
         
 
 # Adapting for your own bike
