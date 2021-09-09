@@ -29,6 +29,8 @@ The Color_ represents the "paint", and is composed of individual colorObj object
 The Pattern represents how the Color_ objects are arranged on the wheel.  Each LED can be painted with a Color_.  This pattern can be defined relative to the wheel (wheel speed independent) or relative to the ground (Pattern location changes dependent on wheel speed, to make it appear like it's not moving).  It each case, it can also have some constant angular velocity.  Finally, different patterns can be display in "idle" mode (when the wheel is moving too slowly to be measured by the speedometer) or "main" mode (when the wheel is moving at speed).
 
 # Instructions for use
+Note that BikeLights only works on Android devices.
+
 To set up BikeLights:
 1. Prepare** all materials
     1. **Prepare** Electronics
@@ -38,7 +40,17 @@ To set up BikeLights:
         4. **Measure** the length of LED strip (and, most importantly, the number of LEDs) you will need to surround the circumference of your bike wheel.  Note that the BikeLights looks best when the LEDs are facing ["outward" from the wheel](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/pics/Reed%20Switch%20Positioning.jpg).
     2. **Prepare** Arduino Software
         1. **Clone** this repo, and open in [PlatformIO](https://platformio.org/)
-        2. **Flash** the software onto the Arduino Nano
+        2. **Customize** the [definitions in the software](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/include/Definitions.h#L65).  Specifically, set the number of reed switches you will use around the wheel (NUMSWITCHES), the number of LEDs you measured in the previous step (NUMLEDS, must be even), and the number of lights per LED (NUMLIGHTSPERLED, 3 for RGB lights, 4 for RGBW lights [note RGB lights may need some adjustment to work fully]).  You may also later want to customize the timing of the bit-banging for the LED control signal (T0H, T1H, T0L, T1L), using the system written by [bigjosh2 on wp.josh.com](https://wp.josh.com/2014/05/13/ws2812-neopixels-are-not-so-finicky-once-you-get-to-know-them/).
+        3. **Flash** the software onto the Arduino Nano
+    3. **Prepare** Arduino Device
+        1. **Side-load** the [BikeLights_Android](https://github.com/samuelgbrown/BikeLights_Android) app onto your device.
+        2. **Test** the system, by designing a light Pattern and sending it to the Arduino.  Use a button across the reed switch line or magnets to close the reed switchs themselves to send fake speed data to the system (note that, upon startup, the Arduino must see at least one reference tic [to locate the wheel's angular position] before starting the Main pattern).
+    4. **Prepare** Bike wheel
+        1. **Print** the [models for the mounting hardware](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models).
+        2. **Assemble** the parts.
+            1. Place the soldered breadboard in its 3D printed case ([top](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Top_New_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Bottom_New_Final.stl)).
+            2. Place the battery in its 3D printed case ([top](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Battery_Case_Top_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Battery_Case_Bottom_Final.stl)).
+    5. **Debug** The System
         
 
 # Adapting for your own bike
@@ -54,6 +66,7 @@ Additionally:
   * 1x 12V Lithium ion battery pack (I used 6800 mAh)
   * Required wire (potentially two types, see Bread Board Configuration below)
   * 1x (4"x6") Prototype PCB / solderable bread-board
+  * Neodymium Magnet(s)
 
 
 [Schematic](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_schem.png) (please forgive some of the upside-down values...)
