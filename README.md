@@ -1,7 +1,5 @@
 # BikeLights_Arduino
 
-TODO: Finish the prepare electronics section!  Make the 2-pin reed switch adapter and the reed switch modules!
-TODO: Upload the model for the 2-pin adapter for the reed switches!
 TODO:  Link to video
 
 "BikeLights" is a custom-made lighting setup to generate speed-sensitive light patterns on the edge of a bike's wheel.
@@ -39,11 +37,20 @@ To set up BikeLights:
         1. **Purchase** the items on the Bill of Materials and any listed additional items (see below)
         2. **Prepare** a soldering workstation (including solder, wires, etc)
         3. **Solder** the breadboard according to the [bread board configuration](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bb.png) (see below for wire color legend), using the [schematic](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_schem.png) for reference.
-        4. **Prepare** the LED strip
+            1. **Prepare** 2 female 2-pin JST connectors with wires, to be used as connectors for the reed switches
+        4. **Prepare** the 1-3 sensor connector adapter
+            1. **Print** the [top half](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/1-to-3_Sensor_Connector_Adapter_Top_Final.stl) and [bottom half](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/1-to-3_Sensor_Connector_Adapter_Bottom_Final.stl) of the adapter case.
+            2. **Crimp** a single male 2-pin JST connector to 3 female 2-pin JST connectors (in parallel).
+            3. **Glue** this circuit of JST connectors in the adapter case (it will be a tight fit, but it will work).
+            4. **Test** the connections of the connector adapter (using a test LED, a continuity tester, etc).
+        5. **Prepare** the reed switch modules
+            1. **Solder** 4 reed switches to wires in an ["inline" configuration](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/pics/Magnet.jpg) (wires should run along side the reed switch).  The 2 of the modules should have wire lengths of about 8" and 2 should have about 14".  Heat-shrink the exposed wires/solder.
+            2. **Crimp** a male 2-pin JST connectors onto each module.
+        7. **Prepare** the LED strip
             1. **Measure** the length of LED strip (and, most importantly, the number of LEDs) you will need to surround the circumference of your bike wheel.  Note that the BikeLights looks best when the LEDs are pushed as far towards the circumference of the wheel as possible, and are facing ["outward" from the wheel](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/pics/Reed%20Switch%20Positioning.jpg).
-            2. **Cut** the LED strip to length
-            3. (Optional) **Repair** the waterproofing of the LED strip (using the LED strip waterproofing accessories, listed below), as needed
-            4. **Solder** any wires to the strip, as needed
+            2. **Cut** the LED strip to length.
+            3. (Optional) **Repair** the waterproofing of the LED strip (using the LED strip waterproofing accessories, listed below), as needed.
+            4. **Solder** any wires to the strip, as needed.
     2. **Prepare** Arduino Software
         1. **Clone** this repo, and open in [PlatformIO](https://platformio.org/)
         2. **Customize** the [definitions in the software](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/include/Definitions.h#L65).  Specifically, set the number of reed switches you will use around the wheel (NUMSWITCHES), the number of LEDs you measured in the previous step (NUMLEDS, must be even), and the number of lights per LED (NUMLIGHTSPERLED, 3 for RGB lights, 4 for RGBW lights [note RGB lights may need some adjustment to work fully]).  You may also later want to customize the timing of the bit-banging for the LED control signal (T0H, T1H, T0L, T1L), using the system written by [bigjosh2 on wp.josh.com](https://wp.josh.com/2014/05/13/ws2812-neopixels-are-not-so-finicky-once-you-get-to-know-them/).
@@ -56,7 +63,7 @@ To set up BikeLights:
             1. The number of [LED clips](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/Bike_Lights-LED_Strip_Clamp_Friction.stl) that you will need may vary.  For my mount, I used 12, but you want more or less.
             2. Use your own judgement for orientation when printing.  Keep in mind, however, that the cantilever clips operate best when printed in the correct orientation (i.e. such that bending does not separate the layers).  [See this website for more information](https://markforged.com/resources/blog/joinery-onyx) (go to header "Snap Fits").  For some parts, it will not be possible to print all of the clips in the optimal orientation.  ...Sorry.
         3. **Assemble** the parts.
-            1. Place the soldered breadboard in its 3D printed case ([top](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Top_New_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Bottom_New_Final.stl)).
+            1. Place the soldered breadboard in its 3D printed case ([top](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Top_New_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Case_Bottom_New_Final.stl)).  Attach any connectors to the breadboard, and glue these connectors to the top half of the case (the bottom should still be removable after gluing).
             2. Place the battery in its 3D printed case ([top](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Battery_Case_Top_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/tree/master/models/Bike_Lights_Battery_Case_Bottom_Final.stl)).
 2. **Mount** The Hardware
     1. **Mount** the annular rings
@@ -65,7 +72,10 @@ To set up BikeLights:
     2. **Mount** the LED strip
         1. **Position** the LED strip on the wheel.
         2. **Attach** the LED strip to the wheel using the LED clips.  Connect the clip to individual spokes by [mounting them to the desired spoke, and feeding a zip-tie through the clip](https://github.com/samuelgbrown/BikeLights_Arduino/blob/readme/pics/Magnet.jpg).  When finally positioned, tighten the zip-tie and cut off any extra.
-    3. 
+    3. **Attach** the battery and breadboard cases to the annular ring.  Note that the breadboard case has a specific orientation relative to the annular ring.
+        1. **Secure** any unused wires on the battery (try securely wrapping them around the spokes near the hub.
+        2. **Attach** the 1-3 connector adapter to the "standard switch" connector on the breadboard case.
+    4.  
 4. **Debug** The System
         
 
@@ -76,6 +86,7 @@ TODO: Write up useful instructions to use this version, and to adapt to another 
 
 # Electronics / Hardware
 [Hardware Bill of Materials](https://htmlpreview.github.io/?https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bom.html)
+(Note: for reed switches, I recommend getting some that have a plastic case around them, for longevity.)
 
 Additionally:
   * ~2m per wheel WS2812B (or equivalent) RGBW LED strip, preferably with IP67 waterproofing
@@ -84,6 +95,7 @@ Additionally:
       * [Extra silicone tubing](https://www.superbrightleds.com/moreinfo/waterproofing/st10-10mm-silicone-tubing/869/2142/) (probably 10mm)
       * [Extra silicone end-caps](https://www.superbrightleds.com/moreinfo/waterproofing/10mm-silicone-end-cap/864/2138/)
       * [Extra silicone end-caps with wire holes](https://www.superbrightleds.com/moreinfo/waterproofing/10mm-silicone-end-cap-4-holes/866/2140/)
+  * [2-pin "JST" connectors](https://www.aliexpress.com/item/32872148939.html?spm=a2g0o.productlist.0.0.6c813bc6g6SV67&algo_pvid=44d72e61-6fd6-4175-92c8-ef2d347c9b56&algo_exp_id=44d72e61-6fd6-4175-92c8-ef2d347c9b56-16&pdp_ext_f=%7B%22sku_id%22%3A%2265482419468%22%7D)
   * 1x 12V Lithium ion battery pack (I used 6800 mAh)
   * Required wire (potentially two types, see Bread Board Configuration below)
   * 1x (4"x6") Prototype PCB / solderable bread-board
