@@ -1,6 +1,6 @@
 # BikeLights_Arduino
 
-"BikeLights" is a system to generate speed-sensitive light patterns on the edge of a bike's wheel.
+"BikeLights" is a system to generate speed-sensitive light patterns on the edge of a bike's wheel.  It uses an Android device to design a pattern, and an Arduino system to display it on the wheel.
 
 TODO:  Link to video
 
@@ -110,8 +110,6 @@ BikeLights was custom made for my bike wheel (a Specialized 28" wheel [700x32c])
     * You should adapt the annular ring (both the [front](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/Bike_Lights-Annular_Ring_Front_Final.stl) and [back](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/Bike_Lights-Annular_Ring_Back_Final.stl) models).  The inner curvature of these models will likely need to be changed.  If any of the geometry of the connection system to the battery case or breadboard cases is changed, make sure to make complimentary changes to the [top](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/Bike_Lights_Battery_Case_Top_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/Bike_Lights_Battery_Case_Bottom_Final.stl) halves of the battery cases and/or the [top](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/Bike_Lights_Case_Top_New_Final.stl) and [bottom](https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/models/Bike_Lights_Case_Bottom_New_Final.stl) halves of the breadboard case.
     * Make sure that you will still be able to get the battery/breadboard cases between the spokes, and that there will be room for them inside of the wheel.
 * The defined number of LEDs, and the number of reed switches (as described in "Prepare Arduino Software" -> "Customize", above).
-
-TODO: Write up useful instructions to use this version, and to adapt to another bike (in general)
 
 # Electronics / Hardware
 [Hardware Bill of Materials](https://htmlpreview.github.io/?https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bom.html)
