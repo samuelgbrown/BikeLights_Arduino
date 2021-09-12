@@ -115,7 +115,9 @@ TODO: Write up useful instructions to use this version, and to adapt to another 
 
 # Electronics / Hardware
 [Hardware Bill of Materials](https://htmlpreview.github.io/?https://github.com/samuelgbrown/BikeLights_Arduino/blob/master/Bike_Lights_refined_bom.html)
+
 (Note 1: This BOM (and the following) is to make ONE system for ONE bike wheel.  Consider doubling where necessary to make a pair.)
+
 (Note 2: for reed switches, they must be NO switches (normaly open).  Also, I recommend getting some that have a plastic case around them, for longevity.)
 
 Additionally:
