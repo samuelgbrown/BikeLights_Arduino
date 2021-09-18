@@ -28,7 +28,7 @@ The Color_ represents the "paint", and is composed of individual colorObj object
 
 The Pattern represents how the Color_ objects are arranged on the wheel.  Each LED can be painted with a Color_.  This pattern can be defined relative to the wheel (wheel speed independent) or relative to the ground (Pattern location changes dependent on wheel speed, to make it appear like it's not moving).  It each case, it can also have some constant angular velocity.  Finally, different patterns can be display in "idle" mode (when the wheel is moving too slowly to be measured by the speedometer) or "main" mode (when the wheel is moving at speed).
 
-# Instructions for use
+# Instructions for Use
 Note that BikeLights only works on Android devices.
 
 To set up BikeLights:
@@ -103,7 +103,7 @@ To set up BikeLights:
     4. **Design** a "location test" pattern on the Arduino device to send.  A good test of the actual position is setting only a single pixel at a time to be active.
         
 
-# Adapting for your own bike
+# Adapting for Your Own Bike
 BikeLights was custom made for my bike wheel (a Specialized 28" wheel [700x32c]), but it should be possible to adapt to your own needs.  To adapt to your own bike, consider changing the following:
 * The mounting system
     * This will likely be the most difficult part.
