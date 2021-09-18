@@ -6,7 +6,7 @@ TODO:  Link to video
 
 [See Android portion here](https://github.com/samuelgbrown/BikeLights_Android)
 
-Made using [PlatformIO](https://platformio.org/)!
+Arduino portion made using [PlatformIO](https://platformio.org/)!
 
 
 
